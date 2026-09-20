@@ -36,11 +36,6 @@
 #include "controls/touch/renderers.h"
 #endif
 
-#ifdef __3DS__
-#include <3ds.h>
-#include "platform/ctr/display.hpp"
-#endif
-
 namespace devilution {
 
 int refreshDelay;
@@ -347,9 +342,6 @@ void RenderPresent()
 	}
 	if (RenderDirectlyToOutputSurface)
 		PalSurface = GetOutputSurface();
-#ifdef __3DS__
-	CTR_PresentBottomScreen();
-#endif
 	LimitFrameRate();
 #endif
 }

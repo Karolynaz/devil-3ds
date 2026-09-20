@@ -242,6 +242,21 @@ void CalculatePanelAreas()
 {
 	constexpr Size MainPanelSize { 640, 128 };
 
+#ifdef __3DS__
+	gnViewportHeight = 240;
+	MainPanel = {
+		{ (gnScreenWidth - MainPanelSize.width) / 2, gnScreenHeight - MainPanelSize.height },
+		MainPanelSize
+	};
+	LeftPanel = {
+		{ (gnScreenWidth - SidePanelSize.width) / 2, 240 },
+		SidePanelSize
+	};
+	RightPanel = {
+		{ (gnScreenWidth - SidePanelSize.width) / 2, 240 },
+		SidePanelSize
+	};
+#else
 	MainPanel = {
 		{ (gnScreenWidth - MainPanelSize.width) / 2, gnScreenHeight - MainPanelSize.height },
 		MainPanelSize
@@ -276,6 +291,7 @@ void CalculatePanelAreas()
 		// Part of the screen is fully obscured by the UI
 		gnViewportHeight -= MainPanel.size.height;
 	}
+#endif
 }
 
 void FocusOnCharInfo()

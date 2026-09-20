@@ -30,9 +30,6 @@
 #include "utils/palette_blending.hpp"
 #include "utils/sdl_compat.h"
 #include "utils/str_cat.hpp"
-#ifdef __3DS__
-#include "platform/ctr/display.hpp"
-#endif
 
 namespace devilution {
 
@@ -168,9 +165,6 @@ void SystemPaletteUpdated(int first, int ncolor)
 	if (!SDLC_SetSurfaceAndPaletteColors(PalSurface, Palette.get(), system_palette.data() + first, first, ncolor)) {
 		ErrSdl();
 	}
-#ifdef __3DS__
-	CTR_UpdateBottomPalette(system_palette.data());
-#endif
 }
 
 void palette_init()

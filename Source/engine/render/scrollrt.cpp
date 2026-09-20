@@ -58,9 +58,6 @@
 #include "panels/partypanel.hpp"
 #include "panels/quest_log.hpp"
 #include "panels/spell_list.hpp"
-#ifdef __3DS__
-#include "platform/ctr/display.hpp"
-#endif
 #include "plrmsg.h"
 #include "qol/chatlog.h"
 #include "qol/floatingnumbers.h"
@@ -1830,11 +1827,6 @@ void scrollrt_draw_game_screen()
 	UndrawCursor(out);
 	DrawCursor(out);
 	DrawMain(hgt, false, false, false, false, false);
-#ifdef __3DS__
-	const Rectangle &panel = GetMainPanel();
-	CTR_BlitBottomScreen(out.begin(), out.pitch(), panel.position.x, panel.position.y, panel.size.width, panel.size.height);
-#endif
-
 	RenderPresent();
 }
 
@@ -1917,19 +1909,6 @@ void DrawAndBlit()
 
 	this_sdl_thread::yield();
 	DrawMain(hgt, drawInfoBox, drawHealth, drawMana, drawBelt, drawControlButtons);
-
-#ifdef __3DS__
-	if (IsRightPanelOpen()) {
-		const Rectangle &panel = GetRightPanel();
-		CTR_BlitBottomScreen(out.begin(), out.pitch(), panel.position.x, panel.position.y, panel.size.width, panel.size.height);
-	} else if (IsLeftPanelOpen()) {
-		const Rectangle &panel = GetLeftPanel();
-		CTR_BlitBottomScreen(out.begin(), out.pitch(), panel.position.x, panel.position.y, panel.size.width, panel.size.height);
-	} else {
-		const Rectangle &panel = GetMainPanel();
-		CTR_BlitBottomScreen(out.begin(), out.pitch(), panel.position.x, panel.position.y, panel.size.width, panel.size.height);
-	}
-#endif
 
 #ifdef _DEBUG
 	DrawConsole(out);

@@ -56,16 +56,9 @@ void ctr_lcd_backlight_off()
 bool ctr_check_dsp()
 {
 	FILE *dsp = fopen("sdmc:/3ds/dspfirm.cdc", "r");
-	if (dsp == NULL) {
-		gfxInitDefault();
-		errorConf error;
-		errorInit(&error, ERROR_TEXT, CFG_LANGUAGE_EN);
-		errorText(&error, "Cannot find DSP firmware!\n\n\"sdmc:/3ds/dspfirm.cdc\"\n\nRun \'DSP1\' at least once to\ndump your DSP firmware.");
-		errorDisp(&error);
-		gfxExit();
-		return false;
+	if (dsp != NULL) {
+		fclose(dsp);
 	}
-	fclose(dsp);
 	return true;
 }
 

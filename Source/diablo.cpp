@@ -737,24 +737,6 @@ void PrepareForFadeIn()
 	}
 }
 
-#ifdef __3DS__
-static Point Remap3DSTouchToPanel(Point touchPos)
-{
-	if (IsRightPanelOpen()) {
-		const Rectangle &panel = GetRightPanel();
-		return { panel.position.x + touchPos.x, panel.position.y + touchPos.y };
-	}
-	if (IsLeftPanelOpen()) {
-		const Rectangle &panel = GetLeftPanel();
-		return { panel.position.x + touchPos.x, panel.position.y + touchPos.y };
-	}
-	const Rectangle &panel = GetMainPanel();
-	int mappedX = panel.position.x + 160 + touchPos.x;
-	int mappedY = panel.position.y + std::max(0, touchPos.y - (240 - panel.size.height));
-	return { mappedX, mappedY };
-}
-#endif
-
 void GameEventHandler(const SDL_Event &event, uint16_t modState)
 {
 	[[maybe_unused]] const Options &options = GetOptions();
@@ -806,27 +788,15 @@ void GameEventHandler(const SDL_Event &event, uint16_t modState)
 	case SDL_EVENT_MOUSE_MOTION:
 		if (ControlMode == ControlTypes::KeyboardAndMouse && invflag)
 			InvalidateInventorySlot();
-#ifdef __3DS__
-		MousePosition = Remap3DSTouchToPanel({ SDLC_EventMotionIntX(event), SDLC_EventMotionIntY(event) });
-#else
 		MousePosition = { SDLC_EventMotionIntX(event), SDLC_EventMotionIntY(event) };
-#endif
 		gmenu_on_mouse_move();
 		return;
 	case SDL_EVENT_MOUSE_BUTTON_DOWN:
-#ifdef __3DS__
-		MousePosition = Remap3DSTouchToPanel({ SDLC_EventButtonIntX(event), SDLC_EventButtonIntY(event) });
-#else
 		MousePosition = { SDLC_EventButtonIntX(event), SDLC_EventButtonIntY(event) };
-#endif
 		HandleMouseButtonDown(event.button.button, modState);
 		return;
 	case SDL_EVENT_MOUSE_BUTTON_UP:
-#ifdef __3DS__
-		MousePosition = Remap3DSTouchToPanel({ SDLC_EventButtonIntX(event), SDLC_EventButtonIntY(event) });
-#else
 		MousePosition = { SDLC_EventButtonIntX(event), SDLC_EventButtonIntY(event) };
-#endif
 		HandleMouseButtonUp(event.button.button, modState);
 		return;
 #if SDL_VERSION_ATLEAST(2, 0, 0)

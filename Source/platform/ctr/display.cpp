@@ -14,13 +14,16 @@ CTRPaletteEntry bottomPalette[256];
 bool paletteInitialized = false;
 } // namespace
 
+#ifndef SDL_FITWIDTH
+#define SDL_FITWIDTH 0x00400000
+#endif
+#ifndef SDL_FITHEIGHT
+#define SDL_FITHEIGHT 0x00800000
+#endif
+
 uint32_t Get3DSScalingFlag(bool fitToScreen, int width, int height)
 {
-	if (fitToScreen)
-		return SDL_FULLSCREEN;
-	if (width * 3 < height * 5)
-		return SDL_FITHEIGHT;
-	return SDL_FITWIDTH;
+	return SDL_FITWIDTH | SDL_FITHEIGHT;
 }
 
 void CTR_UpdateBottomPalette(const SDL_Color *palette)
