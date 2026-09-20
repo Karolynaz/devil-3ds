@@ -18,11 +18,16 @@
 #include "controls/padmapper.hpp"
 #include "controls/plrctrls.h"
 #include "controls/touch/gamepad.h"
+#include "diablo.h"
 #include "doom.h"
 #include "gamemenu.h"
 #include "gmenu.h"
+#include "inv.h"
+#include "minitext.h"
 #include "options.h"
+#include "panels/charpanel.hpp"
 #include "panels/quest_log.hpp"
+#include "panels/spell_book.hpp"
 #include "panels/spell_list.hpp"
 #include "qol/stash.h"
 #include "stores.h"
@@ -325,7 +330,39 @@ void PressControllerButton(ControllerButton button)
 	}
 
 #ifdef __3DS__
-	if (!InGameMenu() && !QuestLogIsOpen) {
+	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag;
+	if (uiOpen) {
+		switch (button) {
+		case ControllerButton_BUTTON_A:
+			if (IsPlayerInStore()) {
+				CheckStoreBtn();
+			} else if (qtextflag) {
+				PressEscKey();
+			} else {
+				PerformPrimaryAction();
+			}
+			return;
+
+		case ControllerButton_BUTTON_B:
+			PressEscKey();
+			return;
+
+		case ControllerButton_BUTTON_BACK:
+			ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
+			return;
+
+		case ControllerButton_AXIS_TRIGGERLEFT:
+			ProcessGameAction(GameAction { GameActionType_TOGGLE_CHARACTER_INFO });
+			return;
+
+		case ControllerButton_AXIS_TRIGGERRIGHT:
+			ProcessGameAction(GameAction { GameActionType_TOGGLE_SPELL_BOOK });
+			return;
+
+		default:
+			break;
+		}
+	} else if (!InGameMenu()) {
 		const bool lShoulderHeld = IsControllerButtonPressed(ControllerButton_BUTTON_LEFTSHOULDER);
 		const size_t slotOffset = lShoulderHeld ? 4 : 0;
 

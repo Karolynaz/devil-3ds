@@ -106,7 +106,11 @@ void DrawQTextContent(const Surface &out)
 
 	const unsigned int skipLines = y / LineHeight;
 
+#ifdef __3DS__
+	for (int i = 0; i < 6; i++) {
+#else
 	for (int i = 0; i < 8; i++) {
+#endif
 		const unsigned int lineNumber = skipLines + i;
 		if (lineNumber >= TextLines.size()) {
 			continue;
@@ -175,14 +179,22 @@ void InitQTextMsg(_speech_id m)
 void DrawQTextBack(const Surface &out)
 {
 	const Point uiPosition = GetUIRectangle().position;
+#ifdef __3DS__
+	DrawHalfTransparentRectTo(out, uiPosition.x + 27, 4, 585, 232);
+#else
 	ClxDraw(out, uiPosition + Displacement { 24, 327 }, (*pTextBoxCels)[0]);
 	DrawHalfTransparentRectTo(out, uiPosition.x + 27, uiPosition.y + 28, 585, 297);
+#endif
 }
 
 void DrawQText(const Surface &out)
 {
 	DrawQTextBack(out);
+#ifdef __3DS__
+	DrawQTextContent(out.subregionY(8, 224));
+#else
 	DrawQTextContent(out.subregionY(GetUIRectangle().position.y + 49, 260));
+#endif
 }
 
 } // namespace devilution

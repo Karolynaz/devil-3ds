@@ -237,7 +237,17 @@ bool ShouldShowCursor()
 		return true;
 	if (invflag)
 		return true;
-	if (CharFlag && MyPlayer->_pStatPts > 0)
+	if (CharFlag)
+		return true;
+	if (SpellbookFlag)
+		return true;
+	if (QuestLogIsOpen)
+		return true;
+	if (IsPlayerInStore())
+		return true;
+	if (qtextflag)
+		return true;
+	if (IsStashOpen || IsVisualStoreOpen)
 		return true;
 
 	return false;
@@ -1847,6 +1857,15 @@ void DrawAndBlit()
 
 	const Rectangle &mainPanel = GetMainPanel();
 
+#ifdef __3DS__
+	drawHealth = true;
+	drawMana = true;
+	drawControlButtons = true;
+	drawBelt = true;
+	drawInfoBox = false;
+	drawCtrlPan = true;
+	hgt = gnScreenHeight;
+#else
 	if (gnScreenWidth > mainPanel.size.width || IsRedrawEverything()) {
 		drawHealth = true;
 		drawMana = true;
@@ -1860,6 +1879,7 @@ void DrawAndBlit()
 		drawCtrlPan = false;
 		hgt = gnViewportHeight;
 	}
+#endif
 
 	const Surface &out = GlobalBackBuffer();
 	UndrawCursor(out);
@@ -1867,6 +1887,10 @@ void DrawAndBlit()
 	nthread_UpdateProgressToNextGameTick();
 
 	this_sdl_thread::yield();
+#ifdef __3DS__
+	SDL_Rect bottomRect = MakeSdlRect(0, 240, gnScreenWidth, gnScreenHeight - 240);
+	SDL_FillRect(out.surface, &bottomRect, 0);
+#endif
 	DrawView(out, ViewPosition);
 	if (drawCtrlPan) {
 		DrawMainPanel(out);

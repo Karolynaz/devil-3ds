@@ -211,6 +211,15 @@ const char *const TownerNames[] = {
 	N_("Wirt"),
 };
 
+#ifdef __3DS__
+constexpr int PaddingTop = 4;
+
+constexpr int SmallLineHeight = 10;
+constexpr int SmallTextHeight = 10;
+
+constexpr int LargeLineHeight = 10;
+constexpr int LargeTextHeight = 12;
+#else
 constexpr int PaddingTop = 32;
 
 // For most languages, line height is always 12.
@@ -223,6 +232,7 @@ constexpr int SmallTextHeight = 12;
 // We space out blank lines a bit more to give space to 3-line store items.
 constexpr int LargeLineHeight = SmallLineHeight + 1;
 constexpr int LargeTextHeight = 18;
+#endif
 
 /**
  * The line index with the Back / Leave button.
@@ -232,10 +242,14 @@ constexpr int LargeTextHeight = 18;
  */
 int BackButtonLine()
 {
+#ifdef __3DS__
+	return 21;
+#else
 	if (IsSmallFontTall()) {
 		return HasScrollbar ? 21 : 20;
 	}
 	return 22;
+#endif
 }
 
 int LineHeight()
@@ -270,8 +284,12 @@ void CalculateLineHeights()
 void DrawSTextBack(const Surface &out)
 {
 	const Point uiPosition = GetUIRectangle().position;
+#ifdef __3DS__
+	DrawHalfTransparentRectTo(out, uiPosition.x + 347, 4, 265, 232);
+#else
 	ClxDraw(out, { uiPosition.x + 320 + 24, 327 + uiPosition.y }, (*pSTextBoxCels)[0]);
 	DrawHalfTransparentRectTo(out, uiPosition.x + 347, uiPosition.y + 28, 265, 297);
+#endif
 }
 
 void DrawSSlider(const Surface &out, int y1, int y2)
@@ -2775,8 +2793,13 @@ void StoreEnter()
 void CheckStoreBtn()
 {
 	const Point uiPosition = GetUIRectangle().position;
+#ifdef __3DS__
+	const Rectangle windowRect { { uiPosition.x + 344, 0 }, { 271, 240 } };
+	const Rectangle windowRectFull { { uiPosition.x + 24, 0 }, { 591, 240 } };
+#else
 	const Rectangle windowRect { { uiPosition.x + 344, uiPosition.y + PaddingTop - 7 }, { 271, 303 } };
 	const Rectangle windowRectFull { { uiPosition.x + 24, uiPosition.y + PaddingTop - 7 }, { 591, 303 } };
+#endif
 
 	if (!IsTextFullSize) {
 		if (!windowRect.contains(MousePosition)) {

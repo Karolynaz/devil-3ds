@@ -66,6 +66,17 @@ void MainmenuLoad(const char *name)
 		LoadBackgroundArt("ui_art\\swmmenu");
 	}
 
+#ifdef __3DS__
+	UiAddBackground(&vecMainMenuDialog);
+	UiAddLogo(&vecMainMenuDialog, 10);
+
+	const Point uiPosition = GetUIRectangle().position;
+
+	vecMainMenuDialog.push_back(std::make_unique<UiList>(vecMenuItems, vecMenuItems.size(), uiPosition.x + 64, 250, 510, 34, UiFlags::FontSize30 | UiFlags::ColorUiGold | UiFlags::AlignCenter, 4));
+
+	const SDL_Rect rect2 = { 17, (Sint16)(gnScreenHeight - 22), 605, 20 };
+	vecMainMenuDialog.push_back(std::make_unique<UiArtText>(name, rect2, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark));
+#else
 	UiAddBackground(&vecMainMenuDialog);
 	UiAddLogo(&vecMainMenuDialog);
 
@@ -80,6 +91,7 @@ void MainmenuLoad(const char *name)
 
 	const SDL_Rect rect2 = { 17, (Sint16)(gnScreenHeight - 36), 605, 21 };
 	vecMainMenuDialog.push_back(std::make_unique<UiArtText>(name, rect2, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark));
+#endif
 
 #ifndef NOEXIT
 	UiInitList(nullptr, UiMainMenuSelect, MainmenuEsc, vecMainMenuDialog, true);
