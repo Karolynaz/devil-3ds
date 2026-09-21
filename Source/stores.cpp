@@ -295,6 +295,32 @@ void DrawSTextBack(const Surface &out)
 void DrawSSlider(const Surface &out, int y1, int y2)
 {
 	const Point uiPosition = GetUIRectangle().position;
+#ifdef __3DS__
+	int yd1 = (y1 * 10) + 14 + uiPosition.y;
+	const int yd2 = (y2 * 10) + 14 + uiPosition.y;
+	if (CountdownScrollUp != -1)
+		ClxDraw(out, { uiPosition.x + 601, yd1 }, (*pSTextSlidCels)[11]);
+	else
+		ClxDraw(out, { uiPosition.x + 601, yd1 }, (*pSTextSlidCels)[9]);
+	if (CountdownScrollDown != -1)
+		ClxDraw(out, { uiPosition.x + 601, yd2 }, (*pSTextSlidCels)[10]);
+	else
+		ClxDraw(out, { uiPosition.x + 601, yd2 }, (*pSTextSlidCels)[8]);
+	yd1 += 10;
+	int yd3 = yd1;
+	for (; yd3 < yd2; yd3 += 10) {
+		ClxDraw(out, { uiPosition.x + 601, yd3 }, (*pSTextSlidCels)[13]);
+	}
+	if (CurrentTextLine == BackButtonLine())
+		yd3 = OldTextLine;
+	else
+		yd3 = CurrentTextLine;
+	if (CurrentItemIndex > 1)
+		yd3 = 1000 * (ScrollPos + ((yd3 - PreviousScrollPos) / 4)) / (CurrentItemIndex - 1) * (y2 * 10 - y1 * 10 - 20) / 1000;
+	else
+		yd3 = 0;
+	ClxDraw(out, { uiPosition.x + 601, ((y1 + 1) * 10) + 14 + uiPosition.y + yd3 }, (*pSTextSlidCels)[12]);
+#else
 	int yd1 = (y1 * 12) + 44 + uiPosition.y;
 	const int yd2 = (y2 * 12) + 44 + uiPosition.y;
 	if (CountdownScrollUp != -1)
@@ -319,6 +345,7 @@ void DrawSSlider(const Surface &out, int y1, int y2)
 	else
 		yd3 = 0;
 	ClxDraw(out, { uiPosition.x + 601, ((y1 + 1) * 12) + 44 + uiPosition.y + yd3 }, (*pSTextSlidCels)[12]);
+#endif
 }
 
 void AddSLine(size_t y)
@@ -2276,11 +2303,15 @@ void DrawSLine(const Surface &out, int sy)
 		width -= SidePanelSize.width;
 	}
 
+#ifdef __3DS__
+	DrawHorizontalLine(out, { uiPosition.x + sx, sy }, width, PAL16_GRAY + 10);
+#else
 	uint8_t *src = out.at(uiPosition.x + sx, uiPosition.y + 25);
 	uint8_t *dst = out.at(uiPosition.x + sx, sy);
 
 	for (int i = 0; i < 3; i++, src += out.pitch(), dst += out.pitch())
 		memcpy(dst, src, width);
+#endif
 }
 
 void DrawSTextHelp()

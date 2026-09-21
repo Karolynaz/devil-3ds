@@ -301,6 +301,34 @@ bool AutoEquip(Player &player, const Item &item, inv_body_loc bodyLocation, bool
 
 int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 {
+#ifdef __3DS__
+	Point testCursorPos = cursorPosition;
+	if (testCursorPos.y < 240 && testCursorPos.x >= 422) {
+		testCursorPos = { ((testCursorPos.x - 422) * 320) / 218, (testCursorPos.y * 352) / 240 };
+	}
+	for (int r = SLOTXY_EQUIPPED_FIRST; r <= SLOTXY_EQUIPPED_LAST; r++) {
+		if (InvRect[r].contains(testCursorPos))
+			return r;
+	}
+	for (int r = SLOTXY_INV_FIRST; r <= SLOTXY_INV_LAST; r++) {
+		if (InvRect[r].contains(testCursorPos)) {
+			if (itemSize.height <= 1 && itemSize.width <= 1) {
+				return r;
+			}
+			Displacement hotPixelCellOffset = { (itemSize.width - 1) / 2, (itemSize.height - 1) / 2 };
+			if (itemSize.width % 2 == 0 && InvRect[r].contains(testCursorPos + Displacement { INV_SLOT_HALF_SIZE_PX, 0 })) {
+				hotPixelCellOffset.deltaX++;
+			}
+			if (itemSize.height % 2 == 0 && InvRect[r].contains(testCursorPos + Displacement { 0, INV_SLOT_HALF_SIZE_PX })) {
+				hotPixelCellOffset.deltaY++;
+			}
+			const int hotPixelCell = r - SLOTXY_INV_FIRST;
+			const int targetRow = std::clamp((hotPixelCell / InventorySizeInSlots.width) - hotPixelCellOffset.deltaY, 0, InventorySizeInSlots.height - itemSize.height);
+			const int targetColumn = std::clamp((hotPixelCell % InventorySizeInSlots.width) - hotPixelCellOffset.deltaX, 0, InventorySizeInSlots.width - itemSize.width);
+			return SLOTXY_INV_FIRST + (targetRow * InventorySizeInSlots.width) + targetColumn;
+		}
+	}
+#else
 	Displacement panelOffset = Point { 0, 0 } - GetRightPanel().position;
 	for (int r = SLOTXY_EQUIPPED_FIRST; r <= SLOTXY_EQUIPPED_LAST; r++) {
 		if (InvRect[r].contains(cursorPosition + panelOffset))
@@ -331,6 +359,7 @@ int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 			return SLOTXY_INV_FIRST + (targetRow * InventorySizeInSlots.width) + targetColumn;
 		}
 	}
+#endif
 
 	panelOffset = Point { 0, 0 } - GetMainPanel().position;
 	for (int r = SLOTXY_BELT_FIRST; r <= SLOTXY_BELT_LAST; r++) {
@@ -629,7 +658,18 @@ inv_body_loc MapSlotToInvBodyLoc(inv_xy_slot slot)
 
 std::optional<inv_xy_slot> FindSlotUnderCursor(Point cursorPosition)
 {
-
+#ifdef __3DS__
+	Point testPosition = cursorPosition;
+	if (testPosition.y < 240 && testPosition.x >= 422) {
+		testPosition = { ((testPosition.x - 422) * 320) / 218, (testPosition.y * 352) / 240 };
+	}
+	for (std::underlying_type_t<inv_xy_slot> r = SLOTXY_EQUIPPED_FIRST; r != SLOTXY_BELT_FIRST; r++) {
+		// check which body/inventory rectangle the mouse is in, if any
+		if (InvRect[r].contains(testPosition)) {
+			return static_cast<inv_xy_slot>(r);
+		}
+	}
+#else
 	auto testPosition = static_cast<Point>(cursorPosition - GetRightPanel().position);
 	for (std::underlying_type_t<inv_xy_slot> r = SLOTXY_EQUIPPED_FIRST; r != SLOTXY_BELT_FIRST; r++) {
 		// check which body/inventory rectangle the mouse is in, if any
@@ -637,11 +677,12 @@ std::optional<inv_xy_slot> FindSlotUnderCursor(Point cursorPosition)
 			return static_cast<inv_xy_slot>(r);
 		}
 	}
+#endif
 
-	testPosition = static_cast<Point>(cursorPosition - GetMainPanel().position);
+	auto testBeltPos = static_cast<Point>(cursorPosition - GetMainPanel().position);
 	for (std::underlying_type_t<inv_xy_slot> r = SLOTXY_BELT_FIRST; r != NUM_XY_SLOTS; r++) {
 		// check which belt rectangle the mouse is in, if any
-		if (InvRect[r].contains(testPosition)) {
+		if (InvRect[r].contains(testBeltPos)) {
 			return static_cast<inv_xy_slot>(r);
 		}
 	}
@@ -1235,8 +1276,9 @@ void DrawInv(const Surface &out)
 			if (slot == INVLOC_HAND_LEFT) {
 				if (myPlayer.GetItemLocation(myPlayer.InvBody[slot]) == ILOC_TWOHAND) {
 					InvDrawSlotBack(out, GetPanelPosition(UiPanels::Inventory, slotPos[INVLOC_HAND_RIGHT]), { slotSize[INVLOC_HAND_RIGHT].width * InventorySlotSizeInPixels.width, slotSize[INVLOC_HAND_RIGHT].height * InventorySlotSizeInPixels.height }, myPlayer.InvBody[slot]._iMagical);
-					const int dstX = GetRightPanel().position.x + slotPos[INVLOC_HAND_RIGHT].x + (frameSize.width == InventorySlotSizeInPixels.width ? INV_SLOT_HALF_SIZE_PX : 0) - 1;
-					const int dstY = GetRightPanel().position.y + slotPos[INVLOC_HAND_RIGHT].y;
+					const Point rightHandPos = GetPanelPosition(UiPanels::Inventory, slotPos[INVLOC_HAND_RIGHT]);
+					const int dstX = rightHandPos.x + (frameSize.width == InventorySlotSizeInPixels.width ? INV_SLOT_HALF_SIZE_PX : 0) - 1;
+					const int dstY = rightHandPos.y;
 					ClxDrawBlended(out, { dstX, dstY }, sprite);
 				}
 			}
@@ -1919,16 +1961,34 @@ int SyncDropEar(Point position, uint16_t icreateinfo, uint32_t iseed, uint8_t cu
 
 int8_t CheckInvHLight()
 {
+#ifdef __3DS__
+	Point mousePos = MousePosition;
+	if (mousePos.y < 240 && mousePos.x >= 422) {
+		mousePos = { ((mousePos.x - 422) * 320) / 218, (mousePos.y * 352) / 240 };
+	}
+#else
+	Point mousePos = MousePosition;
+#endif
+
 	int8_t r = 0;
 	for (; r < NUM_XY_SLOTS; r++) {
-		int xo = GetRightPanel().position.x;
-		int yo = GetRightPanel().position.y;
+		int xo = 0;
+		int yo = 0;
+#ifdef __3DS__
 		if (r >= SLOTXY_BELT_FIRST) {
 			xo = GetMainPanel().position.x;
 			yo = GetMainPanel().position.y;
 		}
+#else
+		xo = GetRightPanel().position.x;
+		yo = GetRightPanel().position.y;
+		if (r >= SLOTXY_BELT_FIRST) {
+			xo = GetMainPanel().position.x;
+			yo = GetMainPanel().position.y;
+		}
+#endif
 
-		if (InvRect[r].contains(MousePosition - Displacement(xo, yo))) {
+		if (InvRect[r].contains(mousePos - Displacement(xo, yo))) {
 			break;
 		}
 	}

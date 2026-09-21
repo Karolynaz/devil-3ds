@@ -1405,16 +1405,49 @@ void DrawView(const Surface &out, Point startPosition)
 
 	if (IsPlayerInStore() && !qtextflag)
 		DrawSText(out);
+#ifdef __3DS__
+	if (invflag || SpellbookFlag) {
+		SDL_Rect clearRect = MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height);
+		SDL_FillRect(SidePanelBuffer->surface, &clearRect, SDL_MapRGB(SidePanelBuffer->surface->format, 0, 0, 0));
+		if (invflag) {
+			DrawInv(*SidePanelBuffer);
+			if (DropGoldFlag) {
+				DrawGoldSplit(*SidePanelBuffer);
+			}
+		} else if (SpellbookFlag) {
+			DrawSpellBook(*SidePanelBuffer);
+		}
+		out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height), MakeSdlRect(422, 0, 218, 240));
+	}
+#else
 	if (invflag) {
 		DrawInv(out);
 	} else if (SpellbookFlag) {
 		DrawSpellBook(out);
 	}
+#endif
 
 	DrawDurIcon(out);
 
 	DrawLevelButton(out);
 
+#ifdef __3DS__
+	if (CharFlag || QuestLogIsOpen || IsStashOpen || IsVisualStoreOpen) {
+		SDL_Rect clearRect = MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height);
+		SDL_FillRect(SidePanelBuffer->surface, &clearRect, SDL_MapRGB(SidePanelBuffer->surface->format, 0, 0, 0));
+		if (CharFlag) {
+			DrawChr(*SidePanelBuffer);
+		} else if (QuestLogIsOpen) {
+			DrawQuestLog(*SidePanelBuffer);
+		} else if (IsStashOpen) {
+			DrawStash(*SidePanelBuffer);
+			DrawGoldWithdraw(*SidePanelBuffer);
+		} else if (IsVisualStoreOpen) {
+			DrawVisualStore(*SidePanelBuffer);
+		}
+		out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height), MakeSdlRect(0, 0, 218, 240));
+	}
+#else
 	if (CharFlag) {
 		DrawChr(out);
 	} else if (QuestLogIsOpen) {
@@ -1424,6 +1457,7 @@ void DrawView(const Surface &out, Point startPosition)
 	} else if (IsVisualStoreOpen) {
 		DrawVisualStore(out);
 	}
+#endif
 
 	if (ShowUniqueItemInfoBox) {
 		DrawUniqueInfo(out);
@@ -1434,10 +1468,12 @@ void DrawView(const Surface &out, Point startPosition)
 	if (SpellSelectFlag) {
 		DrawSpellList(out);
 	}
+#ifndef __3DS__
 	if (DropGoldFlag) {
 		DrawGoldSplit(out);
 	}
 	DrawGoldWithdraw(out);
+#endif
 	if (HelpFlag) {
 		DrawHelp(out);
 	}
@@ -1888,8 +1924,9 @@ void DrawAndBlit()
 
 	this_sdl_thread::yield();
 #ifdef __3DS__
+	const Uint32 blackColor = SDL_MapRGB(out.surface->format, 0, 0, 0);
 	SDL_Rect bottomRect = MakeSdlRect(0, 240, gnScreenWidth, gnScreenHeight - 240);
-	SDL_FillRect(out.surface, &bottomRect, 0);
+	SDL_FillRect(out.surface, &bottomRect, blackColor);
 #endif
 	DrawView(out, ViewPosition);
 	if (drawCtrlPan) {

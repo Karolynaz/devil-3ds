@@ -575,11 +575,20 @@ void AttrIncBtnSnap(AxisDirection dir)
 	Rectangle button;
 	for (int i = 0; i < 4; i++) {
 		button = CharPanelButtonRect[i];
+#ifdef __3DS__
+		Point center = button.Center();
+		Point scaledCenter = { (center.x * 218) / 320, (center.y * 240) / 352 };
+		if (std::abs(scaledCenter.x - MousePosition.x) < 20 && std::abs(scaledCenter.y - MousePosition.y) < 15) {
+			slot = i;
+			break;
+		}
+#else
 		button.position = GetPanelPosition(UiPanels::Character, button.position);
 		if (button.contains(MousePosition)) {
 			slot = i;
 			break;
 		}
+#endif
 	}
 
 	if (dir.y == AxisDirectionY_UP) {
@@ -592,8 +601,13 @@ void AttrIncBtnSnap(AxisDirection dir)
 
 	// move cursor to our new location
 	button = CharPanelButtonRect[slot];
+#ifdef __3DS__
+	Point center = button.Center();
+	SetCursorPos({ (center.x * 218) / 320, (center.y * 240) / 352 });
+#else
 	button.position = GetPanelPosition(UiPanels::Character, button.position);
 	SetCursorPos(button.Center());
+#endif
 }
 
 Point InvGetEquipSlotCoord(const inv_body_loc invSlot)
@@ -631,6 +645,11 @@ Point InvGetEquipSlotCoord(const inv_body_loc invSlot)
 	default:
 		break;
 	}
+
+#ifdef __3DS__
+	result.x = 422 + (result.x * 218) / 320;
+	result.y = (result.y * 240) / 352;
+#endif
 
 	return result;
 }
@@ -671,7 +690,12 @@ Point GetSlotCoord(int slot)
 		return GetPanelPosition(UiPanels::Main, InvRect[slot].Center());
 	}
 
+#ifdef __3DS__
+	Point p = InvRect[slot].Center();
+	return { 422 + (p.x * 218) / 320, (p.y * 240) / 352 };
+#else
 	return GetPanelPosition(UiPanels::Inventory, InvRect[slot].Center());
+#endif
 }
 
 /**

@@ -379,7 +379,11 @@ void UiSettingsMenu()
 		UiLoadBlackBackground();
 		LoadScrollBar();
 		UiAddBackground(&vecDialog);
+#ifdef __3DS__
+		UiAddLogo(&vecDialog, 10);
+#else
 		UiAddLogo(&vecDialog, uiRectangle.position.y);
+#endif
 
 		const int descriptionLineHeight = IsSmallFontTall() ? 20 : 18;
 		const int descriptionMarginTop = IsSmallFontTall() ? 10 : 16;
@@ -398,7 +402,11 @@ void UiSettingsMenu()
 			titleText = selectedOption->GetName();
 			break;
 		}
+#ifdef __3DS__
+		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, 175, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
+#else
 		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, uiRectangle.position.y + 161, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
+#endif
 
 		size_t itemToSelect = 0;
 		std::optional<tl::function_ref<bool(SDL_Event &)>> eventHandler;
@@ -554,11 +562,20 @@ void UiSettingsMenu()
 		vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view {}, static_cast<int>(SpecialMenuEntry::None), UiFlags::ElementDisabled));
 		vecDialogItems.push_back(std::make_unique<UiListItem>(_("Previous Menu"), static_cast<int>(SpecialMenuEntry::PreviousMenu), UiFlags::ColorUiGold));
 
+#ifdef __3DS__
+		constexpr int ListItemHeight = 24;
+		const int maxListHeight = 120;
+		rectList = { { uiRectangle.position.x + 50, 245 },
+			Size { uiRectangle.size.width - 100, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, maxListHeight) } };
+		rectDescription = { { uiRectangle.position.x + 24, 380 },
+			Size { uiRectangle.size.width - 48, 85 } };
+#else
 		constexpr int ListItemHeight = 26;
 		rectList = { uiRectangle.position + Displacement { 50, 204 },
 			Size { uiRectangle.size.width - 100, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, uiRectangle.size.height - 272) } };
 		rectDescription = { rectList.position + Displacement { -26, rectList.size.height + descriptionMarginTop },
 			Size { uiRectangle.size.width - 50, 80 - descriptionMarginTop } };
+#endif
 		vecDialog.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0],
 		    *ArtScrollBarArrow, MakeSdlRect(rectList.position.x + rectList.size.width + 5, rectList.position.y, 25, rectList.size.height)));
 		vecDialog.push_back(std::make_unique<UiArtText>(optionDescription, MakeSdlRect(rectDescription),

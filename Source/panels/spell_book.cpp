@@ -191,13 +191,22 @@ void DrawSpellBook(const Surface &out)
 
 void CheckSBook()
 {
+#ifdef __3DS__
+	Point mousePos = MousePosition;
+	if (mousePos.y < 240 && mousePos.x >= 422) {
+		mousePos = { ((mousePos.x - 422) * 320) / 218, (mousePos.y * 352) / 240 };
+	}
+#else
+	Point mousePos = MousePosition;
+#endif
+
 	// Icons are drawn in a column near the left side of the panel and aligned with the spell book description entries
 	// Spell icons/buttons are 37x38 pixels, laid out from 11,18 with a 5 pixel margin between each icon. This is close
 	// enough to the height of the space given to spell descriptions that we can reuse that value and subtract the
 	// padding from the end of the area.
 	const Rectangle iconArea = { GetPanelPosition(UiPanels::Spell, { 11, 18 }), Size { 37, (SpellBookDescription.height * 7) - 5 } };
-	if (iconArea.contains(MousePosition) && !IsInspectingPlayer()) {
-		const SpellID sn = GetSpellFromSpellPage(SpellbookTab, (MousePosition.y - iconArea.position.y) / SpellBookDescription.height);
+	if (iconArea.contains(mousePos) && !IsInspectingPlayer()) {
+		const SpellID sn = GetSpellFromSpellPage(SpellbookTab, (mousePos.y - iconArea.position.y) / SpellBookDescription.height);
 		Player &player = *InspectPlayer;
 		const uint64_t spl = player._pMemSpells | player._pISpells | player._pAblSpells;
 		if (IsValidSpell(sn) && (spl & GetSpellBitmask(sn)) != 0) {
@@ -221,8 +230,8 @@ void CheckSBook()
 	const int buttonWidth = SpellBookButtonWidth();
 	// Tabs are drawn in a row near the bottom of the panel
 	const Rectangle tabArea = { GetPanelPosition(UiPanels::Spell, { 7, 320 }), Size { 305, 29 } };
-	if (tabArea.contains(MousePosition)) {
-		int hitColumn = MousePosition.x - tabArea.position.x;
+	if (tabArea.contains(mousePos)) {
+		int hitColumn = mousePos.x - tabArea.position.x;
 		// Clicking on the gutter currently activates tab 3. Could make it do nothing by checking for == here and return early.
 		if (!gbIsHellfire && hitColumn > buttonWidth * 2) {
 			// Subtract 1 pixel to account for the gutter between buttons 2/3

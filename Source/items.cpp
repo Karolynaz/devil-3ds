@@ -1736,13 +1736,23 @@ Point DrawUniqueInfoWindow(const Surface &out)
 	const bool isInStash = IsStashOpen && GetLeftPanel().contains(MousePosition);
 	int panelX, panelY;
 	if (isInStash) {
+#ifdef __3DS__
+		panelX = 27;
+		panelY = 4;
+#else
 		ClxDraw(out, GetPanelPosition(UiPanels::Stash, { 24 + SidePanelSize.width, 327 }), (*pSTextBoxCels)[0]);
 		panelX = GetLeftPanel().position.x + SidePanelSize.width + 27;
 		panelY = GetLeftPanel().position.y + 28;
+#endif
 	} else {
+#ifdef __3DS__
+		panelX = 27;
+		panelY = 4;
+#else
 		ClxDraw(out, GetPanelPosition(UiPanels::Inventory, { 24 - SidePanelSize.width, 327 }), (*pSTextBoxCels)[0]);
 		panelX = GetRightPanel().position.x - SidePanelSize.width + 27;
 		panelY = GetRightPanel().position.y + 28;
+#endif
 	}
 
 	const Point rightInfoPos = GetRightPanel().position - Displacement { SidePanelSize.width, 0 };
@@ -1752,7 +1762,11 @@ Point DrawUniqueInfoWindow(const Surface &out)
 	const int fadeLevel = isInfoOverlapping ? 3 : 1;
 
 	for (int i = 0; i < fadeLevel; ++i) {
+#ifdef __3DS__
+		DrawHalfTransparentRectTo(out, panelX, panelY, 265, 232);
+#else
 		DrawHalfTransparentRectTo(out, panelX, panelY, 265, 297);
+#endif
 	}
 
 	return isInStash ? leftInfoPos : rightInfoPos;
@@ -4102,8 +4116,13 @@ void DrawUniqueInfo(const Surface &out)
 	const UniqueItem &uitem = UniqueItems[curruitem._iUid];
 	DrawString(out, _(uitem.UIName), rect, { .flags = UiFlags::AlignCenter });
 
+#ifdef __3DS__
+	const Rectangle dividerLineRect { position + Displacement { 26, 25 }, { 267, 3 } };
+	DrawHorizontalLine(out, dividerLineRect.position + Displacement { 0, (5 * 10) + 13 }, dividerLineRect.size.width, PAL16_GRAY + 10);
+#else
 	const Rectangle dividerLineRect { position + Displacement { 26, 25 }, { 267, 3 } };
 	out.BlitFrom(out, MakeSdlRect(dividerLineRect), dividerLineRect.position + Displacement { 0, (5 * 12) + 13 });
+#endif
 
 	rect.position.y += (10 - uitem.UINumPL) * 12;
 	assert(uitem.UINumPL <= sizeof(uitem.powers) / sizeof(*uitem.powers));

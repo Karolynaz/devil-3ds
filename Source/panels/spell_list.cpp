@@ -195,6 +195,12 @@ void DrawSpellList(const Surface &out)
 	}
 }
 
+#ifdef __3DS__
+constexpr int SpellListStartX = 640 - 12 - SPLICONLENGTH;
+constexpr int SpellListStartY = 230;
+constexpr int SpellListWrapX = 640 - 12 - (SPLICONLENGTH * (SPLROWICONLS + 1));
+#endif
+
 std::vector<SpellListItem> GetSpellListItems()
 {
 	std::vector<SpellListItem> spellListItems;
@@ -202,8 +208,13 @@ std::vector<SpellListItem> GetSpellListItems()
 	uint64_t mask;
 	const Point mainPanelPosition = GetMainPanel().position;
 
+#ifdef __3DS__
+	int x = SpellListStartX;
+	int y = SpellListStartY;
+#else
 	int x = mainPanelPosition.x + 12 + (SPLICONLENGTH * SPLROWICONLS);
 	int y = mainPanelPosition.y - 17;
+#endif
 
 	for (auto i : enum_values<SpellType>()) {
 		const Player &myPlayer = *MyPlayer;
@@ -232,17 +243,33 @@ std::vector<SpellListItem> GetSpellListItems()
 			const bool isSelected = (MousePosition.x >= lx && MousePosition.x < lx + SPLICONLENGTH && MousePosition.y >= ly && MousePosition.y < ly + SPLICONLENGTH);
 			spellListItems.emplace_back(SpellListItem { { x, y }, static_cast<SpellType>(i), static_cast<SpellID>(j), isSelected });
 			x -= SPLICONLENGTH;
+#ifdef __3DS__
+			if (x == SpellListWrapX) {
+				x = SpellListStartX;
+				y -= SPLICONLENGTH;
+			}
+#else
 			if (x == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 				x = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 				y -= SPLICONLENGTH;
 			}
+#endif
 		}
+#ifdef __3DS__
+		if (mask != 0 && x != SpellListStartX)
+			x -= SPLICONLENGTH;
+		if (x == SpellListWrapX) {
+			x = SpellListStartX;
+			y -= SPLICONLENGTH;
+		}
+#else
 		if (mask != 0 && x != mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS)
 			x -= SPLICONLENGTH;
 		if (x == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 			x = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 			y -= SPLICONLENGTH;
 		}
+#endif
 	}
 
 	return spellListItems;
@@ -334,8 +361,13 @@ void DoSpeedBook()
 {
 	SpellSelectFlag = true;
 	const Point mainPanelPosition = GetMainPanel().position;
+#ifdef __3DS__
+	int xo = SpellListStartX;
+	int yo = SpellListStartY;
+#else
 	int xo = mainPanelPosition.x + 12 + (SPLICONLENGTH * 10);
 	int yo = mainPanelPosition.y - 17;
+#endif
 	int x = xo + (SPLICONLENGTH / 2);
 	int y = yo - (SPLICONLENGTH / 2);
 
@@ -368,19 +400,35 @@ void DoSpeedBook()
 						y = yo - SPLICONLENGTH / 2;
 					}
 					xo -= SPLICONLENGTH;
+#ifdef __3DS__
+					if (xo == SpellListWrapX) {
+						xo = SpellListStartX;
+						yo -= SPLICONLENGTH;
+					}
+#else
 					if (xo == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 						xo = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 						yo -= SPLICONLENGTH;
 					}
+#endif
 				}
 				spell <<= 1ULL;
 			}
+#ifdef __3DS__
+			if (spells != 0 && xo != SpellListStartX)
+				xo -= SPLICONLENGTH;
+			if (xo == SpellListWrapX) {
+				xo = SpellListStartX;
+				yo -= SPLICONLENGTH;
+			}
+#else
 			if (spells != 0 && xo != mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS)
 				xo -= SPLICONLENGTH;
 			if (xo == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 				xo = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 				yo -= SPLICONLENGTH;
 			}
+#endif
 		}
 	}
 

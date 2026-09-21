@@ -48,7 +48,11 @@ void UiSelStartUpGameOption()
 	const Point uiPosition = GetUIRectangle().position;
 	vecDialogItems.push_back(std::make_unique<UiListItem>(_("Enter Hellfire"), static_cast<int>(StartUpGameMode::Hellfire)));
 	vecDialogItems.push_back(std::make_unique<UiListItem>(_("Switch to Diablo"), static_cast<int>(StartUpGameMode::Diablo)));
+#ifdef __3DS__
+	vecDialog.push_back(std::make_unique<UiList>(vecDialogItems, vecDialogItems.size(), uiPosition.x + 64, 260, 510, 36, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold, 5));
+#else
 	vecDialog.push_back(std::make_unique<UiList>(vecDialogItems, vecDialogItems.size(), uiPosition.x + 64, uiPosition.y + 240, 510, 43, UiFlags::AlignCenter | UiFlags::FontSize42 | UiFlags::ColorUiGold, 5));
+#endif
 
 	UiInitList(nullptr, ItemSelected, EscPressed, vecDialog, true);
 

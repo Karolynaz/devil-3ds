@@ -51,4 +51,27 @@ void Surface::BlitFromSkipColorIndexZero(const Surface &src, SDL_Rect srcRect, P
 	SurfaceBlit</*SkipColorIndexZero=*/true>(src, srcRect, *this, targetPosition);
 }
 
+void Surface::ScaleBlitFrom(const Surface &src, SDL_Rect srcRect, SDL_Rect dstRect) const
+{
+	if (srcRect.w <= 0 || srcRect.h <= 0 || dstRect.w <= 0 || dstRect.h <= 0)
+		return;
+
+	int x0 = std::max<int>(dstRect.x, 0);
+	int y0 = std::max<int>(dstRect.y, 0);
+	int x1 = std::min<int>(dstRect.x + dstRect.w, region.w);
+	int y1 = std::min<int>(dstRect.y + dstRect.h, region.h);
+	if (x0 >= x1 || y0 >= y1)
+		return;
+
+	for (int y = y0; y < y1; ++y) {
+		int sy = srcRect.y + ((y - dstRect.y) * srcRect.h) / dstRect.h;
+		const uint8_t *srcRow = src.at(0, sy);
+		uint8_t *dstRow = at(0, y);
+		for (int x = x0; x < x1; ++x) {
+			int sx = srcRect.x + ((x - dstRect.x) * srcRect.w) / dstRect.w;
+			dstRow[x] = srcRow[sx];
+		}
+	}
+}
+
 } // namespace devilution

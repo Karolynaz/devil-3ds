@@ -168,6 +168,11 @@ struct Surface {
 	 * Source pixels with index 0 are not copied.
 	 */
 	void BlitFromSkipColorIndexZero(const Surface &src, SDL_Rect srcRect, Point targetPosition) const;
+
+	/**
+	 * @brief Scales and copies `srcRect` portion of `src` buffer to this buffer at `dstRect`.
+	 */
+	void ScaleBlitFrom(const Surface &src, SDL_Rect srcRect, SDL_Rect dstRect) const;
 };
 
 class OwnedSurface : public Surface {

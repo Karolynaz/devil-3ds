@@ -168,6 +168,42 @@ void SelheroListSelect(size_t value)
 	if (static_cast<std::size_t>(value) == selhero_SaveCount) {
 		vecSelDlgItems.clear();
 
+#ifdef __3DS__
+		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), 245, 365, 26 };
+		vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Choose Class").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
+
+		vecSelHeroDlgItems.clear();
+		int itemH = 24;
+		for (size_t i = 0; i < GetNumPlayerClasses(); ++i) {
+			const auto heroClass = static_cast<HeroClass>(i);
+
+			if (heroClass == HeroClass::Monk && !gbIsHellfire) {
+				continue;
+			}
+
+			if (heroClass == HeroClass::Bard && !HaveBardAssets() && !(*GetOptions().Gameplay.testBard)) {
+				continue;
+			}
+
+			if (heroClass == HeroClass::Barbarian && !HaveBarbarianAssets() && !(*GetOptions().Gameplay.testBarbarian)) {
+				continue;
+			}
+
+			const PlayerData &playerData = GetPlayerDataForClass(heroClass);
+			vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_(playerData.className), static_cast<int>(heroClass)));
+		}
+		const int itemY = 275;
+		vecSelDlgItems.push_back(std::make_unique<UiList>(vecSelHeroDlgItems, std::min<size_t>(vecSelHeroDlgItems.size(), 6), uiPosition.x + 264, itemY, 320, itemH, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+
+		const SDL_Rect rectScrollBar = { (Sint16)(uiPosition.x + 585), 275, 25, 144 };
+		vecSelDlgItems.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0], *ArtScrollBarArrow, rectScrollBar));
+
+		const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 279), 435, 140, 35 };
+		vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("OK"), &UiFocusNavigationSelect, rect2, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+
+		const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 429), 435, 144, 35 };
+		vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("Cancel"), &UiFocusNavigationEsc, rect3, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#else
 		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), (Sint16)(uiPosition.y + 211), 365, 33 };
 		vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Choose Class").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
@@ -204,6 +240,7 @@ void SelheroListSelect(size_t value)
 
 		const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 429), (Sint16)(uiPosition.y + 429), 144, 35 };
 		vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("Cancel"), &UiFocusNavigationEsc, rect3, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#endif
 
 		UiInitList(SelheroClassSelectorFocus, SelheroClassSelectorSelect, SelheroClassSelectorEsc, vecSelDlgItems, true);
 		memset(&selhero_heroInfo.name, 0, sizeof(selhero_heroInfo.name));
@@ -217,6 +254,21 @@ void SelheroListSelect(size_t value)
 	if (selhero_heroInfo.hassaved) {
 		vecSelDlgItems.clear();
 
+#ifdef __3DS__
+		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), 245, 365, 28 };
+		vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Save File Exists").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
+
+		vecSelHeroDlgItems.clear();
+		vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_("Load Game"), 0));
+		vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_("New Game"), 1));
+		vecSelDlgItems.push_back(std::make_unique<UiList>(vecSelHeroDlgItems, vecSelHeroDlgItems.size(), uiPosition.x + 265, 295, 320, 33, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+
+		const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 279), 435, 140, 35 };
+		vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("OK"), &UiFocusNavigationSelect, rect2, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+
+		const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 429), 435, 144, 35 };
+		vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("Cancel"), &UiFocusNavigationEsc, rect3, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#else
 		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), (Sint16)(uiPosition.y + 211), 365, 33 };
 		vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Save File Exists").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
@@ -230,6 +282,7 @@ void SelheroListSelect(size_t value)
 
 		const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 429), (Sint16)(uiPosition.y + 427), 144, 35 };
 		vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("Cancel"), &UiFocusNavigationEsc, rect3, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#endif
 
 		UiInitList(SelheroLoadFocus, SelheroLoadSelect, selhero_List_Init, vecSelDlgItems, true);
 		title = _("Single Player Characters").data();
@@ -304,6 +357,19 @@ void SelheroClassSelectorSelect(size_t value)
 	if (ShouldPrefillHeroName())
 		strcpy(selhero_heroInfo.name, SelheroGenerateName(selhero_heroInfo.heroclass));
 	vecSelDlgItems.clear();
+#ifdef __3DS__
+	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), 250, 365, 30 };
+	vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Enter Name").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
+
+	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 265), 320, 320, 33 };
+	vecSelDlgItems.push_back(std::make_unique<UiEdit>(_("Enter Name"), selhero_heroInfo.name, 15, false, rect2, UiFlags::FontSize24 | UiFlags::ColorUiGold));
+
+	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 279), 435, 140, 35 };
+	vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("OK"), &UiFocusNavigationSelect, rect3, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+
+	const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 429), 435, 144, 35 };
+	vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("Cancel"), &UiFocusNavigationEsc, rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#else
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), (Sint16)(uiPosition.y + 211), 365, 33 };
 	vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Enter Name").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
@@ -315,6 +381,7 @@ void SelheroClassSelectorSelect(size_t value)
 
 	const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 429), (Sint16)(uiPosition.y + 429), 144, 35 };
 	vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("Cancel"), &UiFocusNavigationEsc, rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#endif
 
 	UiInitList(nullptr, SelheroNameSelect, SelheroNameEsc, vecSelDlgItems);
 }
@@ -494,6 +561,39 @@ void selhero_Init()
 	const Point uiPosition = GetUIRectangle().position;
 
 	vecSelDlgItems.clear();
+#ifdef __3DS__
+	SDL_Rect rect = MakeSdlRect(uiPosition.x + 24, 175, 590, 35);
+	vecSelHeroDialog.push_back(std::make_unique<UiArtText>(&title, rect, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
+
+	rect = MakeSdlRect(uiPosition.x + 30, 250, 180, 76);
+	auto heroImg = std::make_unique<UiImageClx>(UiGetHeroDialogSprite(0), rect, UiFlags::None);
+	SELHERO_DIALOG_HERO_IMG = heroImg.get();
+	vecSelHeroDialog.push_back(std::move(heroImg));
+
+	const UiFlags labelFlags = UiFlags::FontSize12 | UiFlags::ColorUiSilverDark | UiFlags::AlignRight;
+	const UiFlags valueFlags = UiFlags::FontSize12 | UiFlags::ColorUiSilverDark | UiFlags::AlignCenter;
+	const int labelX = uiPosition.x + 39;
+	const int valueX = uiPosition.x + 159;
+	const int labelWidth = 110;
+	const int valueWidth = 40;
+	const int statHeight = 18;
+
+	vecSelHeroDialog.push_back(std::make_unique<UiArtText>(_("Level:").data(), MakeSdlRect(labelX, 332, labelWidth, statHeight), labelFlags));
+	vecSelHeroDialog.push_back(std::make_unique<UiArtText>(textStats[0], MakeSdlRect(valueX, 332, valueWidth, statHeight), valueFlags));
+
+	const char *statLabels[] {
+		_("Strength:").data(), _("Magic:").data(), _("Dexterity:").data(), _("Vitality:").data(),
+#ifdef _DEBUG
+		_("Savegame:").data()
+#endif
+	};
+	int statY = 352;
+	for (size_t i = 0; i < sizeof(statLabels) / sizeof(statLabels[0]); ++i) {
+		vecSelHeroDialog.push_back(std::make_unique<UiArtText>(statLabels[i], MakeSdlRect(labelX, statY, labelWidth, statHeight), labelFlags));
+		vecSelHeroDialog.push_back(std::make_unique<UiArtText>(textStats[i + 1], MakeSdlRect(valueX, statY, valueWidth, statHeight), valueFlags));
+		statY += statHeight;
+	}
+#else
 	SDL_Rect rect = MakeSdlRect(uiPosition.x + 24, uiPosition.y + 161, 590, 35);
 	vecSelHeroDialog.push_back(std::make_unique<UiArtText>(&title, rect, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
@@ -525,6 +625,7 @@ void selhero_Init()
 		vecSelHeroDialog.push_back(std::make_unique<UiArtText>(textStats[i + 1], MakeSdlRect(valueX, statY, valueWidth, statHeight), valueFlags));
 		statY += statHeight;
 	}
+#endif
 }
 
 void selhero_List_Init()
@@ -534,6 +635,34 @@ void selhero_List_Init()
 	size_t selectedItem = 0;
 	vecSelDlgItems.clear();
 
+#ifdef __3DS__
+	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), 245, 365, 26 };
+	vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Select Hero").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
+
+	vecSelHeroDlgItems.clear();
+	for (std::size_t i = 0; i < selhero_SaveCount; i++) {
+		vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(std::string_view(selhero_heros[i].name), static_cast<int>(i)));
+		if (selhero_heros[i].saveNumber == selhero_heroInfo.saveNumber)
+			selectedItem = i;
+	}
+	vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_("New Hero"), static_cast<int>(selhero_SaveCount)));
+
+	vecSelDlgItems.push_back(std::make_unique<UiList>(vecSelHeroDlgItems, 6, uiPosition.x + 265, 275, 320, 24, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+
+	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 585), 275, 25, 144 };
+	vecSelDlgItems.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0], *ArtScrollBarArrow, rect2));
+
+	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 239), 435, 120, 35 };
+	vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("OK"), &UiFocusNavigationSelect, rect3, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+
+	const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 364), 435, 120, 35 };
+	auto setlistDialogDeleteButton = std::make_unique<UiArtTextButton>(_("Delete"), &SelheroUiFocusNavigationYesNo, rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::ElementDisabled);
+	SELLIST_DIALOG_DELETE_BUTTON = setlistDialogDeleteButton.get();
+	vecSelDlgItems.push_back(std::move(setlistDialogDeleteButton));
+
+	const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 489), 435, 144, 35 };
+	vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("Cancel"), &UiFocusNavigationEsc, rect5, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#else
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), (Sint16)(uiPosition.y + 211), 365, 33 };
 	vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Select Hero").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
@@ -560,6 +689,7 @@ void selhero_List_Init()
 
 	const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 489), (Sint16)(uiPosition.y + 429), 144, 35 };
 	vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("Cancel"), &UiFocusNavigationEsc, rect5, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#endif
 
 	UiInitList(SelheroListFocus, SelheroListSelect, SelheroListEsc, vecSelDlgItems, false, nullptr, SelheroListDeleteYesNo, selectedItem);
 	if (selhero_isMultiPlayer) {

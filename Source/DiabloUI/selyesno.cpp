@@ -63,6 +63,17 @@ bool UiSelHeroYesNoDialog(const char *title, const char *body)
 
 	const Point uiPosition = GetUIRectangle().position;
 
+#ifdef __3DS__
+	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), 175, 590, 35 };
+	vecSelYesNoDialog.push_back(std::make_unique<UiArtText>(title, rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
+
+	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 120), 250, MESSAGE_WIDTH, 140 };
+	vecSelYesNoDialog.push_back(std::make_unique<UiArtText>(selyesno_confirmationMessage, rect2, UiFlags::FontSize24 | UiFlags::ColorUiSilver));
+
+	vecSelYesNoDialogItems.push_back(std::make_unique<UiListItem>(_("Yes"), 0));
+	vecSelYesNoDialogItems.push_back(std::make_unique<UiListItem>(_("No"), 1));
+	vecSelYesNoDialog.push_back(std::make_unique<UiList>(vecSelYesNoDialogItems, vecSelYesNoDialogItems.size(), uiPosition.x + 230, 410, 180, 35, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#else
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), (Sint16)(uiPosition.y + 161), 590, 35 };
 	vecSelYesNoDialog.push_back(std::make_unique<UiArtText>(title, rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
@@ -72,6 +83,7 @@ bool UiSelHeroYesNoDialog(const char *title, const char *body)
 	vecSelYesNoDialogItems.push_back(std::make_unique<UiListItem>(_("Yes"), 0));
 	vecSelYesNoDialogItems.push_back(std::make_unique<UiListItem>(_("No"), 1));
 	vecSelYesNoDialog.push_back(std::make_unique<UiList>(vecSelYesNoDialogItems, vecSelYesNoDialogItems.size(), uiPosition.x + 230, (uiPosition.y + 390), 180, 35, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+#endif
 
 	CopyUtf8(selyesno_confirmationMessage, WordWrapString(body, MESSAGE_WIDTH, GameFont24), sizeof(selyesno_confirmationMessage));
 

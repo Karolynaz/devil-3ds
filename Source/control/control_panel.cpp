@@ -46,6 +46,9 @@ Rectangle MainPanel;
 Rectangle LeftPanel;
 Rectangle RightPanel;
 std::optional<OwnedSurface> BottomBuffer;
+#ifdef __3DS__
+std::optional<OwnedSurface> SidePanelBuffer;
+#endif
 OptionalOwnedClxSpriteList GoldBoxBuffer;
 
 const Rectangle &GetMainPanel()
@@ -249,12 +252,12 @@ void CalculatePanelAreas()
 		MainPanelSize
 	};
 	LeftPanel = {
-		{ (gnScreenWidth - SidePanelSize.width) / 2, 240 },
-		SidePanelSize
+		{ 0, 0 },
+		{ 218, 240 }
 	};
 	RightPanel = {
-		{ (gnScreenWidth - SidePanelSize.width) / 2, 240 },
-		SidePanelSize
+		{ 422, 0 },
+		{ 218, 240 }
 	};
 #else
 	MainPanel = {
@@ -311,7 +314,12 @@ void FocusOnCharInfo()
 	if (stat == -1)
 		return;
 
+#ifdef __3DS__
+	Point center = CharPanelButtonRect[stat].Center();
+	SetCursorPos({ (center.x * 218) / 320, (center.y * 240) / 352 });
+#else
 	SetCursorPos(CharPanelButtonRect[stat].Center());
+#endif
 }
 
 void OpenCharPanel()
@@ -355,10 +363,18 @@ Point GetPanelPosition(UiPanels panel, Point offset)
 	case UiPanels::Quest:
 	case UiPanels::Character:
 	case UiPanels::Stash:
+#ifdef __3DS__
+		return Point { 0, 0 } + displacement;
+#else
 		return GetLeftPanel().position + displacement;
+#endif
 	case UiPanels::Spell:
 	case UiPanels::Inventory:
+#ifdef __3DS__
+		return Point { 0, 0 } + displacement;
+#else
 		return GetRightPanel().position + displacement;
+#endif
 	default:
 		return GetMainPanel().position + displacement;
 	}
@@ -375,6 +391,9 @@ std::expected<void, std::string> InitMainPanel()
 		BottomBuffer.emplace(GetMainPanel().size.width, (GetMainPanel().size.height + PanelPaddingHeight) * (IsChatAvailable() ? 2 : 1));
 		pManaBuff.emplace(88, 88);
 		pLifeBuff.emplace(88, 88);
+#ifdef __3DS__
+		SidePanelBuffer.emplace(SidePanelSize.width, SidePanelSize.height);
+#endif
 
 		RETURN_IF_ERROR(LoadPartyPanel());
 		RETURN_IF_ERROR(LoadCharPanel());
@@ -645,6 +664,9 @@ void CheckMainPanelButtonUp()
 void FreeControlPan()
 {
 	BottomBuffer = std::nullopt;
+#ifdef __3DS__
+	SidePanelBuffer = std::nullopt;
+#endif
 	pManaBuff = std::nullopt;
 	pLifeBuff = std::nullopt;
 	FreeLargeSpellIcons();
@@ -708,13 +730,22 @@ void CheckChrBtns()
 	if (CharPanelButtonActive || myPlayer._pStatPts == 0)
 		return;
 
+#ifdef __3DS__
+	Point mousePos = MousePosition;
+	if (mousePos.y < 240 && mousePos.x < 218) {
+		mousePos = { (mousePos.x * 320) / 218, (mousePos.y * 352) / 240 };
+	}
+#else
+	Point mousePos = MousePosition;
+#endif
+
 	for (auto attribute : enum_values<CharacterAttribute>()) {
 		if (myPlayer.GetBaseAttributeValue(attribute) >= myPlayer.GetMaximumAttributeValue(attribute))
 			continue;
 		auto buttonId = static_cast<size_t>(attribute);
 		Rectangle button = CharPanelButtonRect[buttonId];
 		SetPanelObjectPosition(UiPanels::Character, button);
-		if (button.contains(MousePosition)) {
+		if (button.contains(mousePos)) {
 			CharPanelButton[buttonId] = true;
 			CharPanelButtonActive = true;
 		}
@@ -729,6 +760,16 @@ void ReleaseChrBtns(bool addAllStatPoints)
 		return;
 
 	CharPanelButtonActive = false;
+
+#ifdef __3DS__
+	Point mousePos = MousePosition;
+	if (mousePos.y < 240 && mousePos.x < 218) {
+		mousePos = { (mousePos.x * 320) / 218, (mousePos.y * 352) / 240 };
+	}
+#else
+	Point mousePos = MousePosition;
+#endif
+
 	for (auto attribute : enum_values<CharacterAttribute>()) {
 		auto buttonId = static_cast<size_t>(attribute);
 		if (!CharPanelButton[buttonId])
@@ -737,7 +778,7 @@ void ReleaseChrBtns(bool addAllStatPoints)
 		CharPanelButton[buttonId] = false;
 		Rectangle button = CharPanelButtonRect[buttonId];
 		SetPanelObjectPosition(UiPanels::Character, button);
-		if (button.contains(MousePosition)) {
+		if (button.contains(mousePos)) {
 			Player &myPlayer = *MyPlayer;
 			int statPointsToAdd = 1;
 			if (addAllStatPoints)
