@@ -361,9 +361,9 @@ int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 	}
 #endif
 
-	panelOffset = Point { 0, 0 } - GetMainPanel().position;
+	const Displacement beltOffset = Point { 0, 0 } - GetMainPanel().position;
 	for (int r = SLOTXY_BELT_FIRST; r <= SLOTXY_BELT_LAST; r++) {
-		if (InvRect[r].contains(cursorPosition + panelOffset))
+		if (InvRect[r].contains(cursorPosition + beltOffset))
 			return r;
 	}
 	return NUM_XY_SLOTS;
