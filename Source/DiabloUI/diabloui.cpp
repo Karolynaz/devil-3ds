@@ -665,6 +665,39 @@ void LoadUiGFX()
 	LoadHeros();
 }
 
+#ifdef __3DS__
+std::unique_ptr<OwnedSurface> UiBottomBackgroundBuffer;
+
+void Prepare3DSBackground()
+{
+	if (!ArtBackground) {
+		UiBottomBackgroundBuffer = nullptr;
+		return;
+	}
+	const ClxSprite sprite = (*ArtBackground)[0];
+	if (sprite.height() < 480 || sprite.width() < 640) {
+		UiBottomBackgroundBuffer = nullptr;
+		return;
+	}
+
+	if (!UiBottomBackgroundBuffer) {
+		UiBottomBackgroundBuffer = std::make_unique<OwnedSurface>(640, 240);
+	}
+
+	OwnedSurface tempSurface(640, 480);
+	SDL_FillSurfaceRect(tempSurface.surface, nullptr, 0);
+	RenderClxSprite(tempSurface, sprite, { 0, 0 });
+
+	SDL_FillSurfaceRect(UiBottomBackgroundBuffer->surface, nullptr, 0);
+
+	// Scale the box area (rows 204..430, height 226) into bottom screen (rows 2..188, height 186)
+	// That maps to virtual Y 242..428.
+	const SDL_Rect srcRect = { 0, 204, 640, 226 };
+	const SDL_Rect dstRect = { 0, 2, 640, 186 };
+	UiBottomBackgroundBuffer->ScaleBlitFrom(tempSurface, srcRect, dstRect);
+}
+#endif
+
 } // namespace
 
 ClxSprite UiGetHeroDialogSprite(size_t heroClassIndex)
@@ -760,41 +793,6 @@ void UiLoadDefaultPalette()
 	LoadPalette("ui_art\\diablo.pal");
 	UpdateSystemPalette(logical_palette);
 }
-
-#ifdef __3DS__
-namespace {
-std::unique_ptr<OwnedSurface> UiBottomBackgroundBuffer;
-
-void Prepare3DSBackground()
-{
-	if (!ArtBackground) {
-		UiBottomBackgroundBuffer = nullptr;
-		return;
-	}
-	const ClxSprite sprite = (*ArtBackground)[0];
-	if (sprite.height() < 480 || sprite.width() < 640) {
-		UiBottomBackgroundBuffer = nullptr;
-		return;
-	}
-
-	if (!UiBottomBackgroundBuffer) {
-		UiBottomBackgroundBuffer = std::make_unique<OwnedSurface>(640, 240);
-	}
-
-	OwnedSurface tempSurface(640, 480);
-	SDL_FillSurfaceRect(tempSurface.surface, nullptr, 0);
-	RenderClxSprite(tempSurface, sprite, { 0, 0 });
-
-	SDL_FillSurfaceRect(UiBottomBackgroundBuffer->surface, nullptr, 0);
-
-	// Scale the box area (rows 204..430, height 226) into bottom screen (rows 2..188, height 186)
-	// That maps to virtual Y 242..428.
-	const SDL_Rect srcRect = { 0, 204, 640, 226 };
-	const SDL_Rect dstRect = { 0, 2, 640, 186 };
-	UiBottomBackgroundBuffer->ScaleBlitFrom(tempSurface, srcRect, dstRect);
-}
-} // namespace
-#endif
 
 bool UiLoadBlackBackground()
 {
