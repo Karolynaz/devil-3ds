@@ -26,6 +26,7 @@ comparer-config.toml
 
 # Extra files in the source distribution (see make_src_dist.py)
 /dist/
+/3DS_Release/
 
 *.appimage
 *.AppImage

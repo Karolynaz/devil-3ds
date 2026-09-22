@@ -676,6 +676,9 @@ ClxSprite UiGetHeroDialogSprite(size_t heroClassIndex)
 
 void UnloadUiGFX()
 {
+#ifdef __3DS__
+	UiBottomBackgroundBuffer = nullptr;
+#endif
 	ArtHero = std::nullopt;
 	for (OptionalOwnedClxSpriteList &override : ArtHeroOverrides)
 		override = std::nullopt;
@@ -758,9 +761,47 @@ void UiLoadDefaultPalette()
 	UpdateSystemPalette(logical_palette);
 }
 
+#ifdef __3DS__
+namespace {
+std::unique_ptr<OwnedSurface> UiBottomBackgroundBuffer;
+
+void Prepare3DSBackground()
+{
+	if (!ArtBackground) {
+		UiBottomBackgroundBuffer = nullptr;
+		return;
+	}
+	const ClxSprite sprite = (*ArtBackground)[0];
+	if (sprite.height() < 480 || sprite.width() < 640) {
+		UiBottomBackgroundBuffer = nullptr;
+		return;
+	}
+
+	if (!UiBottomBackgroundBuffer) {
+		UiBottomBackgroundBuffer = std::make_unique<OwnedSurface>(640, 240);
+	}
+
+	OwnedSurface tempSurface(640, 480);
+	SDL_FillSurfaceRect(tempSurface.surface, nullptr, 0);
+	RenderClxSprite(tempSurface, sprite, { 0, 0 });
+
+	SDL_FillSurfaceRect(UiBottomBackgroundBuffer->surface, nullptr, 0);
+
+	// Scale the box area (rows 204..430, height 226) into bottom screen (rows 2..188, height 186)
+	// That maps to virtual Y 242..428.
+	const SDL_Rect srcRect = { 0, 204, 640, 226 };
+	const SDL_Rect dstRect = { 0, 2, 640, 186 };
+	UiBottomBackgroundBuffer->ScaleBlitFrom(tempSurface, srcRect, dstRect);
+}
+} // namespace
+#endif
+
 bool UiLoadBlackBackground()
 {
 	ArtBackground = std::nullopt;
+#ifdef __3DS__
+	UiBottomBackgroundBuffer = nullptr;
+#endif
 	UiLoadDefaultPalette();
 	UiOnBackgroundChange();
 	return true;
@@ -769,11 +810,17 @@ bool UiLoadBlackBackground()
 void LoadBackgroundArt(const char *pszFile, int frames)
 {
 	ArtBackground = std::nullopt;
+#ifdef __3DS__
+	UiBottomBackgroundBuffer = nullptr;
+#endif
 	ArtBackground = LoadPcxSpriteList(pszFile, static_cast<uint16_t>(frames), /*transparentColor=*/std::nullopt, logical_palette.data());
 	if (!ArtBackground)
 		return;
 
 	UpdateSystemPalette(logical_palette);
+#ifdef __3DS__
+	Prepare3DSBackground();
+#endif
 	UiOnBackgroundChange();
 }
 
@@ -834,9 +881,13 @@ void DrawSelector(const SDL_Rect &rect)
 
 void UiClearScreen()
 {
+#ifdef __3DS__
+	SDL_FillSurfaceRect(DiabloUiSurface(), nullptr, 0);
+#else
 	if (!ArtBackground || gnScreenWidth > (*ArtBackground)[0].width() || gnScreenHeight > (*ArtBackground)[0].height()) {
 		SDL_FillSurfaceRect(DiabloUiSurface(), nullptr, 0);
 	}
+#endif
 }
 
 void UiPollAndRender(std::optional<tl::function_ref<bool(SDL_Event &)>> eventHandler)
@@ -894,6 +945,18 @@ void Render(const UiImageClx &uiImage)
 	if (uiImage.isCentered()) {
 		x += GetCenterOffset(sprite.width(), uiImage.m_rect.w);
 	}
+#ifdef __3DS__
+	if (ArtBackground && sprite == (*ArtBackground)[0] && sprite.height() >= 480) {
+		if (!UiBottomBackgroundBuffer) {
+			Prepare3DSBackground();
+		}
+		if (UiBottomBackgroundBuffer) {
+			const Surface &out = Surface(DiabloUiSurface());
+			out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { 0, 240 });
+		}
+		return;
+	}
+#endif
 	RenderClxSprite(Surface(DiabloUiSurface()), sprite, { x, uiImage.m_rect.y });
 }
 
