@@ -1752,33 +1752,6 @@ void SpellBookKeyPressed()
 	CloseVisualStore();
 }
 
-void CycleSpellHotkeys(bool next)
-{
-	StaticVector<size_t, NumHotkeys> validHotKeyIndexes;
-	std::optional<size_t> currentIndex;
-	for (size_t slot = 0; slot < NumHotkeys; slot++) {
-		if (!IsValidSpeedSpell(slot))
-			continue;
-		if (MyPlayer->_pRSpell == MyPlayer->_pSplHotKey[slot] && MyPlayer->_pRSplType == MyPlayer->_pSplTHotKey[slot]) {
-			// found current
-			currentIndex = validHotKeyIndexes.size();
-		}
-		validHotKeyIndexes.emplace_back(slot);
-	}
-	if (validHotKeyIndexes.size() == 0)
-		return;
-
-	size_t newIndex;
-	if (!currentIndex) {
-		newIndex = next ? 0 : (validHotKeyIndexes.size() - 1);
-	} else if (next) {
-		newIndex = (*currentIndex == validHotKeyIndexes.size() - 1) ? 0 : (*currentIndex + 1);
-	} else {
-		newIndex = *currentIndex == 0 ? (validHotKeyIndexes.size() - 1) : (*currentIndex - 1);
-	}
-	ToggleSpell(validHotKeyIndexes[newIndex]);
-}
-
 bool IsPlayerDead()
 {
 	return MyPlayer->_pmode == PM_DEATH || MyPlayerIsDead;
@@ -1817,6 +1790,33 @@ void OptionLanguageCodeChanged()
 const auto OptionChangeHandlerLanguage = (GetOptions().Language.code.SetValueChangedCallback(OptionLanguageCodeChanged), true);
 
 } // namespace
+
+void CycleSpellHotkeys(bool next)
+{
+	StaticVector<size_t, NumHotkeys> validHotKeyIndexes;
+	std::optional<size_t> currentIndex;
+	for (size_t slot = 0; slot < NumHotkeys; slot++) {
+		if (!IsValidSpeedSpell(slot))
+			continue;
+		if (MyPlayer->_pRSpell == MyPlayer->_pSplHotKey[slot] && MyPlayer->_pRSplType == MyPlayer->_pSplTHotKey[slot]) {
+			// found current
+			currentIndex = validHotKeyIndexes.size();
+		}
+		validHotKeyIndexes.emplace_back(slot);
+	}
+	if (validHotKeyIndexes.size() == 0)
+		return;
+
+	size_t newIndex;
+	if (!currentIndex) {
+		newIndex = next ? 0 : (validHotKeyIndexes.size() - 1);
+	} else if (next) {
+		newIndex = (*currentIndex == validHotKeyIndexes.size() - 1) ? 0 : (*currentIndex + 1);
+	} else {
+		newIndex = *currentIndex == 0 ? (validHotKeyIndexes.size() - 1) : (*currentIndex - 1);
+	}
+	ToggleSpell(validHotKeyIndexes[newIndex]);
+}
 
 uint32_t GetGameId()
 {
