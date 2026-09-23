@@ -18,6 +18,8 @@
 #include "controls/padmapper.hpp"
 #include "controls/plrctrls.h"
 #include "controls/touch/gamepad.h"
+#include "control/control.hpp"
+#include "cursor.h"
 #include "diablo.h"
 #include "doom.h"
 #include "gamemenu.h"
@@ -222,9 +224,6 @@ bool GetGameAction(const SDL_Event &event, ControllerButtonEvent ctrlEvent, Game
 
 bool CanDeferToMovementHandler(const PadmapperOptions::Action &action)
 {
-#ifdef __3DS__
-	return false;
-#endif
 	if (action.boundInput.modifier != ControllerButton_NONE)
 		return false;
 
@@ -244,6 +243,115 @@ bool CanDeferToMovementHandler(const PadmapperOptions::Action &action)
 	    ControllerButton_BUTTON_DPAD_LEFT,
 	    ControllerButton_BUTTON_DPAD_RIGHT);
 }
+
+#ifdef __3DS__
+void DrinkPotion3DS(BeltItemType type)
+{
+	Player &player = *MyPlayer;
+	for (int i = 0; i < MaxBeltItems; i++) {
+		const Item &item = player.SpdList[i];
+		if (item.isEmpty())
+			continue;
+
+		const bool isRejuvenation = IsAnyOf(item._iMiscId, IMISC_REJUV, IMISC_FULLREJUV) || (item._iMiscId == IMISC_ARENAPOT && player.isOnArenaLevel());
+		const bool isHealing = isRejuvenation || IsAnyOf(item._iMiscId, IMISC_HEAL, IMISC_FULLHEAL) || item.isScrollOf(SpellID::Healing);
+		const bool isMana = isRejuvenation || IsAnyOf(item._iMiscId, IMISC_MANA, IMISC_FULLMANA);
+
+		if ((type == BeltItemType::Healing && isHealing) || (type == BeltItemType::Mana && isMana)) {
+			UseInvItem(INVITEM_BELT_FIRST + i);
+			return;
+		}
+	}
+
+	for (int i = 0; i < player._pNumInv; i++) {
+		const Item &item = player.InvList[i];
+		if (item.isEmpty())
+			continue;
+
+		const bool isRejuvenation = IsAnyOf(item._iMiscId, IMISC_REJUV, IMISC_FULLREJUV) || (item._iMiscId == IMISC_ARENAPOT && player.isOnArenaLevel());
+		const bool isHealing = isRejuvenation || IsAnyOf(item._iMiscId, IMISC_HEAL, IMISC_FULLHEAL) || item.isScrollOf(SpellID::Healing);
+		const bool isMana = isRejuvenation || IsAnyOf(item._iMiscId, IMISC_MANA, IMISC_FULLMANA);
+
+		if ((type == BeltItemType::Healing && isHealing) || (type == BeltItemType::Mana && isMana)) {
+			UseInvItem(INVITEM_INV_FIRST + i);
+			return;
+		}
+	}
+}
+
+void SwitchUiTab(bool forward)
+{
+	int current = -1;
+	if (CharFlag)
+		current = 0;
+	else if (invflag)
+		current = 1;
+	else if (QuestLogIsOpen)
+		current = 2;
+	else if (SpellbookFlag)
+		current = 3;
+
+	if (current == -1)
+		current = 1;
+
+	const int next = forward ? ((current + 1) % 4) : ((current + 3) % 4);
+
+	if (invflag && !MyPlayer->HoldItem.isEmpty()) {
+		if (!BlurInventory())
+			return;
+	}
+
+	if (CharFlag)
+		CloseCharPanel();
+	if (invflag)
+		CloseInventory();
+	if (QuestLogIsOpen)
+		QuestLogIsOpen = false;
+	if (SpellbookFlag)
+		SpellbookFlag = false;
+	if (SpellSelectFlag)
+		SpellSelectFlag = false;
+
+	switch (next) {
+	case 0:
+		OpenCharPanel();
+		if (CharFlag) {
+			if (pcurs == CURSOR_DISARM)
+				NewCursor(CURSOR_HAND);
+			FocusOnCharInfo();
+		}
+		break;
+	case 1:
+		invflag = true;
+		if (pcurs == CURSOR_DISARM)
+			NewCursor(CURSOR_HAND);
+		FocusOnInventory();
+		break;
+	case 2:
+		StartQuestlog();
+		break;
+	case 3:
+		SpellbookFlag = true;
+		break;
+	}
+}
+
+void ReleaseControllerButton(ControllerButton button)
+{
+	if (button == ControllerButton_BUTTON_A) {
+		if (ControllerActionHeld == GameActionType_PRIMARY_ACTION) {
+			ControllerActionHeld = GameActionType_NONE;
+			LastPlayerAction = PlayerActionType::None;
+		}
+		PerformPrimaryActionRelease();
+	} else if (button == ControllerButton_BUTTON_B) {
+		if (ControllerActionHeld == GameActionType_CAST_SPELL) {
+			ControllerActionHeld = GameActionType_NONE;
+			LastPlayerAction = PlayerActionType::None;
+		}
+	}
+}
+#endif
 
 void PressControllerButton(ControllerButton button)
 {
@@ -333,6 +441,12 @@ void PressControllerButton(ControllerButton button)
 	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag;
 	if (uiOpen) {
 		switch (button) {
+		case ControllerButton_BUTTON_DPAD_UP:
+		case ControllerButton_BUTTON_DPAD_DOWN:
+		case ControllerButton_BUTTON_DPAD_LEFT:
+		case ControllerButton_BUTTON_DPAD_RIGHT:
+			return;
+
 		case ControllerButton_BUTTON_A:
 			if (IsPlayerInStore()) {
 				CheckStoreBtn();
@@ -347,8 +461,53 @@ void PressControllerButton(ControllerButton button)
 			PressEscKey();
 			return;
 
+		case ControllerButton_BUTTON_X:
+			if (invflag) {
+				if (MyPlayer->HoldItem.isEmpty() && pcursinvitem != -1) {
+					LiftInventoryItem();
+				}
+				if (!MyPlayer->HoldItem.isEmpty()) {
+					TryDropItem();
+				}
+			}
+			return;
+
+		case ControllerButton_BUTTON_Y:
+			if (invflag) {
+				CtrlUseInvItem();
+			} else if (IsStashOpen) {
+				CtrlUseStashItem();
+			} else if (IsVisualStoreOpen) {
+				CheckVisualStoreItem(MousePosition, true, false);
+			}
+			return;
+
+		case ControllerButton_BUTTON_LEFTSHOULDER:
+			if (IsStashOpen) {
+				Stash.PreviousPage();
+			} else {
+				SwitchUiTab(false);
+			}
+			return;
+
+		case ControllerButton_BUTTON_RIGHTSHOULDER:
+			if (IsStashOpen) {
+				Stash.NextPage();
+			} else {
+				SwitchUiTab(true);
+			}
+			return;
+
 		case ControllerButton_BUTTON_BACK:
-			ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
+			if (IsStashOpen) {
+				StartGoldWithdraw();
+			} else {
+				PressEscKey();
+			}
+			return;
+
+		case ControllerButton_BUTTON_START:
+			gamemenu_on();
 			return;
 
 		case ControllerButton_AXIS_TRIGGERLEFT:
@@ -363,42 +522,53 @@ void PressControllerButton(ControllerButton button)
 			break;
 		}
 	} else if (!InGameMenu()) {
-		const bool lShoulderHeld = IsControllerButtonPressed(ControllerButton_BUTTON_LEFTSHOULDER);
-		const size_t slotOffset = lShoulderHeld ? 4 : 0;
-
 		switch (button) {
-		case ControllerButton_BUTTON_DPAD_UP:
-			UseBeltSlot(slotOffset + 0);
-			return;
-		case ControllerButton_BUTTON_DPAD_RIGHT:
-			UseBeltSlot(slotOffset + 1);
-			return;
-		case ControllerButton_BUTTON_DPAD_DOWN:
-			UseBeltSlot(slotOffset + 2);
-			return;
-		case ControllerButton_BUTTON_DPAD_LEFT:
-			UseBeltSlot(slotOffset + 3);
+		case ControllerButton_BUTTON_A:
+			ControllerActionHeld = GameActionType_PRIMARY_ACTION;
+			LastPlayerAction = PlayerActionType::None;
+			if (pcursitem != -1) {
+				PerformSecondaryAction();
+			} else {
+				PerformPrimaryAction();
+			}
 			return;
 
-		case ControllerButton_BUTTON_A:
-			TriggerPowerSlot(slotOffset + 0);
-			return;
 		case ControllerButton_BUTTON_B:
-			TriggerPowerSlot(slotOffset + 1);
+			ControllerActionHeld = GameActionType_CAST_SPELL;
+			LastPlayerAction = PlayerActionType::None;
+			PerformSpellAction();
 			return;
+
 		case ControllerButton_BUTTON_X:
-			TriggerPowerSlot(slotOffset + 2);
+			CycleSpellHotkeys(true);
 			return;
+
 		case ControllerButton_BUTTON_Y:
-			TriggerPowerSlot(slotOffset + 3);
+			ProcessGameAction(GameAction { GameActionType_TOGGLE_QUICK_SPELL_MENU });
 			return;
 
 		case ControllerButton_BUTTON_LEFTSHOULDER:
-			// Modifier key held for secondary set of belt/powers
+			DrinkPotion3DS(BeltItemType::Healing);
+			return;
+
+		case ControllerButton_BUTTON_RIGHTSHOULDER:
+			DrinkPotion3DS(BeltItemType::Mana);
+			return;
+
+		case ControllerButton_BUTTON_DPAD_UP:
+			ProcessGameAction(GameAction { GameActionType_TOGGLE_CHARACTER_INFO });
+			return;
+
+		case ControllerButton_BUTTON_DPAD_DOWN:
+			DoAutoMap();
 			return;
 
 		case ControllerButton_BUTTON_BACK:
 			ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
+			return;
+
+		case ControllerButton_BUTTON_START:
+			gamemenu_on();
 			return;
 
 		case ControllerButton_AXIS_TRIGGERLEFT:
@@ -512,8 +682,15 @@ bool HandleControllerButtonEvent(const SDL_Event &event, const ControllerButtonE
 		ProcessGameAction(action);
 		return true;
 	} else if (ctrlEvent.button != ControllerButton_NONE) {
+#ifdef __3DS__
+		if (ctrlEvent.up)
+			ReleaseControllerButton(ctrlEvent.button);
+		else
+			PressControllerButton(ctrlEvent.button);
+#else
 		if (!ctrlEvent.up)
 			PressControllerButton(ctrlEvent.button);
+#endif
 		return true;
 	}
 
