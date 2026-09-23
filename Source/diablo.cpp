@@ -370,7 +370,11 @@ void LeftMouseDown(uint16_t modState)
 	const bool isShiftHeld = (modState & SDL_KMOD_SHIFT) != 0;
 	const bool isCtrlHeld = (modState & SDL_KMOD_CTRL) != 0;
 
+#ifdef __3DS__
+	if (!GetMainPanel().contains(MousePosition) && MousePosition.y < 240) {
+#else
 	if (!GetMainPanel().contains(MousePosition)) {
+#endif
 		if (!gmenu_is_active() && !TryIconCurs()) {
 			if (QuestLogIsOpen && GetLeftPanel().contains(MousePosition)) {
 				QuestlogESC();

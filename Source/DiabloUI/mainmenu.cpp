@@ -119,6 +119,9 @@ void mainmenu_restart_repintro()
 
 bool UiMainMenuDialog(const char *name, _mainmenu_selections *pdwResult, int attractTimeOut)
 {
+#ifdef __3DS__
+	gb3DSUseBottomBoxBackground = true;
+#endif
 	MainMenuResult = MAINMENU_NONE;
 	while (MainMenuResult == MAINMENU_NONE) {
 		mainmenu_attract_time_out = attractTimeOut;
@@ -137,6 +140,9 @@ bool UiMainMenuDialog(const char *name, _mainmenu_selections *pdwResult, int att
 		MainmenuFree();
 	}
 
+#ifdef __3DS__
+	gb3DSUseBottomBoxBackground = false;
+#endif
 	*pdwResult = MainMenuResult;
 	return true;
 }

@@ -87,6 +87,7 @@ void UiTitleDialog()
 
 	SDL_Event event;
 	while (!endMenu && SDL_GetTicks() < timeOut) {
+		UiClearScreen();
 		UiRenderItems(vecTitleScreen);
 		UiFadeIn();
 

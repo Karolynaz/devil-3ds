@@ -56,7 +56,11 @@ int heroLevel;
 static GameData *m_game_data;
 extern int provider;
 
+#ifdef __3DS__
+#define DESCRIPTION_WIDTH 540
+#else
 #define DESCRIPTION_WIDTH 205
+#endif
 
 namespace {
 
@@ -130,25 +134,27 @@ void UiInitGameSelectionList(std::string_view search)
 	selgame_Label[0] = '\0';
 
 	UiAddBackground(&vecSelGameDialog);
+#ifndef __3DS__
 	UiAddLogo(&vecSelGameDialog);
+#endif
 
 	const Point uiPosition = GetUIRectangle().position;
 
 #ifdef __3DS__
-	const SDL_Rect rectScrollbar = { (Sint16)(uiPosition.x + 590), 275, 25, 144 };
+	const SDL_Rect rectScrollbar = { (Sint16)(uiPosition.x + 500), 280, 25, 144 };
 	vecSelGameDialog.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0], *ArtScrollBarArrow, rectScrollbar));
 
-	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), 175, 590, 35 };
+	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 20), 15, 600, 32 };
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_(ConnectionNames[provider]).data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
-	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 35), 245, 205, 26 };
+	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 50), 52, 540, 26 };
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Description:").data(), rect2, UiFlags::FontSize24 | UiFlags::ColorUiSilver));
 
-	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 35), 275, DESCRIPTION_WIDTH, 144 };
-	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark, 1, 16));
+	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 50), 80, DESCRIPTION_WIDTH, 145 };
+	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::FontSize24 | UiFlags::ColorUiSilverDark, 1, 24));
 
-	const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 300), 245, 295, 26 };
-	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Action").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
+	const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 20), 248, 600, 26 };
+	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Action").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
 #else
 	const SDL_Rect rectScrollbar = { (Sint16)(uiPosition.x + 590), (Sint16)(uiPosition.y + 244), 25, 178 };
 	vecSelGameDialog.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0], *ArtScrollBarArrow, rectScrollbar));
@@ -190,12 +196,12 @@ void UiInitGameSelectionList(std::string_view search)
 	}
 
 #ifdef __3DS__
-	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 305, 275, 285, 24, UiFlags::AlignCenter | UiFlags::FontSize24));
+	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 150, 280, 340, 24, UiFlags::AlignCenter | UiFlags::FontSize24));
 
-	const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 299), 435, 140, 35 };
+	const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 160), 432, 140, 35 };
 	vecSelGameDialog.push_back(std::make_unique<UiArtTextButton>(_("OK"), &UiFocusNavigationSelect, rect5, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
 
-	const SDL_Rect rect6 = { (Sint16)(uiPosition.x + 449), 435, 140, 35 };
+	const SDL_Rect rect6 = { (Sint16)(uiPosition.x + 340), 432, 140, 35 };
 	vecSelGameDialog.push_back(std::make_unique<UiArtTextButton>(_("CANCEL"), &UiFocusNavigationEsc, rect6, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
 #else
 	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 305, (uiPosition.y + 255), 285, 26, UiFlags::AlignCenter | UiFlags::FontSize24));
@@ -342,38 +348,40 @@ void selgame_GameSelection_Select(size_t value)
 	}
 
 	UiAddBackground(&vecSelGameDialog);
+#ifndef __3DS__
 	UiAddLogo(&vecSelGameDialog);
+#endif
 
 	const Point uiPosition = GetUIRectangle().position;
 
 #ifdef __3DS__
-	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), 175, 590, 35 };
+	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 20), 15, 600, 32 };
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(&title, rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
-	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 34), 245, 205, 26 };
-	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Label, rect2, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
+	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 20), 55, 600, 32 };
+	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Label, rect2, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold, 3));
 
-	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 35), 275, DESCRIPTION_WIDTH, 144 };
-	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark, 1, 16));
+	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 50), 95, DESCRIPTION_WIDTH, 135 };
+	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilverDark, 1, 26));
 
 	switch (value) {
 	case 0:
 	case 1: {
 		title = _("Create Game").data();
 
-		const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 299), 245, 295, 26 };
-		vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Difficulty").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
+		const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 20), 248, 600, 26 };
+		vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Difficulty").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
 
 		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Normal"), DIFF_NORMAL));
 		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Nightmare"), DIFF_NIGHTMARE));
 		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Hell"), DIFF_HELL));
 
-		vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, vecSelGameDlgItems.size(), uiPosition.x + 300, 280, 295, 28, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+		vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, vecSelGameDlgItems.size(), uiPosition.x + 170, 290, 300, 34, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 
-		const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 299), 435, 140, 35 };
+		const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 160), 432, 140, 35 };
 		vecSelGameDialog.push_back(std::make_unique<UiArtTextButton>(_("OK"), &UiFocusNavigationSelect, rect5, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
 
-		const SDL_Rect rect6 = { (Sint16)(uiPosition.x + 449), 435, 140, 35 };
+		const SDL_Rect rect6 = { (Sint16)(uiPosition.x + 340), 432, 140, 35 };
 		vecSelGameDialog.push_back(std::make_unique<UiArtTextButton>(_("CANCEL"), &UiFocusNavigationEsc, rect6, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
 
 		UiInitList(selgame_Diff_Focus, selgame_Diff_Select, selgame_Diff_Esc, vecSelGameDialog, true);
@@ -390,16 +398,16 @@ void selgame_GameSelection_Select(size_t value)
 			inputHint = _("Enter address").data();
 		}
 
-		const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 305), 245, 285, 26 };
-		vecSelGameDialog.push_back(std::make_unique<UiArtText>(inputHint, rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
+		const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 20), 248, 600, 26 };
+		vecSelGameDialog.push_back(std::make_unique<UiArtText>(inputHint, rect4, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
 
-		const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 305), 310, 285, 33 };
+		const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 160), 310, 320, 33 };
 		vecSelGameDialog.push_back(std::make_unique<UiEdit>(inputHint, selgame_Ip, 128, false, rect5, UiFlags::FontSize24 | UiFlags::ColorUiGold));
 
-		const SDL_Rect rect6 = { (Sint16)(uiPosition.x + 299), 435, 140, 35 };
+		const SDL_Rect rect6 = { (Sint16)(uiPosition.x + 160), 432, 140, 35 };
 		vecSelGameDialog.push_back(std::make_unique<UiArtTextButton>(_("OK"), &UiFocusNavigationSelect, rect6, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
 
-		const SDL_Rect rect7 = { (Sint16)(uiPosition.x + 449), 435, 140, 35 };
+		const SDL_Rect rect7 = { (Sint16)(uiPosition.x + 340), 432, 140, 35 };
 		vecSelGameDialog.push_back(std::make_unique<UiArtTextButton>(_("CANCEL"), &UiFocusNavigationEsc, rect7, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
 
 		HighlightedItem = 0;
@@ -573,7 +581,9 @@ void selgame_GameSpeedSelection()
 	selgame_FreeVectors();
 
 	UiAddBackground(&vecSelGameDialog);
+#ifndef __3DS__
 	UiAddLogo(&vecSelGameDialog);
+#endif
 
 	const Point uiPosition = GetUIRectangle().position;
 
@@ -652,7 +662,9 @@ void selgame_Password_Init(size_t /*value*/)
 	selgame_FreeVectors();
 
 	UiAddBackground(&vecSelGameDialog);
+#ifndef __3DS__
 	UiAddLogo(&vecSelGameDialog);
+#endif
 
 	const Point uiPosition = GetUIRectangle().position;
 

@@ -1,0 +1,147 @@
+================================================================================
+          DEVILUTIONX (DIABLO 1) - NINTENDO 3DS PORT ENHANCEMENT SUMMARY
+================================================================================
+Date: September 2026
+Repository: https://github.com/Karolynaz/devil-3ds
+Branch: master
+
+This document provides a detailed, comprehensive summary of all problems analyzed,
+architectural solutions designed, code modifications implemented, and verified builds
+produced during our development sessions.
+
+--------------------------------------------------------------------------------
+1. PROJECT OBJECTIVES & OVERVIEW
+--------------------------------------------------------------------------------
+The main objective of this project is to optimize and polish the Nintendo 3DS port 
+of DevilutionX (the open-source Diablo 1 engine reconstruction), providing a seamless,
+native console experience specifically tailored to the unique dual-screen hardware
+and controls of the Nintendo 3DS.
+
+Hardware Specifications Addressed:
+- Top Screen: 400x240 pixels (wide, non-touch)
+- Bottom Screen: 320x240 pixels (resistive touchscreen)
+- Total Virtual Surface in DevilutionX: 640x480 pixels (split into Top 0..239, Bottom 240..479)
+- Inputs: Circle Pad (analog), D-Pad (digital), A/B/X/Y, L/R shoulders, Start, Select, Touchscreen.
+
+--------------------------------------------------------------------------------
+2. EMULATION, ASSETS & INITIAL SETUP (AZAHAR / CITRA)
+--------------------------------------------------------------------------------
+- Clarified the two 3DS packaging formats:
+  * .3dsx: Executable for Homebrew Launcher (placed in /3ds/devilutionx/ on SD card).
+  * .cia: CTR Importable Archive, installed directly to the 3DS Home Menu via FBI.
+- Resolved initial startup crashes and infinite loading screens:
+  * Verified that DevilutionX requires the original PC game data file: diabdat.mpq.
+  * Located the Azahar emulator SDMC path:
+    ~/Library/Application Support/azahar/sdmc/3ds/devilutionx/diabdat.mpq
+  * Once the MPQ was placed correctly, the game initialized and booted smoothly.
+
+--------------------------------------------------------------------------------
+3. DUAL-SCREEN RENDERING & UI RESTRUCTURING
+--------------------------------------------------------------------------------
+Original Diablo was built for a single 640x480 PC monitor. When adapted to the 3DS,
+several graphical and layout issues occurred:
+
+A. Cutscenes and Intro Movies:
+   - Issue: Full-screen video files (.smk) were being split in half horizontally,
+     stretching across both screens and cutting cinematics unnaturally.
+   - Solution: Rerouted video rendering specifically so cutscenes display exclusively
+     on the 400x240 Top Screen with preserved aspect ratio and centering, keeping
+     the bottom screen blank and clean.
+
+B. Main Menu & Selection Screens (diabloui.cpp):
+   - Issue: Golden decorative UI box frames from selhero.pcx, selgame.pcx, etc.,
+     leaked into the lower half of the top screen (rows 204..239), creating a broken,
+     divided visual appearance.
+   - Solution: Created Prepare3DSBackground() in Source/DiabloUI/diabloui.cpp:
+     * Top screen (rows 0..239) is kept purely black, rendering only the burning
+       Diablo logo and menu titles.
+     * The golden frame area (rows 204..430, height 226) is dynamically scaled
+       into rows 2..188 of the bottom screen buffer (height 186, virtual y = 242..428).
+     * Buttons ("OK", "DELETE", "CANCEL") and menus fit naturally on the touch screen.
+
+C. In-Game Presentation & HUD:
+   - Top Screen: Reserved entirely for an immersive, uncluttered view of Tristram
+     and the dungeons.
+   - Bottom Screen: Houses the HUD, health/mana globes, and panels.
+   - Fixed corrupted red/black dotted background artifacts on the bottom screen
+     by ensuring clean buffer clears and appropriate pixel format handling.
+   - NPC Dialogues & Quest Lore (qtextflag): Routed conversation popups and story
+     monologues to display on the top screen so they remain legible and don't
+     overlap bottom controls.
+
+D. Analysis of Bottom Screen HUD Buttons:
+   - Investigated whether the HUD buttons (CHAR, QUESTS, MAP, MENU, INV, SPELLS)
+     were rendered by code or pre-drawn artwork.
+   - Finding: The buttons are 100% pre-rendered bitmap assets from the original 1996
+     Blizzard archives (ctrlpan/panel8bu.cel). Because the 3DS bottom screen is only
+     320 pixels wide, scaling down the 640-pixel PC graphics causes fine pixel lettering
+     to blur. In contrast, text buttons (like OK / CANCEL in menus) are rendered via
+     the font engine (UiArtTextButton).
+
+--------------------------------------------------------------------------------
+4. PLAYSTATION 1 INSPIRED CONTROL SCHEME IMPLEMENTATION
+--------------------------------------------------------------------------------
+The user requested a complete overhaul of the 3DS controls based on the acclaimed
+Diablo 1 PlayStation 1 (1998) control scheme, replacing the outdated layout.
+
+A. Exploration & Combat Mode (!uiOpen && !InGameMenu()):
+   - Circle Pad (Left Stick): 8-directional analog character movement.
+   - A Button: Primary Action / Attack.
+     * If an item is on the ground or under auto-aim (pcursitem != -1), button A
+       picks up the loot immediately via PerformSecondaryAction().
+     * Attacks monsters, opens doors/chests, breaks barrels, talks to NPCs.
+     * Supports holding button down for continuous attack/action (ControllerActionHeld).
+   - B Button: Cast Spell / Scroll (PerformSpellAction()).
+   - X Button: Cycle through prepared spell hotkeys (CycleSpellHotkeys(true)).
+   - Y Button: Quick spell menu popup (GameActionType_TOGGLE_QUICK_SPELL_MENU).
+   - Left Shoulder (L): Instant Health Potion.
+     * Custom DrinkPotion3DS(BeltItemType::Healing) checks belt slots first;
+       if no health potions are on the belt, it automatically searches the player's
+       backpack inventory and drinks directly!
+   - Right Shoulder (R): Instant Mana Potion.
+     * Custom DrinkPotion3DS(BeltItemType::Mana) checks belt, then automatically
+       falls back to backpack inventory.
+   - D-Pad Up: Direct shortcut to Character Sheet (TOGGLE_CHARACTER_INFO).
+   - D-Pad Down: Toggle dungeon overlay map on/off (DoAutoMap()).
+   - Select: Open UI / Inventory (TOGGLE_INVENTORY).
+   - Start: Pause / Game Options Menu (gamemenu_on()).
+
+B. Inventory & Menu Mode (uiOpen == true):
+   Active whenever Inventory, Character Sheet, Quest Log, Spellbook, or Stores are open.
+   - D-Pad: Tile-by-tile precision cursor navigation through inventory slots,
+     equipment grids, and stat attribute (+) buttons.
+   - A Button: Pick up item / drop item into slot / equip item / allocate stat points (+).
+     In stores: confirms purchase/dialogue option.
+   - Y Button: Use item (PerformSecondaryAction() -> CtrlUseInvItem() drinks potion,
+     reads scroll/book, identifies item, or auto-equips gear).
+   - X Button: Drop item onto ground (lifts hovered item if needed, then calls TryDropItem()).
+   - B Button: Cancel / Exit menu (PressEscKey()).
+   - Select Button: Cancel / Exit menu (PressEscKey()).
+   - L / R Shoulder Buttons: UI Tab Switching.
+     * Custom SwitchUiTab(bool forward) cycles smoothly between the four core status screens:
+       [0] Character Sheet <---> [1] Inventory <---> [2] Quest Log <---> [3] Spellbook
+     * If the Stash is open, L and R turn stash pages instead.
+
+C. Low-Level Control Engine Fixes (game_controls.cpp, diablo.cpp):
+   - Implemented ReleaseControllerButton(button) on 3DS to properly clear
+     ControllerActionHeld = GameActionType_NONE and LastPlayerAction = PlayerActionType::None
+     when button A or B is released, preventing the character from continuing to attack infinitely.
+   - Removed #ifdef __3DS__ return false; from CanDeferToMovementHandler, allowing
+     D-pad inputs to properly route to UI movement repeaters (CheckInventoryMove, AttrIncBtnSnap).
+   - Relocated CycleSpellHotkeys from the internal anonymous namespace in diablo.cpp
+     into namespace devilution, properly resolving ambiguous overload compilation errors.
+
+--------------------------------------------------------------------------------
+5. CI/CD AUTOMATION & RELEASE ARTIFACTS
+--------------------------------------------------------------------------------
+- All source modifications were pushed to https://github.com/Karolynaz/devil-3ds (branch master).
+- Monitored and validated GitHub Actions automated cross-compilation pipeline
+  (devkitARM / devkitPro toolchain).
+- Successful Build Run: ID 35902659145 (commit 4e6708f).
+- Extracted and downloaded ready-to-play packages to the local 3DS_Release/ directory:
+  * devilutionx.3dsx (for 3DS Homebrew Launcher)
+  * devilutionx.cia (for direct 3DS Home Menu installation)
+
+================================================================================
+                         END OF SUMMARY DOCUMENT
+================================================================================

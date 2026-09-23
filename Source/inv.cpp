@@ -1702,10 +1702,23 @@ void CheckInvItem(bool isShiftHeld, bool isCtrlHeld)
 void CheckInvScrn(bool isShiftHeld, bool isCtrlHeld)
 {
 	const Point mainPanelPosition = GetMainPanel().position;
+#ifdef __3DS__
+	if (MousePosition.x > 190 + mainPanelPosition.x && MousePosition.x < 445 + mainPanelPosition.x
+	    && MousePosition.y >= 240 && MousePosition.y < 430) {
+		if (MyPlayer != nullptr && !MyPlayer->HoldItem.isEmpty()) {
+			Point origMouse = MousePosition;
+			MousePosition.y = mainPanelPosition.y + 16;
+			CheckInvItem(isShiftHeld, isCtrlHeld);
+			MousePosition = origMouse;
+		}
+		return;
+	}
+#else
 	if (MousePosition.x > 190 + mainPanelPosition.x && MousePosition.x < 437 + mainPanelPosition.x
 	    && MousePosition.y > mainPanelPosition.y && MousePosition.y < 33 + mainPanelPosition.y) {
 		CheckInvItem(isShiftHeld, isCtrlHeld);
 	}
+#endif
 }
 
 void InvGetItem(Player &player, int ii)

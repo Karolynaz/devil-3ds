@@ -6,6 +6,9 @@
 #include "automap.h"
 #include "controls/control_mode.hpp"
 #include "controls/modifier_hints.h"
+#ifdef __3DS__
+#include "controls/plrctrls.h"
+#endif
 #include "diablo_msg.hpp"
 #include "engine/backbuffer_state.hpp"
 #include "engine/load_cel.hpp"
@@ -506,6 +509,69 @@ void ResetMainPanelButtons()
 
 void CheckMainPanelButton()
 {
+#ifdef __3DS__
+	if (MousePosition.y >= 240) {
+		// 1. Left column buttons: Char, Quests, Automap, Menu
+		if (MousePosition.x <= 95) {
+			if (MousePosition.y < 385)
+				SetMainPanelButtonDown(PanelButtonCharinfo);
+			else if (MousePosition.y < 415)
+				SetMainPanelButtonDown(PanelButtonQlog);
+			else if (MousePosition.y < 448)
+				SetMainPanelButtonDown(PanelButtonAutomap);
+			else
+				SetMainPanelButtonDown(PanelButtonMainmenu);
+			return;
+		}
+
+		// 2. Right column buttons: Inv, Spells, Spell Select / Speedbook
+		if (MousePosition.x >= 550) {
+			if (MousePosition.y < 385) {
+				SetMainPanelButtonDown(PanelButtonInventory);
+			} else if (MousePosition.y < 415) {
+				SetMainPanelButtonDown(PanelButtonSpellbook);
+			} else {
+				if (!SpellSelectFlag) {
+					if ((SDL_GetModState() & SDL_KMOD_SHIFT) != 0) {
+						Player &myPlayer = *MyPlayer;
+						myPlayer._pRSpell = SpellID::Invalid;
+						myPlayer._pRSplType = SpellType::Invalid;
+						RedrawEverything();
+						return;
+					}
+					DoSpeedBook();
+					gamemenu_off();
+				}
+			}
+			return;
+		}
+
+		// 3. Life globe: drink healing potion
+		if (MousePosition.x > 95 && MousePosition.x < 195 && MousePosition.y >= 300) {
+			UseBeltItem(BeltItemType::Healing);
+			return;
+		}
+
+		// 4. Mana globe: drink mana potion
+		if (MousePosition.x > 445 && MousePosition.x < 550 && MousePosition.y >= 300) {
+			UseBeltItem(BeltItemType::Mana);
+			return;
+		}
+
+		// 5. Belt slots 1-8: drink/use slot item
+		if (MousePosition.x >= 195 && MousePosition.x <= 445 && MousePosition.y >= 300 && MousePosition.y <= 415) {
+			if (MyPlayer != nullptr && !MyPlayer->HoldItem.isEmpty()) {
+				// Placing held item handled by CheckInvScrn
+				return;
+			}
+			int slot = (MousePosition.x - 205) / 29;
+			slot = std::clamp(slot, 0, 7);
+			UseBeltSlot(slot);
+			return;
+		}
+	}
+#endif
+
 	const int totalButtons = IsChatAvailable() ? TotalMpMainPanelButtons : TotalSpMainPanelButtons;
 
 	for (int i = 0; i < totalButtons; i++) {
@@ -537,6 +603,13 @@ void CheckMainPanelButton()
 
 void CheckMainPanelButtonDead()
 {
+#ifdef __3DS__
+	if (MousePosition.x <= 95 && MousePosition.y >= 240) {
+		SetMainPanelButtonDown(PanelButtonMainmenu);
+		return;
+	}
+#endif
+
 	Rectangle menuButton = MainPanelButtonRect[PanelButtonMainmenu];
 
 	SetPanelObjectPosition(UiPanels::Main, menuButton);
@@ -593,8 +666,10 @@ void CheckMainPanelButtonUp()
 
 		SetPanelObjectPosition(UiPanels::Main, button);
 
+#ifndef __3DS__
 		if (!button.contains(MousePosition))
 			continue;
+#endif
 
 		switch (i) {
 		case PanelButtonCharinfo:

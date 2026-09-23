@@ -78,6 +78,10 @@ extern OptionalOwnedClxSpriteList ArtBackgroundWidescreen;
 extern OptionalOwnedClxSpriteList ArtBackground;
 extern OptionalOwnedClxSpriteList ArtCursor;
 
+#ifdef __3DS__
+extern bool gb3DSUseBottomBoxBackground;
+#endif
+
 extern bool (*gfnHeroInfo)(bool (*fninfofunc)(_uiheroinfo *));
 
 inline SDL_Surface *DiabloUiSurface()

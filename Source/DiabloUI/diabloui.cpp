@@ -666,11 +666,12 @@ void LoadUiGFX()
 }
 
 #ifdef __3DS__
+bool gb3DSUseBottomBoxBackground = false;
 std::unique_ptr<OwnedSurface> UiBottomBackgroundBuffer;
 
 void Prepare3DSBackground()
 {
-	if (!ArtBackground) {
+	if (!gb3DSUseBottomBoxBackground || !ArtBackground) {
 		UiBottomBackgroundBuffer = nullptr;
 		return;
 	}
@@ -945,12 +946,18 @@ void Render(const UiImageClx &uiImage)
 	}
 #ifdef __3DS__
 	if (ArtBackground && sprite == (*ArtBackground)[0] && sprite.height() >= 480) {
+		const Surface &out = Surface(DiabloUiSurface());
+		SDL_Rect topRect = MakeSdlRect(0, 0, 640, 240);
+		SDL_FillSurfaceRect(out.surface, &topRect, 0);
+
 		if (!UiBottomBackgroundBuffer) {
 			Prepare3DSBackground();
 		}
 		if (UiBottomBackgroundBuffer) {
-			const Surface &out = Surface(DiabloUiSurface());
 			out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { 0, 240 });
+		} else {
+			SDL_Rect bottomRect = MakeSdlRect(0, 240, 640, 240);
+			SDL_FillSurfaceRect(out.surface, &bottomRect, 0);
 		}
 		return;
 	}
