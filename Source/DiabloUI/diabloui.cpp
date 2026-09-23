@@ -89,6 +89,10 @@ OptionalOwnedClxSpriteList ArtCursor;
 
 std::size_t SelectedItem = 0;
 
+#ifdef __3DS__
+bool gb3DSUseBottomBoxBackground = false;
+#endif
+
 namespace {
 
 OptionalOwnedClxSpriteList ArtHero;
@@ -666,7 +670,6 @@ void LoadUiGFX()
 }
 
 #ifdef __3DS__
-bool gb3DSUseBottomBoxBackground = false;
 std::unique_ptr<OwnedSurface> UiBottomBackgroundBuffer;
 
 void Prepare3DSBackground()
