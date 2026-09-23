@@ -32,6 +32,7 @@
 #include "panels/spell_book.hpp"
 #include "panels/spell_list.hpp"
 #include "qol/stash.h"
+#include "qol/visual_store.h"
 #include "stores.h"
 #include "utils/is_of.hpp"
 
@@ -297,7 +298,7 @@ void SwitchUiTab(bool forward)
 	const int next = forward ? ((current + 1) % 4) : ((current + 3) % 4);
 
 	if (invflag && !MyPlayer->HoldItem.isEmpty()) {
-		if (!BlurInventory())
+		if (!TryDropItem())
 			return;
 	}
 
@@ -463,8 +464,8 @@ void PressControllerButton(ControllerButton button)
 
 		case ControllerButton_BUTTON_X:
 			if (invflag) {
-				if (MyPlayer->HoldItem.isEmpty() && pcursinvitem != -1) {
-					LiftInventoryItem();
+				if (MyPlayer->HoldItem.isEmpty()) {
+					PerformPrimaryAction();
 				}
 				if (!MyPlayer->HoldItem.isEmpty()) {
 					TryDropItem();
@@ -473,13 +474,7 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_Y:
-			if (invflag) {
-				CtrlUseInvItem();
-			} else if (IsStashOpen) {
-				CtrlUseStashItem();
-			} else if (IsVisualStoreOpen) {
-				CheckVisualStoreItem(MousePosition, true, false);
-			}
+			PerformSecondaryAction();
 			return;
 
 		case ControllerButton_BUTTON_LEFTSHOULDER:
