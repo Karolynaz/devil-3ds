@@ -1,4 +1,4 @@
-#include "platform/ctr/ui.hpp"
+#include "platform/ctr/ui_background.hpp"
 
 #include <array>
 #include <cstdint>
@@ -7,6 +7,7 @@
 
 #include "engine/assets.hpp"
 #include "engine/palette.h"
+#include "engine/render/primitive_render.hpp"
 
 namespace devilution {
 namespace {
@@ -68,7 +69,10 @@ void DrawCtrPanelBackground(const Surface &out, CtrPanelBackground background)
 	if (!BackgroundLoadAttempted[index])
 		LoadBackground(index);
 	if (!Backgrounds[index]) {
-		DrawCtrPanelFrame(out);
+		FillRect(out, 0, 0, out.w(), out.h(), 0);
+		UnsafeDrawBorder2px(out, { { 1, 1 }, { out.w() - 2, out.h() - 2 } }, PAL16_BEIGE + 8);
+		DrawHorizontalLine(out, { 3, 3 }, out.w() - 6, PAL16_BEIGE + 3);
+		DrawVerticalLine(out, { 3, 3 }, out.h() - 6, PAL16_BEIGE + 3);
 		return;
 	}
 	out.BlitFrom(*Backgrounds[index], { 0, 0, BackgroundWidth, BackgroundHeight }, { 0, 0 });

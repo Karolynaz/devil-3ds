@@ -32,5 +32,4 @@ target_link_dependencies(libdevilutionx_ctr
   PRIVATE
   libdevilutionx_utf8
   libdevilutionx_strings
-  unordered_dense::unordered_dense
 )

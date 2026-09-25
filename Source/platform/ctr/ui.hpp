@@ -2,6 +2,7 @@
 
 #include "engine/palette.h"
 #include "engine/render/primitive_render.hpp"
+#include "platform/ctr/ui_background.hpp"
 #include "platform/ctr/ui_geometry.hpp"
 #include "qol/stash.h"
 #include "qol/visual_store.h"
@@ -14,13 +15,6 @@ inline Point CtrScreenToTop(Point p) { return CtrScreenToTop(p, gnScreenWidth); 
 inline Point CtrInventoryToScreen(Point p) { return CtrInventoryToScreen(p, gnScreenWidth, IsStashOpen || IsVisualStoreOpen); }
 inline Point CtrScreenToInventory(Point p) { return CtrScreenToInventory(p, gnScreenWidth, IsStashOpen || IsVisualStoreOpen); }
 inline Rectangle CtrInventoryScreenRect() { return CtrInventoryScreenRect(gnScreenWidth, IsStashOpen || IsVisualStoreOpen); }
-
-enum class CtrPanelBackground {
-	Stone,
-	Quest,
-};
-
-void DrawCtrPanelBackground(const Surface &out, CtrPanelBackground background);
 
 inline void DrawCtrPanelFrame(const Surface &out)
 {
