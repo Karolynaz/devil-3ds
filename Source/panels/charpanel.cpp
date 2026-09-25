@@ -308,7 +308,7 @@ void DrawChr3DS(const Surface &out)
 		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 94, 18 } });
 		const StyledText base = (*panelEntries[index].statDisplayFunc)();
 		DrawString(out, base.text, { { 111, y - 4 }, { 61, 22 } },
-		    { .flags = base.style | UiFlags::AlignRight | UiFlags::FontSize22 });
+		    { .flags = base.style | UiFlags::AlignRight | UiFlags::FontSizeDialog });
 		const auto attr = static_cast<CharacterAttribute>(i);
 		if (!IsInspectingPlayer() && InspectPlayer->_pStatPts > 0
 		    && InspectPlayer->GetBaseAttributeValue(attr) < InspectPlayer->GetMaximumAttributeValue(attr)) {

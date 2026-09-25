@@ -825,7 +825,7 @@ void DrawLevelButton(const Surface &out)
 		const int nCel = LevelButtonDown ? 2 : 1;
 #ifdef __3DS__
 		DrawString(out, _("SELECT: Assign points"), { { 61, 208 }, { 330, 24 } },
-		    { .flags = UiFlags::FontSize22 | UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
+		    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
 		RenderClxSprite(out, (*pChrButtons)[nCel], { 12, 207 });
 #else
 		DrawString(out, _("Level Up"), { GetMainPanel().position + Displacement { 0, LevelButtonRect.position.y - 23 }, { 120, 0 } },
