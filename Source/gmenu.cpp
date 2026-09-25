@@ -57,8 +57,13 @@ constexpr int SliderMarkerWidth = 27;
 constexpr int SliderFillMin = SliderMarkerWidth / 2;
 constexpr int SliderFillMax = SliderValueWidth - (SliderMarkerWidth / 2) - 1;
 
+#ifdef __3DS__
+constexpr int GMenuTop = 66;
+constexpr int GMenuItemHeight = 30;
+#else
 constexpr int GMenuTop = 117;
 constexpr int GMenuItemHeight = 45;
+#endif
 
 OptionalOwnedClxSpriteList optbar_cel;
 OptionalOwnedClxSpriteList PentSpin_cel;
@@ -123,7 +128,11 @@ int GmenuGetLineWidth(TMenuItem *pItem)
 	if (pItem->isSlider())
 		return SliderItemWidth;
 
+#ifdef __3DS__
+	return GetLineWidth(_(pItem->pszStr), GameFont30, 2);
+#else
 	return GetLineWidth(_(pItem->pszStr), GameFont46, 2);
+#endif
 }
 
 void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
@@ -131,6 +140,15 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 	const int w = GmenuGetLineWidth(pItem);
 	if (pItem->isSlider()) {
 		const int uiPositionX = GetUIRectangle().position.x;
+#ifdef __3DS__
+		ClxDraw(out, { SliderValueBoxLeft + uiPositionX, y + 26 }, (*optbar_cel)[0]);
+		const uint16_t step = pItem->dwFlags & 0xFFF;
+		const uint16_t steps = std::max<uint16_t>(pItem->sliderSteps(), 2);
+		const uint16_t pos = SliderFillMin + (step * (SliderFillMax - SliderFillMin) / steps);
+		SDL_Rect rect = MakeSdlRect(SliderValueLeft + uiPositionX, y + 2, pos, 20);
+		SDL_FillSurfaceRect(out.surface, &rect, 205);
+		ClxDraw(out, { SliderValueLeft + pos - (SliderMarkerWidth / 2) + uiPositionX, y + 2 + 20 - 1 }, (*option_cel)[0]);
+#else
 		ClxDraw(out, { SliderValueBoxLeft + uiPositionX, y + 40 }, (*optbar_cel)[0]);
 		const uint16_t step = pItem->dwFlags & 0xFFF;
 		const uint16_t steps = std::max<uint16_t>(pItem->sliderSteps(), 2);
@@ -138,10 +156,22 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 		SDL_Rect rect = MakeSdlRect(SliderValueLeft + uiPositionX, y + SliderValuePaddingTop, pos, SliderValueHeight);
 		SDL_FillSurfaceRect(out.surface, &rect, 205);
 		ClxDraw(out, { SliderValueLeft + pos - (SliderMarkerWidth / 2) + uiPositionX, y + SliderValuePaddingTop + SliderValueHeight - 1 }, (*option_cel)[0]);
+#endif
 	}
 
 	const int x = (gnScreenWidth - w) / 2;
 	const UiFlags style = pItem->enabled() ? UiFlags::ColorGold : UiFlags::ColorBlack;
+#ifdef __3DS__
+	DrawString(out, _(pItem->pszStr), Point { x, y },
+	    { .flags = style | UiFlags::FontSize30, .spacing = 2 });
+	if (pItem == sgpCurrItem) {
+		if (pSPentSpn2Cels) {
+			const ClxSprite sprite = (*pSPentSpn2Cels)[PentSpn2Spin()];
+			ClxDraw(out, { x - 18, y + 18 }, sprite);
+			ClxDraw(out, { x + 6 + w, y + 18 }, sprite);
+		}
+	}
+#else
 	DrawString(out, _(pItem->pszStr), Point { x, y },
 	    { .flags = style | UiFlags::FontSize46, .spacing = 2 });
 	if (pItem == sgpCurrItem) {
@@ -149,6 +179,7 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 		ClxDraw(out, { x - 54, y + 51 }, sprite);
 		ClxDraw(out, { x + 4 + w, y + 51 }, sprite);
 	}
+#endif
 }
 
 void GameMenuMove()
@@ -218,6 +249,10 @@ void gmenu_init_menu()
 	PentSpin_cel = LoadCel("data\\pentspin", 48);
 	option_cel = LoadCel("data\\option", SliderMarkerWidth);
 	optbar_cel = LoadCel("data\\optbar", SliderValueBoxWidth);
+#ifdef __3DS__
+	if (!pSPentSpn2Cels)
+		LoadSmallSelectionSpinner();
+#endif
 }
 
 bool gmenu_is_active()
@@ -264,8 +299,14 @@ void gmenu_draw(const Surface &out)
 		}
 		const int uiPositionY = GetUIRectangle().position.y;
 		const ClxSprite sprite = (*sgpLogo)[LogoAnim_frame];
+#ifdef __3DS__
+		const int logoY = std::min(static_cast<int>(sprite.height()), 56) + uiPositionY;
+		ClxDraw(out, { (gnScreenWidth - sprite.width()) / 2, logoY }, sprite);
+		int y = GMenuTop + uiPositionY;
+#else
 		ClxDraw(out, { (gnScreenWidth - sprite.width()) / 2, 102 + uiPositionY }, sprite);
 		int y = 110 + uiPositionY;
+#endif
 		TMenuItem *i = sgpCurrentMenu;
 		if (sgpCurrentMenu->fnMenu != nullptr) {
 			while (i->fnMenu != nullptr) {

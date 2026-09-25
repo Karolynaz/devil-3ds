@@ -339,6 +339,11 @@ void SwitchUiTab(bool forward)
 
 void ReleaseControllerButton(ControllerButton button)
 {
+	if (button == ControllerButton_BUTTON_A)
+		button = ControllerButton_BUTTON_B;
+	else if (button == ControllerButton_BUTTON_B)
+		button = ControllerButton_BUTTON_A;
+
 	if (button == ControllerButton_BUTTON_A) {
 		if (ControllerActionHeld == GameActionType_PRIMARY_ACTION) {
 			ControllerActionHeld = GameActionType_NONE;
@@ -439,7 +444,12 @@ void PressControllerButton(ControllerButton button)
 	}
 
 #ifdef __3DS__
-	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag;
+	if (button == ControllerButton_BUTTON_A)
+		button = ControllerButton_BUTTON_B;
+	else if (button == ControllerButton_BUTTON_B)
+		button = ControllerButton_BUTTON_A;
+
+	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag || IsStashOpen;
 	if (uiOpen) {
 		switch (button) {
 		case ControllerButton_BUTTON_DPAD_UP:

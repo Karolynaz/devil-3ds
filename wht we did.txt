@@ -142,6 +142,26 @@ C. Low-Level Control Engine Fixes (game_controls.cpp, diablo.cpp):
   * devilutionx.3dsx (for 3DS Homebrew Launcher)
   * devilutionx.cia (for direct 3DS Home Menu installation)
 
+--------------------------------------------------------------------------------
+6. POLISH & CONTROLS INVERSION FIXES (LATEST)
+--------------------------------------------------------------------------------
+- Main Menu Clean-up (mainmenu.cpp):
+  * Completely removed the redundant "Support" menu item from the title screen.
+- In-Game Pause Menu Redesign for Top Screen (gmenu.cpp):
+  * Reduced menu item font size to FontSize30 / GameFont30 and item height to 30px.
+  * Replaced large 48x48 selector with small 12x12 spinning pentagram (pSPentSpn2Cels).
+  * Adjusted logo position and top margin so all options and sliders fit completely
+    within the 400x240 top screen without leaking to the bottom screen.
+- In-Game A/B Button Mapping Swap (game_controls.cpp):
+  * Swapped A and B inputs in PressControllerButton and ReleaseControllerButton on 3DS.
+  * Button A now consistently performs Primary Action (talking to NPCs, picking up loot,
+    attacking, and interacting in UI).
+  * Button B casts spells during combat and cancels / closes menus.
+  * Menu navigation outside gameplay remains untouched and continues to work as intended.
+- Dual-Button Menu Dismissal (Select & B):
+  * When opening inventory/panels in-game with Select, the menu can now be closed
+    by pressing either "Select" or "B".
+
 ================================================================================
                          END OF SUMMARY DOCUMENT
 ================================================================================
