@@ -58,8 +58,8 @@ constexpr int SliderFillMin = SliderMarkerWidth / 2;
 constexpr int SliderFillMax = SliderValueWidth - (SliderMarkerWidth / 2) - 1;
 
 #ifdef __3DS__
-constexpr int GMenuTop = 66;
 constexpr int GMenuItemHeight = 30;
+constexpr int GMenuTopScreenHeight = 240;
 #else
 constexpr int GMenuTop = 117;
 constexpr int GMenuItemHeight = 45;
@@ -75,6 +75,29 @@ int LogoAnim_tick;
 uint8_t LogoAnim_frame;
 void (*gmenu_current_option)();
 int sgCurrentMenuIdx;
+
+#ifdef __3DS__
+int GMenuTop()
+{
+	return GetUIRectangle().position.y + std::max(0, (GMenuTopScreenHeight - sgCurrentMenuIdx * GMenuItemHeight) / 2);
+}
+
+void DrawGMenuSpinner(const Surface &out, ClxSprite sprite, Point position)
+{
+	// The upper 3DS screen squeezes 640 logical columns into 400 physical pixels.
+	// A 48x30 logical icon therefore appears square beside the 30px text.
+	static OwnedSurface scratch(48, 48);
+	SDL_FillSurfaceRect(scratch.surface, nullptr, 0);
+	RenderClxSprite(scratch, sprite, { 0, 0 });
+	for (int y = 0; y < 30; ++y) {
+		for (int x = 0; x < 48; ++x) {
+			const uint8_t color = scratch[{ x, y * 48 / 30 }];
+			if (color != 0)
+				out.SetPixel(position + Displacement { x, y }, color);
+		}
+	}
+}
+#endif
 
 void GmenuUpDown(bool isDown)
 {
@@ -165,10 +188,10 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 	DrawString(out, _(pItem->pszStr), Point { x, y },
 	    { .flags = style | UiFlags::FontSize30, .spacing = 2 });
 	if (pItem == sgpCurrItem) {
-		if (pSPentSpn2Cels) {
-			const ClxSprite sprite = (*pSPentSpn2Cels)[PentSpn2Spin()];
-			ClxDraw(out, { x - 18, y + 18 }, sprite);
-			ClxDraw(out, { x + 6 + w, y + 18 }, sprite);
+		if (PentSpin_cel) {
+			const ClxSprite sprite = (*PentSpin_cel)[PentSpn2Spin()];
+			DrawGMenuSpinner(out, sprite, { x - 56, y });
+			DrawGMenuSpinner(out, sprite, { x + w + 8, y });
 		}
 	}
 #else
@@ -243,9 +266,11 @@ void gmenu_init_menu()
 	if (HeadlessMode)
 		return;
 
+#ifndef __3DS__
 	sgpLogo = LoadOptionalCel("data\\hf_logo3", 430);
 	if (!sgpLogo.has_value())
 		sgpLogo = LoadCel("data\\diabsmal", 296);
+#endif
 	PentSpin_cel = LoadCel("data\\pentspin", 48);
 	option_cel = LoadCel("data\\option", SliderMarkerWidth);
 	optbar_cel = LoadCel("data\\optbar", SliderValueBoxWidth);
@@ -289,6 +314,7 @@ void gmenu_draw(const Surface &out)
 		GameMenuMove();
 		if (gmenu_current_option != nullptr)
 			gmenu_current_option();
+#ifndef __3DS__
 		if (sgpLogo->numSprites() > 1) {
 			const uint32_t ticks = SDL_GetTicks();
 			if ((int)(ticks - LogoAnim_tick) > 25) {
@@ -297,13 +323,12 @@ void gmenu_draw(const Surface &out)
 				LogoAnim_tick = ticks;
 			}
 		}
+#endif
+#ifdef __3DS__
+		int y = GMenuTop();
+#else
 		const int uiPositionY = GetUIRectangle().position.y;
 		const ClxSprite sprite = (*sgpLogo)[LogoAnim_frame];
-#ifdef __3DS__
-		const int logoY = std::min(static_cast<int>(sprite.height()), 56) + uiPositionY;
-		ClxDraw(out, { (gnScreenWidth - sprite.width()) / 2, logoY }, sprite);
-		int y = GMenuTop + uiPositionY;
-#else
 		ClxDraw(out, { (gnScreenWidth - sprite.width()) / 2, 102 + uiPositionY }, sprite);
 		int y = 110 + uiPositionY;
 #endif
@@ -379,14 +404,18 @@ bool gmenu_left_mouse(bool isDown)
 	if (sgpCurrentMenu == nullptr) {
 		return false;
 	}
-	const Point uiPosition = GetUIRectangle().position;
 	if (MousePosition.y >= GetMainPanel().position.y) {
 		return false;
 	}
-	if (MousePosition.y - (GMenuTop + uiPosition.y) < 0) {
+#ifdef __3DS__
+	const int menuTop = GMenuTop();
+#else
+	const int menuTop = GMenuTop + GetUIRectangle().position.y;
+#endif
+	if (MousePosition.y < menuTop) {
 		return true;
 	}
-	const int i = (MousePosition.y - (GMenuTop + uiPosition.y)) / GMenuItemHeight;
+	const int i = (MousePosition.y - menuTop) / GMenuItemHeight;
 	if (i >= sgCurrentMenuIdx) {
 		return true;
 	}

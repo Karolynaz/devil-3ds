@@ -2251,6 +2251,9 @@ void HandleRightStickMotion()
 		rightStickX = std::clamp(rightStickX + leftStickX, -1.0F, 1.0F);
 		rightStickY = std::clamp(rightStickY + leftStickY, -1.0F, 1.0F);
 	}
+	// SDL maps 640 logical columns to 400 physical pixels above and 320 below.
+	// Equalize physical cursor travel for the same horizontal/vertical stick input.
+	rightStickX *= static_cast<float>(gnScreenWidth) / (MousePosition.y < 240 ? 400.0F : 320.0F);
 #endif
 	// deadzone is handled in ScaleJoystickAxes() already
 	if (rightStickX == 0 && rightStickY == 0) {

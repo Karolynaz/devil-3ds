@@ -294,14 +294,13 @@ void DrawChr3DS(const Surface &out)
 	label(_("Next level"), { { 216, 56 }, { 85, 16 } });
 	value(4, { { 302, 56 }, { 86, 16 } });
 	DrawHorizontalLine(out, { 10, 76 }, 380, PAL16_BEIGE + 8);
-	label(_("Base"), { { 100, 81 }, { 35, 14 } });
-	label(_("Now"), { { 142, 81 }, { 34, 14 } });
 	for (unsigned i = 0; i < 4; ++i) {
 		const unsigned index = 7 + i * 2;
-		const int y = 100 + i * 22;
-		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 83, 18 } });
-		value(index, { { 96, y }, { 36, 18 } });
-		value(index + 1, { { 136, y }, { 36, 18 } });
+		const int y = 97 + i * 25;
+		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 94, 18 } });
+		const StyledText base = (*panelEntries[index].statDisplayFunc)();
+		DrawString(out, base.text, { { 111, y - 5 }, { 61, 24 } },
+		    { .flags = base.style | UiFlags::AlignRight | UiFlags::FontSize24 });
 		const auto attr = static_cast<CharacterAttribute>(i);
 		if (!IsInspectingPlayer() && InspectPlayer->_pStatPts > 0
 		    && InspectPlayer->GetBaseAttributeValue(attr) < InspectPlayer->GetMaximumAttributeValue(attr)) {
@@ -312,14 +311,14 @@ void DrawChr3DS(const Surface &out)
 			DrawVerticalLine(out, button.Center() - Displacement { 0, 4 }, 9, PAL16_GRAY);
 		}
 	}
-	label(_("Points to distribute"), { { 12, 185 }, { 157, 15 } });
-	value(15, { { 170, 185 }, { 31, 15 } });
-	label(_("Life"), { { 12, 203 }, { 70, 15 } });
-	DrawString(out, StrCat(InspectPlayer->_pHitPoints >> 6, " / ", InspectPlayer->_pMaxHP >> 6), { { 83, 203 }, { 118, 15 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignRight });
-	label(_("Mana"), { { 12, 220 }, { 70, 15 } });
+	label(_("Points to distribute"), { { 12, 195 }, { 157, 15 } });
+	value(15, { { 170, 195 }, { 31, 15 } });
+	label(_("Life"), { { 12, 212 }, { 70, 15 } });
+	DrawString(out, StrCat(InspectPlayer->_pHitPoints >> 6, " / ", InspectPlayer->_pMaxHP >> 6), { { 83, 212 }, { 118, 15 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignRight });
+	label(_("Mana"), { { 12, 227 }, { 70, 12 } });
 	const StyledText mana = (*panelEntries[24].statDisplayFunc)();
 	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
-	DrawString(out, StrCat(mana.text, " / ", maxMana.text), { { 83, 220 }, { 118, 15 } }, { .flags = mana.style | UiFlags::AlignRight });
+	DrawString(out, StrCat(mana.text, " / ", maxMana.text), { { 83, 227 }, { 118, 12 } }, { .flags = mana.style | UiFlags::AlignRight });
 	DrawVerticalLine(out, { 207, 82 }, 151, PAL16_BEIGE + 10);
 	constexpr unsigned combat[] = { 18, 19, 20, 25, 26, 27 };
 	for (unsigned i = 0; i < 6; ++i) {
