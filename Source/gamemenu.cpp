@@ -349,10 +349,9 @@ void gamemenu_save_game(bool /*bActivate*/)
 	InitDiabloMsg(EMSG_SAVING);
 	RedrawEverything();
 	DrawAndBlit();
-	const uint32_t currentTime = SDL_GetTicks();
 	SaveGame();
 	ClrDiabloMsg();
-	InitDiabloMsg(EMSG_GAME_SAVED, currentTime + 1000 - SDL_GetTicks());
+	InitDiabloMsg(EMSG_GAME_SAVED, 2500);
 	RedrawEverything();
 	NewCursor(CURSOR_HAND);
 	if (CornerStone.activated) {

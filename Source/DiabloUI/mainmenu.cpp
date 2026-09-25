@@ -71,7 +71,11 @@ void MainmenuLoad(const char *name)
 
 	const Point uiPosition = GetUIRectangle().position;
 
-	vecMainMenuDialog.push_back(std::make_unique<UiList>(vecMenuItems, vecMenuItems.size(), uiPosition.x + 64, 250, 510, 34, UiFlags::FontSize30 | UiFlags::ColorUiGold | UiFlags::AlignCenter, 4));
+	const int itemHeight = 36;
+	const int totalMenuHeight = static_cast<int>(vecMenuItems.size()) * itemHeight;
+	const int menuY = 240 + (240 - totalMenuHeight) / 2;
+
+	vecMainMenuDialog.push_back(std::make_unique<UiList>(vecMenuItems, vecMenuItems.size(), uiPosition.x + 64, menuY, 510, itemHeight, UiFlags::FontSize30 | UiFlags::ColorUiGold | UiFlags::AlignCenter, 4));
 
 	const SDL_Rect rect2 = { 17, (Sint16)(gnScreenHeight - 22), 605, 20 };
 	vecMainMenuDialog.push_back(std::make_unique<UiArtText>(name, rect2, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark));

@@ -563,12 +563,12 @@ void UiSettingsMenu()
 		vecDialogItems.push_back(std::make_unique<UiListItem>(_("Previous Menu"), static_cast<int>(SpecialMenuEntry::PreviousMenu), UiFlags::ColorUiGold));
 
 #ifdef __3DS__
-		constexpr int ListItemHeight = 24;
-		const int maxListHeight = 120;
-		rectList = { { uiRectangle.position.x + 50, 245 },
+		constexpr int ListItemHeight = 25;
+		constexpr int maxListHeight = 175;
+		rectList = { { uiRectangle.position.x + 50, 244 },
 			Size { uiRectangle.size.width - 100, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, maxListHeight) } };
-		rectDescription = { { uiRectangle.position.x + 24, 380 },
-			Size { uiRectangle.size.width - 48, 85 } };
+		rectDescription = { { uiRectangle.position.x + 24, 423 },
+			Size { uiRectangle.size.width - 48, 53 } };
 #else
 		constexpr int ListItemHeight = 26;
 		rectList = { uiRectangle.position + Displacement { 50, 204 },

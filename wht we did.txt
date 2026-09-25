@@ -162,6 +162,19 @@ C. Low-Level Control Engine Fixes (game_controls.cpp, diablo.cpp):
   * When opening inventory/panels in-game with Select, the menu can now be closed
     by pressing either "Select" or "B".
 
+--------------------------------------------------------------------------------
+7. TITLE SCREEN CENTERING, SETTINGS FULLSCREEN, & SAVE MESSAGE FIX
+--------------------------------------------------------------------------------
+- Title Screen Bottom Menu Centering (mainmenu.cpp):
+  * Dynamically centered the menu items vertically in the bottom screen (menuY calculated from total items height).
+  * Increased item height to 36px for comfortable touch targets and balanced spacing.
+- Settings Menu Fullscreen Layout (settingsmenu.cpp):
+  * Expanded maxListHeight to 175px (allowing 7 items visible at once instead of only 5).
+  * Repositioned description box to Y = 423..476, removing the squished 2/3 appearance and utilizing the full bottom screen height.
+- Auto-Dismissing "Game saved" Message (gamemenu.cpp):
+  * Fixed unsigned 32-bit integer underflow bug where (currentTime + 1000 - SDL_GetTicks()) evaluated to ~4.29 billion ms when saving to SD card took over 1 second.
+  * Replaced calculation with a reliable 2500ms duration, allowing the popup to dismiss itself automatically without requiring opening/closing menus.
+
 ================================================================================
                          END OF SUMMARY DOCUMENT
 ================================================================================
