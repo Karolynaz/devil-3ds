@@ -1,9 +1,16 @@
 /**
+
  * @file inv.cpp
  *
  * Implementation of player inventory.
  */
 #include <algorithm>
+
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#include "panels/quest_log.hpp"
+#endif
+
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -302,10 +309,7 @@ bool AutoEquip(Player &player, const Item &item, inv_body_loc bodyLocation, bool
 int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 {
 #ifdef __3DS__
-	Point testCursorPos = cursorPosition;
-	if (testCursorPos.y < 240 && testCursorPos.x >= 422) {
-		testCursorPos = { ((testCursorPos.x - 422) * 320) / 218, (testCursorPos.y * 352) / 240 };
-	}
+	Point testCursorPos = invflag ? CtrScreenToInventory(cursorPosition) : Point { -1, -1 };
 	for (int r = SLOTXY_EQUIPPED_FIRST; r <= SLOTXY_EQUIPPED_LAST; r++) {
 		if (InvRect[r].contains(testCursorPos))
 			return r;
@@ -659,10 +663,7 @@ inv_body_loc MapSlotToInvBodyLoc(inv_xy_slot slot)
 std::optional<inv_xy_slot> FindSlotUnderCursor(Point cursorPosition)
 {
 #ifdef __3DS__
-	Point testPosition = cursorPosition;
-	if (testPosition.y < 240 && testPosition.x >= 422) {
-		testPosition = { ((testPosition.x - 422) * 320) / 218, (testPosition.y * 352) / 240 };
-	}
+	Point testPosition = invflag ? CtrScreenToInventory(cursorPosition) : Point { -1, -1 };
 	for (std::underlying_type_t<inv_xy_slot> r = SLOTXY_EQUIPPED_FIRST; r != SLOTXY_BELT_FIRST; r++) {
 		// check which body/inventory rectangle the mouse is in, if any
 		if (InvRect[r].contains(testPosition)) {
@@ -1703,16 +1704,11 @@ void CheckInvScrn(bool isShiftHeld, bool isCtrlHeld)
 {
 	const Point mainPanelPosition = GetMainPanel().position;
 #ifdef __3DS__
-	if (MousePosition.x > 190 + mainPanelPosition.x && MousePosition.x < 445 + mainPanelPosition.x
-	    && MousePosition.y >= 240 && MousePosition.y < 430) {
-		if (MyPlayer != nullptr && !MyPlayer->HoldItem.isEmpty()) {
-			Point origMouse = MousePosition;
-			MousePosition.y = mainPanelPosition.y + 16;
-			CheckInvItem(isShiftHeld, isCtrlHeld);
-			MousePosition = origMouse;
-		}
-		return;
-	}
+	Rectangle belt = BeltRect;
+	belt.position += Displacement { mainPanelPosition.x, mainPanelPosition.y };
+	if (belt.contains(MousePosition)
+	    && (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || !MyPlayer->HoldItem.isEmpty()))
+		CheckInvItem(isShiftHeld, isCtrlHeld);
 #else
 	if (MousePosition.x > 190 + mainPanelPosition.x && MousePosition.x < 437 + mainPanelPosition.x
 	    && MousePosition.y > mainPanelPosition.y && MousePosition.y < 33 + mainPanelPosition.y) {
@@ -1975,10 +1971,7 @@ int SyncDropEar(Point position, uint16_t icreateinfo, uint32_t iseed, uint8_t cu
 int8_t CheckInvHLight()
 {
 #ifdef __3DS__
-	Point mousePos = MousePosition;
-	if (mousePos.y < 240 && mousePos.x >= 422) {
-		mousePos = { ((mousePos.x - 422) * 320) / 218, (mousePos.y * 352) / 240 };
-	}
+	Point mousePos = invflag ? CtrScreenToInventory(MousePosition) : Point { -1, -1 };
 #else
 	Point mousePos = MousePosition;
 #endif
@@ -2001,7 +1994,12 @@ int8_t CheckInvHLight()
 		}
 #endif
 
-		if (InvRect[r].contains(mousePos - Displacement(xo, yo))) {
+#ifdef __3DS__
+		const Point testPoint = r >= SLOTXY_BELT_FIRST ? MousePosition : mousePos;
+#else
+		const Point testPoint = mousePos;
+#endif
+		if (InvRect[r].contains(testPoint - Displacement(xo, yo))) {
 			break;
 		}
 	}

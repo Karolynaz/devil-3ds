@@ -58,6 +58,7 @@ extern bool LevelButtonDown;
 extern std::optional<OwnedSurface> BottomBuffer;
 #ifdef __3DS__
 extern std::optional<OwnedSurface> SidePanelBuffer;
+extern std::optional<OwnedSurface> TopPanelBuffer;
 #endif
 extern OptionalOwnedClxSpriteList GoldBoxBuffer;
 

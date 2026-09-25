@@ -297,11 +297,6 @@ void SwitchUiTab(bool forward)
 
 	const int next = forward ? ((current + 1) % 4) : ((current + 3) % 4);
 
-	if (invflag && !MyPlayer->HoldItem.isEmpty()) {
-		if (!TryDropItem())
-			return;
-	}
-
 	if (CharFlag)
 		CloseCharPanel();
 	if (invflag)

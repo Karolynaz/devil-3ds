@@ -1,9 +1,15 @@
 /**
+
  * @file scrollrt.cpp
  *
  * Implementation of functionality for rendering the dungeons, monsters and calling other render routines.
  */
 #include "engine/render/scrollrt.h"
+
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#endif
+
 
 #include <cmath>
 #include <cstddef>
@@ -1406,18 +1412,30 @@ void DrawView(const Surface &out, Point startPosition)
 	if (IsPlayerInStore() && !qtextflag)
 		DrawSText(out);
 #ifdef __3DS__
-	if (invflag || SpellbookFlag) {
-		SDL_Rect clearRect = MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height);
-		SDL_FillRect(SidePanelBuffer->surface, &clearRect, SDL_MapRGB(SidePanelBuffer->surface->format, 0, 0, 0));
-		if (invflag) {
-			DrawInv(*SidePanelBuffer);
-			if (DropGoldFlag) {
-				DrawGoldSplit(*SidePanelBuffer);
-			}
-		} else if (SpellbookFlag) {
-			DrawSpellBook(*SidePanelBuffer);
+	if (invflag) {
+		FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
+		DrawInv(*SidePanelBuffer);
+		if (DropGoldFlag)
+			DrawGoldSplit(*SidePanelBuffer);
+		const Rectangle rect = CtrInventoryScreenRect();
+		if (IsStashOpen || IsVisualStoreOpen) {
+			out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(rect.position.x, 0, rect.size.width, 240));
+		} else {
+			// Stretch only the decorative border; scale all slots/items uniformly
+			// to the centered 218x240 native-pixel content area.
+			DrawCtrPanelFrame(*TopPanelBuffer);
+			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 6), MakeSdlRect(0, 0, 400, 4));
+			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 346, 320, 6), MakeSdlRect(0, 236, 400, 4));
+			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 6, 6, 340), MakeSdlRect(0, 4, 4, 232));
+			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(314, 6, 6, 340), MakeSdlRect(396, 4, 4, 232));
+			out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
+			// Clip the legacy frame off the centered content (no second inner frame).
+			const int insetX = 6 * rect.size.width / 320;
+			out.subregion(rect.position.x + insetX, 0, rect.size.width - 2 * insetX, 240).ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(-insetX, 0, rect.size.width, 240));
 		}
-		out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height), MakeSdlRect(422, 0, 218, 240));
+	} else if (SpellbookFlag) {
+		DrawSpellBook(*TopPanelBuffer);
+		out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
 	}
 #else
 	if (invflag) {
@@ -1427,25 +1445,32 @@ void DrawView(const Surface &out, Point startPosition)
 	}
 #endif
 
+#ifdef __3DS__
+	if (!invflag && !SpellbookFlag && !CharFlag && !QuestLogIsOpen) {
+		DrawDurIcon(out);
+		DrawLevelButton(out);
+	}
+#else
 	DrawDurIcon(out);
-
 	DrawLevelButton(out);
+#endif
 
 #ifdef __3DS__
-	if (CharFlag || QuestLogIsOpen || IsStashOpen || IsVisualStoreOpen) {
-		SDL_Rect clearRect = MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height);
-		SDL_FillRect(SidePanelBuffer->surface, &clearRect, SDL_MapRGB(SidePanelBuffer->surface->format, 0, 0, 0));
-		if (CharFlag) {
-			DrawChr(*SidePanelBuffer);
-		} else if (QuestLogIsOpen) {
-			DrawQuestLog(*SidePanelBuffer);
-		} else if (IsStashOpen) {
+	if (CharFlag || QuestLogIsOpen) {
+		if (CharFlag)
+			DrawChr(*TopPanelBuffer);
+		else
+			DrawQuestLog(*TopPanelBuffer);
+		out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
+	} else if (IsStashOpen || IsVisualStoreOpen) {
+		FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
+		if (IsStashOpen) {
 			DrawStash(*SidePanelBuffer);
 			DrawGoldWithdraw(*SidePanelBuffer);
-		} else if (IsVisualStoreOpen) {
+		} else {
 			DrawVisualStore(*SidePanelBuffer);
 		}
-		out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height), MakeSdlRect(0, 0, 218, 240));
+		out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(0, 0, 218, 240));
 	}
 #else
 	if (CharFlag) {

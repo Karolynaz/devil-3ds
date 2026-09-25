@@ -10,6 +10,10 @@
 #endif
 
 #include "control/control.hpp"
+#ifdef __3DS__
+#include "inv.h"
+#include "panels/quest_log.hpp"
+#endif
 #include "controls/control_mode.hpp"
 #include "controls/controller.h"
 #ifndef USE_SDL1
@@ -244,6 +248,10 @@ AxisDirection GetAnalogStickDirection(float stickX, float stickY)
 AxisDirection GetLeftStickOrDpadDirection(bool usePadmapper)
 {
 	AxisDirection result = GetAnalogStickDirection(leftStickX, leftStickY);
+#ifdef __3DS__
+	if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag)
+		result = { AxisDirectionX_NONE, AxisDirectionY_NONE };
+#endif
 
 	bool isUpPressed = false;
 	bool isDownPressed = false;

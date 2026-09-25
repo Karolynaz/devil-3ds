@@ -1,5 +1,10 @@
 #include "controls/plrctrls.h"
 
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#endif
+
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -576,9 +581,7 @@ void AttrIncBtnSnap(AxisDirection dir)
 	for (int i = 0; i < 4; i++) {
 		button = CharPanelButtonRect[i];
 #ifdef __3DS__
-		Point center = button.Center();
-		Point scaledCenter = { (center.x * 218) / 320, (center.y * 240) / 352 };
-		if (std::abs(scaledCenter.x - MousePosition.x) < 20 && std::abs(scaledCenter.y - MousePosition.y) < 15) {
+		if (CtrStatButtons[i].contains(CtrScreenToTop(MousePosition))) {
 			slot = i;
 			break;
 		}
@@ -602,8 +605,7 @@ void AttrIncBtnSnap(AxisDirection dir)
 	// move cursor to our new location
 	button = CharPanelButtonRect[slot];
 #ifdef __3DS__
-	Point center = button.Center();
-	SetCursorPos({ (center.x * 218) / 320, (center.y * 240) / 352 });
+	SetCursorPos(CtrTopToScreen(CtrStatButtons[slot].Center()));
 #else
 	button.position = GetPanelPosition(UiPanels::Character, button.position);
 	SetCursorPos(button.Center());
@@ -647,8 +649,7 @@ Point InvGetEquipSlotCoord(const inv_body_loc invSlot)
 	}
 
 #ifdef __3DS__
-	result.x = 422 + (result.x * 218) / 320;
-	result.y = (result.y * 240) / 352;
+	result = CtrInventoryToScreen(result);
 #endif
 
 	return result;
@@ -691,8 +692,7 @@ Point GetSlotCoord(int slot)
 	}
 
 #ifdef __3DS__
-	Point p = InvRect[slot].Center();
-	return { 422 + (p.x * 218) / 320, (p.y * 240) / 352 };
+	return CtrInventoryToScreen(InvRect[slot].Center());
 #else
 	return GetPanelPosition(UiPanels::Inventory, InvRect[slot].Center());
 #endif
@@ -794,8 +794,14 @@ void ResetInvCursorPosition()
 		}
 
 		mousePos = GetSlotCoord(slot);
+#ifdef __3DS__
+		const Rectangle rect = CtrInventoryScreenRect();
+		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width * rect.size.width) / (2 * 320);
+		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height * rect.size.height) / (2 * 352);
+#else
 		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height) / 2;
+#endif
 	} else if (Slot >= SLOTXY_BELT_FIRST && Slot <= SLOTXY_BELT_LAST) {
 		mousePos = GetSlotCoord(Slot);
 	} else {
@@ -845,6 +851,10 @@ int FindClosestInventorySlot(
 		checkCandidateSlot(i);
 	}
 
+#ifdef __3DS__
+	for (int i = SLOTXY_BELT_FIRST; i <= SLOTXY_BELT_LAST; ++i)
+		checkCandidateSlot(i);
+#endif
 	return bestSlot;
 }
 
@@ -899,8 +909,14 @@ void LiftInventoryItem()
 		Point mousePos = GetSlotCoord(jumpSlot);
 		Slot = jumpSlot;
 		const Size newCursorSizeInCells = MyPlayer->HoldItem.isEmpty() ? GetItemSizeOnSlot(jumpSlot) : GetInventorySize(MyPlayer->HoldItem);
+#ifdef __3DS__
+		const Rectangle rect = CtrInventoryScreenRect();
+		mousePos.x += ((newCursorSizeInCells.width - 1) * InventorySlotSizeInPixels.width * rect.size.width) / (2 * 320);
+		mousePos.y += ((newCursorSizeInCells.height - 1) * InventorySlotSizeInPixels.height * rect.size.height) / (2 * 352);
+#else
 		mousePos.x += ((newCursorSizeInCells.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((newCursorSizeInCells.height - 1) * InventorySlotSizeInPixels.height) / 2;
+#endif
 		SetCursorPos(mousePos);
 	}
 }
@@ -1473,8 +1489,14 @@ void InventoryMove(AxisDirection dir)
 		// At this point itemSize is either the size of the cell/item the hand cursor is over, or the size of the item we're currently holding.
 		// mousePos is the center of the top left cell of the item under the hand cursor, or the top left cell of the region that could fit the item we're holding.
 		// either way we need to offset the mouse position to account for items (we're holding or hovering over) with a dimension larger than a single cell.
+#ifdef __3DS__
+		const Rectangle rect = CtrInventoryScreenRect();
+		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width * rect.size.width) / (2 * 320);
+		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height * rect.size.height) / (2 * 352);
+#else
 		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height) / 2;
+#endif
 	}
 
 	if (mousePos == MousePosition) {
@@ -1728,7 +1750,14 @@ void SpellBookMove(AxisDirection dir)
 {
 	static AxisDirectionRepeater repeater;
 	dir = repeater.Get(dir);
-
+#ifdef __3DS__
+	if (dir.y != AxisDirectionY_NONE) {
+		const Point p = CtrScreenToTop(MousePosition);
+		int row = std::clamp((p.y - CtrSpellRowsY) / CtrSpellRowHeight, 0, 6);
+		row = std::clamp(row + (dir.y == AxisDirectionY_UP ? -1 : 1), 0, 6);
+		SetCursorPos(CtrTopToScreen({ 20, CtrSpellRowsY + row * CtrSpellRowHeight + 12 }));
+	}
+#endif
 	if (dir.x == AxisDirectionX_LEFT) {
 		if (SpellbookTab > 0)
 			SpellbookTab--;
@@ -1829,7 +1858,11 @@ HandleLeftStickOrDPadFn GetLeftStickOrDPadGameUIHandler()
 	if (invflag) {
 		return &CheckInventoryMove;
 	}
+#ifdef __3DS__
+	if (CharFlag) {
+#else
 	if (CharFlag && MyPlayer->_pStatPts > 0) {
+#endif
 		return &AttrIncBtnSnap;
 	}
 	if (QuestLogIsOpen) {
@@ -2190,6 +2223,10 @@ void ProcessGameAction(const GameAction &action)
 		}
 		break;
 	case GameActionType_TOGGLE_SPELL_BOOK:
+#ifdef __3DS__
+		CloseCharPanel();
+		QuestLogIsOpen = false;
+#endif
 		if (BlurInventory()) {
 			CloseInventory();
 			SpellSelectFlag = false;
@@ -2202,6 +2239,19 @@ void ProcessGameAction(const GameAction &action)
 void HandleRightStickMotion()
 {
 	static RightStickAccumulator acc;
+#ifdef __3DS__
+	// Every 3DS has a Circle Pad; use it as a pointer while an in-game panel is open.
+	// Feed the existing accumulator without losing sub-pixel motion at high FPS.
+	struct RestoreStick {
+		float x = rightStickX;
+		float y = rightStickY;
+		~RestoreStick() { rightStickX = x; rightStickY = y; }
+	} restoreStick;
+	if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag) {
+		rightStickX = std::clamp(rightStickX + leftStickX, -1.0F, 1.0F);
+		rightStickY = std::clamp(rightStickY + leftStickY, -1.0F, 1.0F);
+	}
+#endif
 	// deadzone is handled in ScaleJoystickAxes() already
 	if (rightStickX == 0 && rightStickY == 0) {
 		acc.Clear();
@@ -2243,6 +2293,10 @@ void InvalidateInventorySlot()
  */
 void FocusOnInventory()
 {
+#ifdef __3DS__
+	CloseCharPanel();
+	QuestLogIsOpen = false;
+#endif
 	Slot = SLOTXY_INV_FIRST;
 	ResetInvCursorPosition();
 }
@@ -2297,6 +2351,10 @@ void plrctrls_after_check_curs_move()
 	if (DoomFlag) {
 		return;
 	}
+#ifdef __3DS__
+	if (CharFlag || QuestLogIsOpen || SpellbookFlag)
+		return;
+#endif
 	if (!invflag) {
 		InfoString = StringOrView {};
 		FindActor();
@@ -2338,6 +2396,33 @@ void UseBeltItem(BeltItemType type)
 
 void PerformPrimaryAction()
 {
+#ifdef __3DS__
+	if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag) {
+		// Use the same hit testing as touch, including the belt on the other screen.
+		// Keep the pointer in place while picking up/swapping an item.
+		if (MousePosition.y >= CtrTopSize.height) {
+			CheckInvScrn(false, false);
+			CheckMainPanelButton();
+			CheckMainPanelButtonUp();
+		} else if (invflag) {
+			if (pcurs > CURSOR_HAND && pcurs < CURSOR_FIRSTITEM) {
+				if (pcurs != CURSOR_HOURGLASS && TryIconCurs())
+					NewCursor(CURSOR_HAND);
+			} else {
+				CheckInvItem();
+			}
+		} else if (CharFlag) {
+			CheckChrBtns();
+			if (CharPanelButtonActive)
+				ReleaseChrBtns(false);
+		} else if (QuestLogIsOpen) {
+			QuestlogESC();
+		} else if (SpellbookFlag) {
+			CheckSBook();
+		}
+		return;
+	}
+#endif
 	if (SpellSelectFlag) {
 		SetSpell();
 		return;

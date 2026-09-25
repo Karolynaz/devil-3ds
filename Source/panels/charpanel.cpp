@@ -1,5 +1,10 @@
 #include "panels/charpanel.hpp"
 
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#endif
+
+
 #include <cstdint>
 #include <expected>
 
@@ -267,6 +272,64 @@ void DrawStatButtons(const Surface &out)
 	}
 }
 
+#ifdef __3DS__
+void DrawChr3DS(const Surface &out)
+{
+	DrawCtrPanelFrame(out);
+	const auto value = [&](unsigned index, Rectangle rect) {
+		const StyledText text = (*panelEntries[index].statDisplayFunc)();
+		DrawString(out, text.text, rect, { .flags = text.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
+	};
+	const auto label = [&](std::string_view text, Rectangle rect) {
+		DrawString(out, text, rect, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
+	};
+	DrawString(out, InspectPlayer->_pName, { { 12, 10 }, { 235, 18 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
+	label(InspectPlayer->getClassName(), { { 251, 10 }, { 137, 18 } });
+	DrawHorizontalLine(out, { 10, 30 }, 380, PAL16_BEIGE + 8);
+	label(_("Level"), { { 12, 38 }, { 74, 16 } });
+	value(2, { { 87, 38 }, { 106, 16 } });
+	label(_("Gold"), { { 216, 38 }, { 74, 16 } });
+	value(17, { { 291, 38 }, { 97, 16 } });
+	label(_("Experience"), { { 12, 56 }, { 89, 16 } });
+	value(3, { { 102, 56 }, { 91, 16 } });
+	label(_("Next level"), { { 216, 56 }, { 85, 16 } });
+	value(4, { { 302, 56 }, { 86, 16 } });
+	DrawHorizontalLine(out, { 10, 76 }, 380, PAL16_BEIGE + 8);
+	label(_("Base"), { { 100, 81 }, { 35, 14 } });
+	label(_("Now"), { { 142, 81 }, { 34, 14 } });
+	for (unsigned i = 0; i < 4; ++i) {
+		const unsigned index = 7 + i * 2;
+		const int y = 100 + i * 22;
+		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 83, 18 } });
+		value(index, { { 96, y }, { 36, 18 } });
+		value(index + 1, { { 136, y }, { 36, 18 } });
+		const auto attr = static_cast<CharacterAttribute>(i);
+		if (!IsInspectingPlayer() && InspectPlayer->_pStatPts > 0
+		    && InspectPlayer->GetBaseAttributeValue(attr) < InspectPlayer->GetMaximumAttributeValue(attr)) {
+			const Rectangle button = CtrStatButtons[i];
+			FillRect(out, button.position.x, button.position.y, button.size.width, button.size.height, CharPanelButton[i] ? PAL16_BEIGE + 12 : PAL16_GRAY + 12);
+			UnsafeDrawBorder2px(out, button, PAL16_BEIGE + 6);
+			DrawString(out, "+", button, { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorWhite });
+		}
+	}
+	label(_("Points to distribute"), { { 12, 185 }, { 157, 15 } });
+	value(15, { { 170, 185 }, { 31, 15 } });
+	label(_("Life"), { { 12, 203 }, { 70, 15 } });
+	DrawString(out, StrCat(InspectPlayer->_pHitPoints >> 6, " / ", InspectPlayer->_pMaxHP >> 6), { { 83, 203 }, { 118, 15 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignRight });
+	label(_("Mana"), { { 12, 220 }, { 70, 15 } });
+	const StyledText mana = (*panelEntries[24].statDisplayFunc)();
+	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
+	DrawString(out, StrCat(mana.text, " / ", maxMana.text), { { 83, 220 }, { 118, 15 } }, { .flags = mana.style | UiFlags::AlignRight });
+	DrawVerticalLine(out, { 207, 82 }, 151, PAL16_BEIGE + 10);
+	constexpr unsigned combat[] = { 18, 19, 20, 25, 26, 27 };
+	for (unsigned i = 0; i < 6; ++i) {
+		const int y = 88 + i * 24;
+		label(LanguageTranslate(panelEntries[combat[i]].label), { { 216, y }, { 112, 20 } });
+		value(combat[i], { { 331, y }, { 57, 20 } });
+	}
+}
+#endif
+
 } // namespace
 
 std::expected<void, std::string> LoadCharPanel()
@@ -307,6 +370,10 @@ void FreeCharPanel()
 
 void DrawChr(const Surface &out)
 {
+#ifdef __3DS__
+	DrawChr3DS(out);
+	return;
+#endif
 	const Point pos = GetPanelPosition(UiPanels::Character, { 0, 0 });
 	RenderClxSprite(out, (*Panel)[0], pos);
 	for (auto &entry : panelEntries) {

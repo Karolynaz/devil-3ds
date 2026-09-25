@@ -1653,6 +1653,10 @@ void InventoryKeyPressed()
 {
 	if (IsPlayerInStore())
 		return;
+#ifdef __3DS__
+	CloseCharPanel();
+	QuestLogIsOpen = false;
+#endif
 	invflag = !invflag;
 	if (!IsLeftPanelOpen() && CanPanelsCoverView()) {
 		if (!invflag) { // We closed the inventory
@@ -1740,6 +1744,10 @@ void SpellBookKeyPressed()
 {
 	if (IsPlayerInStore())
 		return;
+#ifdef __3DS__
+	CloseCharPanel();
+	QuestLogIsOpen = false;
+#endif
 	SpellbookFlag = !SpellbookFlag;
 	if (!IsLeftPanelOpen() && CanPanelsCoverView()) {
 		if (!SpellbookFlag) { // We closed the inventory

@@ -1,11 +1,21 @@
 #include "panels/quest_log.hpp"
 
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#endif
+
+
 #include <algorithm>
 #include <string_view>
 
 #include "DiabloUI/ui_flags.hpp"
 #include "control/control.hpp"
 #include "effects.h"
+#ifdef __3DS__
+#include "controls/plrctrls.h"
+#include "inv.h"
+#include "utils/str_cat.hpp"
+#endif
 #include "engine/render/clx_render.hpp"
 #include "engine/render/text_render.hpp"
 #include "minitext.h"
@@ -28,6 +38,31 @@ int EncounteredQuestCount;
 int FirstFinishedQuest;
 /** Currently selected quest list item */
 int SelectedQuest;
+#ifdef __3DS__
+constexpr int CtrQuestRows = 10;
+constexpr int CtrQuestRowHeight = 18;
+int QuestScrollOffset;
+Point LastQuestMouse { -1, -1 };
+
+int CtrQuestListY()
+{
+	return 34 + (CtrQuestRows - std::min(EncounteredQuestCount, CtrQuestRows)) * CtrQuestRowHeight / 2;
+}
+
+void FocusQuest3DS()
+{
+	if (SelectedQuest < QuestScrollOffset)
+		QuestScrollOffset = SelectedQuest;
+	if (SelectedQuest >= QuestScrollOffset + CtrQuestRows)
+		QuestScrollOffset = SelectedQuest - CtrQuestRows + 1;
+	QuestScrollOffset = std::max(0, QuestScrollOffset);
+	if (SelectedQuest >= 0) {
+		const Point p { 200, CtrQuestListY() + (SelectedQuest - QuestScrollOffset) * CtrQuestRowHeight + 6 };
+		LastQuestMouse = CtrTopToScreen(p);
+		SetCursorPos(LastQuestMouse);
+	}
+}
+#endif
 
 constexpr Rectangle InnerPanel { { 32, 26 }, { 280, 300 } };
 constexpr int LineHeight = 12;
@@ -39,6 +74,14 @@ int FinishedQuestOffset;
 
 int QuestLogMouseToEntry()
 {
+#ifdef __3DS__
+	const Point p = CtrScreenToTop(MousePosition);
+	const int rows = std::min(CtrQuestRows, EncounteredQuestCount - QuestScrollOffset);
+	const Rectangle area { { 20, CtrQuestListY() }, { 360, rows * CtrQuestRowHeight } };
+	if (!area.contains(p))
+		return -1;
+	return QuestScrollOffset + (p.y - area.position.y) / CtrQuestRowHeight;
+#else
 	Rectangle innerArea = InnerPanel;
 	innerArea.position += Displacement(GetLeftPanel().position.x, GetLeftPanel().position.y);
 	if (!innerArea.contains(MousePosition) || (EncounteredQuestCount == 0))
@@ -51,6 +94,7 @@ int QuestLogMouseToEntry()
 		}
 	}
 	return -1;
+#endif
 }
 
 void PrintQLString(const Surface &out, int x, int y, std::string_view str, bool marked, bool disabled = false)
@@ -71,6 +115,34 @@ void PrintQLString(const Surface &out, int x, int y, std::string_view str, bool 
 
 void DrawQuestLog(const Surface &out)
 {
+#ifdef __3DS__
+	if (MousePosition != LastQuestMouse) {
+		const int hovered = QuestLogMouseToEntry();
+		if (hovered >= 0)
+			SelectedQuest = hovered;
+		LastQuestMouse = MousePosition;
+	}
+	DrawCtrPanelFrame(out);
+	DrawString(out, _("Quest Log"), { { 12, 7 }, { 376, 24 } }, { .flags = UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorWhitegold });
+	const int count = std::min(CtrQuestRows, EncounteredQuestCount - QuestScrollOffset);
+	for (int row = 0; row < count; ++row) {
+		const int index = QuestScrollOffset + row;
+		const int y = CtrQuestListY() + row * CtrQuestRowHeight;
+		const bool selected = index == SelectedQuest;
+		if (selected)
+			FillRect(out, 18, y - 1, 364, CtrQuestRowHeight, PAL16_GRAY + 13);
+		DrawString(out, _(QuestsData[EncounteredQuests[index]]._qlstr), { { 32, y }, { 336, CtrQuestRowHeight } },
+		    { .flags = UiFlags::AlignCenter | UiFlags::KerningFitSpacing | (index >= FirstFinishedQuest ? UiFlags::ColorWhitegold : UiFlags::ColorWhite) });
+		if (selected && index < FirstFinishedQuest)
+			ClxDraw(out, { 18, y + 13 }, (*pSPentSpn2Cels)[PentSpn2Spin()]);
+	}
+	if (EncounteredQuestCount > CtrQuestRows) {
+		DrawString(out, StrCat(QuestScrollOffset + 1, "-", QuestScrollOffset + count, " / ", EncounteredQuestCount), { { 115, 220 }, { 170, 16 } }, { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
+		DrawString(out, "<", { { 30, 220 }, { 30, 16 } }, { .flags = UiFlags::ColorWhite });
+		DrawString(out, ">", { { 340, 220 }, { 30, 16 } }, { .flags = UiFlags::ColorWhite });
+	}
+	return;
+#endif
 	const int l = QuestLogMouseToEntry();
 	if (l >= 0) {
 		SelectedQuest = l;
@@ -136,10 +208,26 @@ void StartQuestlog()
 
 	SelectedQuest = FirstFinishedQuest == 0 ? -1 : 0;
 	QuestLogIsOpen = true;
+#ifdef __3DS__
+	invflag = false;
+	SpellbookFlag = false;
+	CloseGoldDrop();
+	QuestScrollOffset = 0;
+	SelectedQuest = EncounteredQuestCount == 0 ? -1 : 0;
+	FocusQuest3DS();
+#endif
 }
 
 void QuestlogUp()
 {
+#ifdef __3DS__
+	if (EncounteredQuestCount > 0) {
+		SelectedQuest = (SelectedQuest + EncounteredQuestCount + -1) % EncounteredQuestCount;
+		FocusQuest3DS();
+		PlaySFX(SfxID::MenuMove);
+	}
+	return;
+#endif
 	if (FirstFinishedQuest == 0) {
 		SelectedQuest = -1;
 	} else {
@@ -153,6 +241,14 @@ void QuestlogUp()
 
 void QuestlogDown()
 {
+#ifdef __3DS__
+	if (EncounteredQuestCount > 0) {
+		SelectedQuest = (SelectedQuest + EncounteredQuestCount + 1) % EncounteredQuestCount;
+		FocusQuest3DS();
+		PlaySFX(SfxID::MenuMove);
+	}
+	return;
+#endif
 	if (FirstFinishedQuest == 0) {
 		SelectedQuest = -1;
 	} else {
@@ -166,6 +262,10 @@ void QuestlogDown()
 
 void QuestlogEnter()
 {
+#ifdef __3DS__
+	if (SelectedQuest < 0 || SelectedQuest >= FirstFinishedQuest)
+		return;
+#endif
 	PlaySFX(SfxID::MenuSelect);
 	if (EncounteredQuestCount != 0 && SelectedQuest >= 0 && SelectedQuest < FirstFinishedQuest)
 		InitQTextMsg(Quests[EncounteredQuests[SelectedQuest]]._qmsg);
@@ -174,8 +274,18 @@ void QuestlogEnter()
 
 void QuestlogESC()
 {
+#ifdef __3DS__
+	const Point p = CtrScreenToTop(MousePosition);
+	if (EncounteredQuestCount > CtrQuestRows && p.y >= 218) {
+		const int delta = p.x < 100 ? -CtrQuestRows : (p.x >= 300 ? CtrQuestRows : 0);
+		SelectedQuest = std::clamp(SelectedQuest + delta, 0, EncounteredQuestCount - 1);
+		FocusQuest3DS();
+		return;
+	}
+#endif
 	const int l = QuestLogMouseToEntry();
 	if (l != -1) {
+		SelectedQuest = l;
 		QuestlogEnter();
 	}
 }

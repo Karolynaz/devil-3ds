@@ -1,4 +1,9 @@
 #include "control_panel.hpp"
+
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#endif
+
 #include "control.hpp"
 #include "control_chat.hpp"
 #include "control_flasks.hpp"
@@ -51,6 +56,8 @@ Rectangle RightPanel;
 std::optional<OwnedSurface> BottomBuffer;
 #ifdef __3DS__
 std::optional<OwnedSurface> SidePanelBuffer;
+std::optional<OwnedSurface> TopPanelBuffer;
+Rectangle TopPanel;
 #endif
 OptionalOwnedClxSpriteList GoldBoxBuffer;
 
@@ -60,10 +67,18 @@ const Rectangle &GetMainPanel()
 }
 const Rectangle &GetLeftPanel()
 {
+#ifdef __3DS__
+	if (CharFlag || QuestLogIsOpen)
+		return TopPanel;
+#endif
 	return LeftPanel;
 }
 const Rectangle &GetRightPanel()
 {
+#ifdef __3DS__
+	if (!IsStashOpen && !IsVisualStoreOpen)
+		return TopPanel;
+#endif
 	return RightPanel;
 }
 bool IsLeftPanelOpen()
@@ -250,6 +265,7 @@ void CalculatePanelAreas()
 
 #ifdef __3DS__
 	gnViewportHeight = 240;
+	TopPanel = { { 0, 0 }, { gnScreenWidth, 240 } };
 	MainPanel = {
 		{ (gnScreenWidth - MainPanelSize.width) / 2, gnScreenHeight - MainPanelSize.height },
 		MainPanelSize
@@ -318,8 +334,7 @@ void FocusOnCharInfo()
 		return;
 
 #ifdef __3DS__
-	Point center = CharPanelButtonRect[stat].Center();
-	SetCursorPos({ (center.x * 218) / 320, (center.y * 240) / 352 });
+	SetCursorPos(CtrTopToScreen(CtrStatButtons[stat].Center()));
 #else
 	SetCursorPos(CharPanelButtonRect[stat].Center());
 #endif
@@ -327,6 +342,11 @@ void FocusOnCharInfo()
 
 void OpenCharPanel()
 {
+#ifdef __3DS__
+	invflag = false;
+	SpellbookFlag = false;
+	CloseGoldDrop();
+#endif
 	QuestLogIsOpen = false;
 	CloseGoldWithdraw();
 	CloseStash();
@@ -396,6 +416,7 @@ std::expected<void, std::string> InitMainPanel()
 		pLifeBuff.emplace(88, 88);
 #ifdef __3DS__
 		SidePanelBuffer.emplace(SidePanelSize.width, SidePanelSize.height);
+		TopPanelBuffer.emplace(CtrTopSize.width, CtrTopSize.height);
 #endif
 
 		RETURN_IF_ERROR(LoadPartyPanel());
@@ -558,15 +579,13 @@ void CheckMainPanelButton()
 			return;
 		}
 
-		// 5. Belt slots 1-8: drink/use slot item
-		if (MousePosition.x >= 195 && MousePosition.x <= 445 && MousePosition.y >= 300 && MousePosition.y <= 415) {
-			if (MyPlayer != nullptr && !MyPlayer->HoldItem.isEmpty()) {
-				// Placing held item handled by CheckInvScrn
+		Rectangle belt = BeltRect;
+		SetPanelObjectPosition(UiPanels::Main, belt);
+		if (belt.contains(MousePosition)) {
+			if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || !MyPlayer->HoldItem.isEmpty())
 				return;
-			}
-			int slot = (MousePosition.x - 205) / 29;
-			slot = std::clamp(slot, 0, 7);
-			UseBeltSlot(slot);
+			const int slot = (MousePosition.x - belt.position.x) / 29;
+			UseBeltSlot(std::clamp(slot, 0, 7));
 			return;
 		}
 	}
@@ -707,6 +726,10 @@ void CheckMainPanelButtonUp()
 			gamemenuOff = false;
 			break;
 		case PanelButtonInventory:
+#ifdef __3DS__
+			CloseCharPanel();
+			QuestLogIsOpen = false;
+#endif
 			SpellbookFlag = false;
 			invflag = !invflag;
 			CloseGoldWithdraw();
@@ -715,6 +738,10 @@ void CheckMainPanelButtonUp()
 			CloseGoldDrop();
 			break;
 		case PanelButtonSpellbook:
+#ifdef __3DS__
+			CloseCharPanel();
+			QuestLogIsOpen = false;
+#endif
 			CloseInventory();
 			CloseGoldDrop();
 			SpellbookFlag = !SpellbookFlag;
@@ -741,6 +768,7 @@ void FreeControlPan()
 	BottomBuffer = std::nullopt;
 #ifdef __3DS__
 	SidePanelBuffer = std::nullopt;
+	TopPanelBuffer = std::nullopt;
 #endif
 	pManaBuff = std::nullopt;
 	pLifeBuff = std::nullopt;
@@ -806,10 +834,7 @@ void CheckChrBtns()
 		return;
 
 #ifdef __3DS__
-	Point mousePos = MousePosition;
-	if (mousePos.y < 240 && mousePos.x < 218) {
-		mousePos = { (mousePos.x * 320) / 218, (mousePos.y * 352) / 240 };
-	}
+	Point mousePos = CtrScreenToTop(MousePosition);
 #else
 	Point mousePos = MousePosition;
 #endif
@@ -818,8 +843,12 @@ void CheckChrBtns()
 		if (myPlayer.GetBaseAttributeValue(attribute) >= myPlayer.GetMaximumAttributeValue(attribute))
 			continue;
 		auto buttonId = static_cast<size_t>(attribute);
+#ifdef __3DS__
+		Rectangle button = CtrStatButtons[buttonId];
+#else
 		Rectangle button = CharPanelButtonRect[buttonId];
 		SetPanelObjectPosition(UiPanels::Character, button);
+#endif
 		if (button.contains(mousePos)) {
 			CharPanelButton[buttonId] = true;
 			CharPanelButtonActive = true;
@@ -837,10 +866,7 @@ void ReleaseChrBtns(bool addAllStatPoints)
 	CharPanelButtonActive = false;
 
 #ifdef __3DS__
-	Point mousePos = MousePosition;
-	if (mousePos.y < 240 && mousePos.x < 218) {
-		mousePos = { (mousePos.x * 320) / 218, (mousePos.y * 352) / 240 };
-	}
+	Point mousePos = CtrScreenToTop(MousePosition);
 #else
 	Point mousePos = MousePosition;
 #endif
@@ -851,8 +877,12 @@ void ReleaseChrBtns(bool addAllStatPoints)
 			continue;
 
 		CharPanelButton[buttonId] = false;
+#ifdef __3DS__
+		Rectangle button = CtrStatButtons[buttonId];
+#else
 		Rectangle button = CharPanelButtonRect[buttonId];
 		SetPanelObjectPosition(UiPanels::Character, button);
+#endif
 		if (button.contains(mousePos)) {
 			Player &myPlayer = *MyPlayer;
 			int statPointsToAdd = 1;
