@@ -2,6 +2,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "panels/spell_book.hpp"
 #endif
 
 #include <algorithm>
