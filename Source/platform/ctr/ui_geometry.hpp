@@ -10,10 +10,10 @@ constexpr Size CtrTopSize { 400, 240 };
 constexpr Size CtrLegacyPanelSize { 320, 352 };
 constexpr Rectangle CtrInventoryContent { { 91, 0 }, { 218, 240 } };
 constexpr Rectangle CtrStatButtons[4] = {
-	{ { 179, 93 }, { 22, 20 } },
-	{ { 179, 118 }, { 22, 20 } },
-	{ { 179, 143 }, { 22, 20 } },
-	{ { 179, 168 }, { 22, 20 } },
+	{ { 179, 108 }, { 22, 20 } },
+	{ { 179, 132 }, { 22, 20 } },
+	{ { 179, 156 }, { 22, 20 } },
+	{ { 179, 180 }, { 22, 20 } },
 };
 constexpr int CtrSpellRowsY = 27;
 constexpr int CtrSpellRowHeight = 27;

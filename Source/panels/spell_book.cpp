@@ -123,7 +123,7 @@ StringOrView GetSpellPowerText(SpellID spell, int spellLevel)
 #ifdef __3DS__
 void DrawSpellBook3DS(const Surface &out)
 {
-	DrawCtrPanelFrame(out);
+	DrawCtrPanelBackground(out, CtrPanelBackground::Stone);
 	DrawString(out, _("Spell Book"), { { 12, 7 }, { 376, 18 } }, { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
 	const Player &player = *InspectPlayer;
 	const uint64_t spells = player._pMemSpells | player._pISpells | player._pAblSpells;

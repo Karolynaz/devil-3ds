@@ -237,6 +237,12 @@ if(NOT USE_SDL1 AND NOT VITA)
     ui_art/menu.png)
 endif()
 
+if(NINTENDO_3DS)
+  list(APPEND devilutionx_assets
+    data/ctr_ui_background.rgb
+    data/ctr_quest_background.rgb)
+endif()
+
 if(APPLE)
   foreach(asset_file ${devilutionx_assets})
     set(src "${CMAKE_CURRENT_SOURCE_DIR}/assets/${asset_file}")

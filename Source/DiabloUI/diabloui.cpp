@@ -948,7 +948,7 @@ void Render(const UiImageClx &uiImage)
 		x += GetCenterOffset(sprite.width(), uiImage.m_rect.w);
 	}
 #ifdef __3DS__
-	if (ArtBackground && sprite == (*ArtBackground)[0] && sprite.height() >= 480) {
+	if (gb3DSUseBottomBoxBackground && ArtBackground && sprite == (*ArtBackground)[0] && sprite.height() >= 480) {
 		const Surface &out = Surface(DiabloUiSurface());
 		SDL_Rect topRect = MakeSdlRect(0, 0, 640, 240);
 		SDL_FillSurfaceRect(out.surface, &topRect, 0);

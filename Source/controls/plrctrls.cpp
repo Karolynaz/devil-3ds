@@ -24,6 +24,7 @@
 
 #include "automap.h"
 #include "control/control.hpp"
+#include "controls/controller.h"
 #include "controls/controller_motion.h"
 #ifndef USE_SDL1
 #include "controls/devices/game_controller.h"
@@ -1461,6 +1462,14 @@ void InventoryMove(AxisDirection dir)
 		}
 	}
 
+#ifdef __3DS__
+	// D-pad grid movement stays in the carried-item grid. Equipment and belt
+	// remain reachable with the smooth cursor.
+	if (invflag && !IsStashOpen && !IsVisualStoreOpen
+	    && initialSlot >= SLOTXY_INV_FIRST && initialSlot <= SLOTXY_INV_LAST
+	    && (Slot < SLOTXY_INV_FIRST || Slot > SLOTXY_INV_LAST))
+		Slot = initialSlot;
+#endif
 	// no movement was made
 	if (Slot == initialSlot)
 		return;
@@ -1877,8 +1886,32 @@ HandleLeftStickOrDPadFn GetLeftStickOrDPadGameUIHandler()
 	return nullptr;
 }
 
+#ifdef __3DS__
+bool IsCursorOverCarriedInventoryGrid()
+{
+	if (!invflag || IsStashOpen || IsVisualStoreOpen)
+		return false;
+	const Point inventoryPoint = CtrScreenToInventory(MousePosition);
+	for (int slot = SLOTXY_INV_FIRST; slot <= SLOTXY_INV_LAST; ++slot) {
+		if (InvRect[slot].contains(inventoryPoint))
+			return true;
+	}
+	return false;
+}
+
+bool Is3DSInventoryPanelOpen()
+{
+	return invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || SpellSelectFlag || IsStashOpen || IsVisualStoreOpen;
+}
+#endif
+
 void ProcessLeftStickOrDPadGameUI()
 {
+	// On 3DS, directional grid navigation belongs only to the carried inventory.
+#ifdef __3DS__
+	if (Is3DSInventoryPanelOpen() && !IsCursorOverCarriedInventoryGrid())
+		return;
+#endif
 	HandleLeftStickOrDPadFn handler = GetLeftStickOrDPadGameUIHandler();
 	if (handler != nullptr)
 		handler(GetLeftStickOrDpadDirection(false));
@@ -2250,6 +2283,18 @@ void HandleRightStickMotion()
 	if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag) {
 		rightStickX = std::clamp(rightStickX + leftStickX, -1.0F, 1.0F);
 		rightStickY = std::clamp(rightStickY + leftStickY, -1.0F, 1.0F);
+		// Keep diagonal motion at the same speed as horizontal and vertical motion.
+		const float magnitudeSquared = rightStickX * rightStickX + rightStickY * rightStickY;
+		if (magnitudeSquared > 1.0F) {
+			const float scale = 1.0F / std::sqrt(magnitudeSquared);
+			rightStickX *= scale;
+			rightStickY *= scale;
+		}
+	}
+	if (Is3DSInventoryPanelOpen() && !IsCursorOverCarriedInventoryGrid()) {
+		constexpr float DpadPointerSpeed = 0.35F;
+		rightStickX += DpadPointerSpeed * (static_cast<int>(IsControllerButtonPressed(ControllerButton_BUTTON_DPAD_RIGHT)) - static_cast<int>(IsControllerButtonPressed(ControllerButton_BUTTON_DPAD_LEFT)));
+		rightStickY += DpadPointerSpeed * (static_cast<int>(IsControllerButtonPressed(ControllerButton_BUTTON_DPAD_UP)) - static_cast<int>(IsControllerButtonPressed(ControllerButton_BUTTON_DPAD_DOWN)));
 	}
 	// SDL maps 640 logical columns to 400 physical pixels above and 320 below.
 	// Equalize physical cursor travel for the same horizontal/vertical stick input.
@@ -2265,7 +2310,13 @@ void HandleRightStickMotion()
 		InvalidateInventorySlot();
 		int x = MousePosition.x;
 		int y = MousePosition.y;
-		acc.Pool(&x, &y, 2);
+		acc.Pool(&x, &y,
+#ifdef __3DS__
+		    8
+#else
+		    2
+#endif
+		);
 		x = std::min(std::max(x, 0), gnScreenWidth - 1);
 		y = std::min(std::max(y, 0), gnScreenHeight - 1);
 

@@ -274,7 +274,7 @@ void DrawStatButtons(const Surface &out)
 #ifdef __3DS__
 void DrawChr3DS(const Surface &out)
 {
-	DrawCtrPanelFrame(out);
+	DrawCtrPanelBackground(out, CtrPanelBackground::Stone);
 	const auto value = [&](unsigned index, Rectangle rect) {
 		const StyledText text = (*panelEntries[index].statDisplayFunc)();
 		DrawString(out, text.text, rect, { .flags = text.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
@@ -294,13 +294,21 @@ void DrawChr3DS(const Surface &out)
 	label(_("Next level"), { { 216, 56 }, { 85, 16 } });
 	value(4, { { 302, 56 }, { 86, 16 } });
 	DrawHorizontalLine(out, { 10, 76 }, 380, PAL16_BEIGE + 8);
+	label(_("Life"), { { 12, 84 }, { 37, 17 } });
+	DrawString(out, StrCat(InspectPlayer->_pHitPoints >> 6, "/", InspectPlayer->_pMaxHP >> 6),
+	    { { 48, 84 }, { 53, 17 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
+	label(_("Mana"), { { 108, 84 }, { 40, 17 } });
+	const StyledText mana = (*panelEntries[24].statDisplayFunc)();
+	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
+	DrawString(out, StrCat(mana.text, "/", maxMana.text), { { 147, 84 }, { 54, 17 } },
+	    { .flags = mana.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
 	for (unsigned i = 0; i < 4; ++i) {
 		const unsigned index = 7 + i * 2;
-		const int y = 97 + i * 25;
+		const int y = 111 + i * 24;
 		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 94, 18 } });
 		const StyledText base = (*panelEntries[index].statDisplayFunc)();
-		DrawString(out, base.text, { { 111, y - 5 }, { 61, 24 } },
-		    { .flags = base.style | UiFlags::AlignRight | UiFlags::FontSize24 });
+		DrawString(out, base.text, { { 111, y - 4 }, { 61, 22 } },
+		    { .flags = base.style | UiFlags::AlignRight | UiFlags::FontSize22 });
 		const auto attr = static_cast<CharacterAttribute>(i);
 		if (!IsInspectingPlayer() && InspectPlayer->_pStatPts > 0
 		    && InspectPlayer->GetBaseAttributeValue(attr) < InspectPlayer->GetMaximumAttributeValue(attr)) {
@@ -311,14 +319,8 @@ void DrawChr3DS(const Surface &out)
 			DrawVerticalLine(out, button.Center() - Displacement { 0, 4 }, 9, PAL16_GRAY);
 		}
 	}
-	label(_("Points to distribute"), { { 12, 195 }, { 157, 15 } });
-	value(15, { { 170, 195 }, { 31, 15 } });
-	label(_("Life"), { { 12, 212 }, { 70, 15 } });
-	DrawString(out, StrCat(InspectPlayer->_pHitPoints >> 6, " / ", InspectPlayer->_pMaxHP >> 6), { { 83, 212 }, { 118, 15 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignRight });
-	label(_("Mana"), { { 12, 227 }, { 70, 12 } });
-	const StyledText mana = (*panelEntries[24].statDisplayFunc)();
-	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
-	DrawString(out, StrCat(mana.text, " / ", maxMana.text), { { 83, 227 }, { 118, 12 } }, { .flags = mana.style | UiFlags::AlignRight });
+	label(_("Points to distribute"), { { 12, 213 }, { 157, 16 } });
+	value(15, { { 170, 213 }, { 31, 16 } });
 	DrawVerticalLine(out, { 207, 82 }, 151, PAL16_BEIGE + 10);
 	constexpr unsigned combat[] = { 18, 19, 20, 25, 26, 27 };
 	for (unsigned i = 0; i < 6; ++i) {

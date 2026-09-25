@@ -794,8 +794,11 @@ void CheckLevelButton()
 	}
 
 	Rectangle button = LevelButtonRect;
-
+#ifdef __3DS__
+	button = { { 12, 207 }, LevelButtonRect.size };
+#else
 	SetPanelObjectPosition(UiPanels::Main, button);
+#endif
 
 	if (!LevelButtonDown && button.contains(MousePosition))
 		LevelButtonDown = true;
@@ -804,8 +807,11 @@ void CheckLevelButton()
 void CheckLevelButtonUp()
 {
 	Rectangle button = LevelButtonRect;
-
+#ifdef __3DS__
+	button = { { 12, 207 }, LevelButtonRect.size };
+#else
 	SetPanelObjectPosition(UiPanels::Main, button);
+#endif
 
 	if (button.contains(MousePosition)) {
 		OpenCharPanel();
@@ -817,9 +823,15 @@ void DrawLevelButton(const Surface &out)
 {
 	if (IsLevelUpButtonVisible()) {
 		const int nCel = LevelButtonDown ? 2 : 1;
+#ifdef __3DS__
+		DrawString(out, _("SELECT: Assign points"), { { 61, 208 }, { 330, 24 } },
+		    { .flags = UiFlags::FontSize22 | UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
+		RenderClxSprite(out, (*pChrButtons)[nCel], { 12, 207 });
+#else
 		DrawString(out, _("Level Up"), { GetMainPanel().position + Displacement { 0, LevelButtonRect.position.y - 23 }, { 120, 0 } },
 		    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter | UiFlags::KerningFitSpacing });
 		RenderClxSprite(out, (*pChrButtons)[nCel], GetMainPanel().position + Displacement { LevelButtonRect.position.x, LevelButtonRect.position.y });
+#endif
 	}
 }
 

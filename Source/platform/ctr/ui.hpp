@@ -15,6 +15,13 @@ inline Point CtrInventoryToScreen(Point p) { return CtrInventoryToScreen(p, gnSc
 inline Point CtrScreenToInventory(Point p) { return CtrScreenToInventory(p, gnScreenWidth, IsStashOpen || IsVisualStoreOpen); }
 inline Rectangle CtrInventoryScreenRect() { return CtrInventoryScreenRect(gnScreenWidth, IsStashOpen || IsVisualStoreOpen); }
 
+enum class CtrPanelBackground {
+	Stone,
+	Quest,
+};
+
+void DrawCtrPanelBackground(const Surface &out, CtrPanelBackground background);
+
 inline void DrawCtrPanelFrame(const Surface &out)
 {
 	FillRect(out, 0, 0, out.w(), out.h(), 0);

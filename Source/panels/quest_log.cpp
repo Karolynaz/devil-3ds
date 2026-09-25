@@ -121,7 +121,7 @@ void DrawQuestLog(const Surface &out)
 			SelectedQuest = hovered;
 		LastQuestMouse = MousePosition;
 	}
-	DrawCtrPanelFrame(out);
+	DrawCtrPanelBackground(out, CtrPanelBackground::Quest);
 	DrawString(out, _("Quest Log"), { { 12, 7 }, { 376, 24 } }, { .flags = UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorWhitegold });
 	const int count = std::min(CtrQuestRows, EncounteredQuestCount - QuestScrollOffset);
 	for (int row = 0; row < count; ++row) {

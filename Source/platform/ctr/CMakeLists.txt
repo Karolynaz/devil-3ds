@@ -5,6 +5,7 @@ add_devilutionx_object_library(libdevilutionx_ctr
   system.cpp
   keyboard.cpp
   display.cpp
+  ui.cpp
   messagebox.cpp
   sockets.cpp
   locale.cpp

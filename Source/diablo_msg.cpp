@@ -181,7 +181,11 @@ void DrawDiabloMsg(const Surface &out)
 	const int lineWidth = innerWidth - textPaddingX;
 	const int innerHeight = outerHeight - (2 * borderThickness);
 
+#ifdef __3DS__
+	const Point topLeft { 8, std::max(0, 210 - outerHeight) };
+#else
 	const Point topLeft { (out.w() - outerWidth) / 2, (out.h() - outerHeight) / 2 };
+#endif
 
 	const int innerXBegin = topLeft.x + borderThickness;
 	const int innerXEnd = innerXBegin + innerWidth;
