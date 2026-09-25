@@ -275,7 +275,7 @@ void CalculatePanelAreas()
 		{ 218, 240 }
 	};
 	RightPanel = {
-		{ 422, 0 },
+		{ gnScreenWidth - 218, 0 },
 		{ 218, 240 }
 	};
 #else

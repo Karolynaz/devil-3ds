@@ -1,5 +1,4 @@
 /**
-
  * @file inv.cpp
  *
  * Implementation of player inventory.

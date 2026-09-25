@@ -1,5 +1,4 @@
 /**
-
  * @file scrollrt.cpp
  *
  * Implementation of functionality for rendering the dungeons, monsters and calling other render routines.
@@ -9,7 +8,6 @@
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
 #endif
-
 
 #include <cmath>
 #include <cstddef>

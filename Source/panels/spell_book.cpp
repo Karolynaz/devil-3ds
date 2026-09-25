@@ -4,7 +4,6 @@
 #include "platform/ctr/ui.hpp"
 #endif
 
-
 #include <cstdint>
 #include <expected>
 #include <optional>
