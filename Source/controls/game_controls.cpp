@@ -444,7 +444,7 @@ void PressControllerButton(ControllerButton button)
 	else if (button == ControllerButton_BUTTON_B)
 		button = ControllerButton_BUTTON_A;
 
-	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag || IsStashOpen;
+	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag || IsStashOpen || SpellSelectFlag;
 	if (uiOpen) {
 		switch (button) {
 		case ControllerButton_BUTTON_DPAD_UP:

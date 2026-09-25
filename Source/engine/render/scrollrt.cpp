@@ -235,6 +235,10 @@ void UndrawCursor(const Surface &out)
 
 bool ShouldShowCursor()
 {
+#ifdef __3DS__
+	if (IsPlayerInStore() || qtextflag)
+		return false;
+#endif
 	if (ControlMode == ControlTypes::KeyboardAndMouse)
 		return true;
 	if (pcurs == CURSOR_TELEPORT)

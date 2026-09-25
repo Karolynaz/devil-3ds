@@ -567,16 +567,19 @@ void selhero_Init()
 	SDL_Rect rect = MakeSdlRect(uiPosition.x + 20, 15, 600, 32);
 	vecSelHeroDialog.push_back(std::make_unique<UiArtText>(&title, rect, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
-	rect = MakeSdlRect(uiPosition.x + 65, 55, 180, 76);
+	// Top screen: 640 logical width -> 400 physical width (factor 0.625).
+	// 288 logical width -> 180 physical width, preserving 180:76 (1:1 Diablo pixel aspect ratio).
+	// Vertically centered at Y = 82 relative to the stats block (Y = 55..185).
+	rect = MakeSdlRect(uiPosition.x + 12, 82, 288, 76);
 	auto heroImg = std::make_unique<UiImageClx>(UiGetHeroDialogSprite(0), rect, UiFlags::None);
 	SELHERO_DIALOG_HERO_IMG = heroImg.get();
 	vecSelHeroDialog.push_back(std::move(heroImg));
 
 	const UiFlags labelFlags = UiFlags::FontSize24 | UiFlags::ColorUiSilverDark | UiFlags::AlignRight;
 	const UiFlags valueFlags = UiFlags::FontSize24 | UiFlags::ColorUiGold | UiFlags::AlignCenter;
-	const int labelX = uiPosition.x + 270;
-	const int valueX = uiPosition.x + 445;
-	const int labelWidth = 160;
+	const int labelX = uiPosition.x + 310;
+	const int valueX = uiPosition.x + 485;
+	const int labelWidth = 170;
 	const int valueWidth = 60;
 	const int statHeight = 26;
 

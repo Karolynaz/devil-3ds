@@ -295,13 +295,13 @@ void DrawChr3DS(const Surface &out)
 	value(4, { { 302, 56 }, { 86, 16 } });
 	DrawHorizontalLine(out, { 10, 76 }, 380, PAL16_BEIGE + 8);
 	label(_("Life"), { { 12, 84 }, { 37, 17 } });
-	DrawString(out, StrCat(InspectPlayer->_pHitPoints >> 6, "/", InspectPlayer->_pMaxHP >> 6),
-	    { { 48, 84 }, { 53, 17 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
+	const StyledText maxLife = (*panelEntries[21].statDisplayFunc)();
+	DrawString(out, maxLife.text, { { 48, 84 }, { 53, 17 } },
+	    { .flags = maxLife.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
 	label(_("Mana"), { { 108, 84 }, { 40, 17 } });
-	const StyledText mana = (*panelEntries[24].statDisplayFunc)();
 	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
-	DrawString(out, StrCat(mana.text, "/", maxMana.text), { { 147, 84 }, { 54, 17 } },
-	    { .flags = mana.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
+	DrawString(out, maxMana.text, { { 147, 84 }, { 54, 17 } },
+	    { .flags = maxMana.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
 	for (unsigned i = 0; i < 4; ++i) {
 		const unsigned index = 7 + i * 2;
 		const int y = 111 + i * 24;

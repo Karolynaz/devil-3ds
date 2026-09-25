@@ -91,6 +91,7 @@ std::size_t SelectedItem = 0;
 
 #ifdef __3DS__
 bool gb3DSUseBottomBoxBackground = false;
+bool gb3DSBackgroundIsTitle = false;
 #endif
 
 namespace {
@@ -814,6 +815,8 @@ void LoadBackgroundArt(const char *pszFile, int frames)
 	ArtBackground = std::nullopt;
 #ifdef __3DS__
 	UiBottomBackgroundBuffer = nullptr;
+	std::string_view filePath { pszFile != nullptr ? pszFile : "" };
+	gb3DSBackgroundIsTitle = filePath.find("title") != std::string_view::npos || filePath.find("hf_logo1") != std::string_view::npos;
 #endif
 	ArtBackground = LoadPcxSpriteList(pszFile, static_cast<uint16_t>(frames), /*transparentColor=*/std::nullopt, logical_palette.data());
 	if (!ArtBackground)
@@ -948,20 +951,41 @@ void Render(const UiImageClx &uiImage)
 		x += GetCenterOffset(sprite.width(), uiImage.m_rect.w);
 	}
 #ifdef __3DS__
-	if (gb3DSUseBottomBoxBackground && ArtBackground && sprite == (*ArtBackground)[0] && sprite.height() >= 480) {
+	if (ArtBackground && sprite == (*ArtBackground)[0] && sprite.height() >= 480) {
 		const Surface &out = Surface(DiabloUiSurface());
-		SDL_Rect topRect = MakeSdlRect(0, 0, 640, 240);
-		SDL_FillSurfaceRect(out.surface, &topRect, 0);
+		if (gb3DSUseBottomBoxBackground) {
+			SDL_Rect topRect = MakeSdlRect(0, 0, 640, 240);
+			SDL_FillSurfaceRect(out.surface, &topRect, 0);
 
-		if (!UiBottomBackgroundBuffer) {
-			Prepare3DSBackground();
+			if (!UiBottomBackgroundBuffer) {
+				Prepare3DSBackground();
+			}
+			if (UiBottomBackgroundBuffer) {
+				out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { 0, 240 });
+			} else {
+				SDL_Rect bottomRect = MakeSdlRect(0, 240, 640, 240);
+				SDL_FillSurfaceRect(out.surface, &bottomRect, 0);
+			}
+			return;
 		}
-		if (UiBottomBackgroundBuffer) {
-			out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { 0, 240 });
-		} else {
-			SDL_Rect bottomRect = MakeSdlRect(0, 240, 640, 240);
-			SDL_FillSurfaceRect(out.surface, &bottomRect, 0);
+		if (gb3DSBackgroundIsTitle) {
+			RenderClxSprite(out, sprite, { x, uiImage.m_rect.y });
+			return;
 		}
+		// Clear to clean black background for hero selection, game selection, etc.
+		SDL_FillSurfaceRect(out.surface, nullptr, 0);
+		return;
+	}
+
+	if (uiImage.m_rect.w > 0 && uiImage.m_rect.h > 0 && (uiImage.m_rect.w != sprite.width() || uiImage.m_rect.h != sprite.height())) {
+		const Surface &out = Surface(DiabloUiSurface());
+		static OwnedSurface spriteScratch(180, 76);
+		if (spriteScratch.w() != sprite.width() || spriteScratch.h() != sprite.height()) {
+			spriteScratch = OwnedSurface(sprite.width(), sprite.height());
+		}
+		SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
+		RenderClxSprite(spriteScratch, sprite, { 0, 0 });
+		out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()), uiImage.m_rect);
 		return;
 	}
 #endif

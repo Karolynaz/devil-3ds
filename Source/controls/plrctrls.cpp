@@ -1901,7 +1901,7 @@ bool IsCursorOverCarriedInventoryGrid()
 
 bool Is3DSInventoryPanelOpen()
 {
-	return invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || SpellSelectFlag || IsStashOpen || IsVisualStoreOpen;
+	return invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || IsStashOpen || IsVisualStoreOpen;
 }
 #endif
 
@@ -2451,6 +2451,10 @@ void UseBeltItem(BeltItemType type)
 void PerformPrimaryAction()
 {
 #ifdef __3DS__
+	if (SpellSelectFlag) {
+		SetSpell();
+		return;
+	}
 	if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag) {
 		// Use the same hit testing as touch, including the belt on the other screen.
 		// Keep the pointer in place while picking up/swapping an item.
