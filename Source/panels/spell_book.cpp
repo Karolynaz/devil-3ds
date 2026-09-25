@@ -124,7 +124,7 @@ StringOrView GetSpellPowerText(SpellID spell, int spellLevel)
 void DrawSpellBook3DS(const Surface &out)
 {
 	DrawCtrPanelFrame(out);
-	DrawString(out, _("Spell Book"), { { 12, 4 }, { 376, 24 } }, { .flags = UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorWhitegold });
+	DrawString(out, _("Spell Book"), { { 12, 7 }, { 376, 18 } }, { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
 	const Player &player = *InspectPlayer;
 	const uint64_t spells = player._pMemSpells | player._pISpells | player._pAblSpells;
 	for (size_t entry = 0; entry < SpellBookPageEntries; ++entry) {
@@ -148,21 +148,21 @@ void DrawSpellBook3DS(const Surface &out)
 		DrawString(out, pgettext("spell", GetSpellData(spell).sNameText), { { 40, y }, { 265, 13 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing, .spacing = 0 });
 		const SpellType infoType = GetSBookTrans(spell, false);
 		if (infoType == SpellType::Skill) {
-			DrawString(out, _("Skill"), { { 40, y + 13 }, { 346, 13 } }, { .flags = UiFlags::ColorWhitegold });
+			DrawString(out, _("Skill"), { { 40, y + 14 }, { 346, 13 } }, { .flags = UiFlags::ColorWhitegold });
 		} else if (infoType == SpellType::Charges) {
 			const int charges = player.InvBody[INVLOC_HAND_LEFT]._iCharges;
-			DrawString(out, FormatRuntime(ngettext("Staff ({:d} charge)", "Staff ({:d} charges)", charges), charges), { { 40, y + 13 }, { 346, 13 } }, { .flags = UiFlags::ColorWhitegold });
+			DrawString(out, FormatRuntime(ngettext("Staff ({:d} charge)", "Staff ({:d} charges)", charges), charges), { { 40, y + 14 }, { 346, 13 } }, { .flags = UiFlags::ColorWhitegold });
 		} else {
 			const int level = player.GetSpellLevel(spell);
 			DrawString(out, FormatRuntime(pgettext("spellbook", "Level {:d}"), level), { { 305, y }, { 81, 13 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
-			DrawString(out, FormatRuntime(pgettext("spellbook", "Mana: {:d}"), GetManaAmount(player, spell) >> 6), { { 40, y + 13 }, { 117, 13 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, FormatRuntime(pgettext("spellbook", "Mana: {:d}"), GetManaAmount(player, spell) >> 6), { { 40, y + 14 }, { 117, 13 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
 			const StringOrView power = GetSpellPowerText(spell, level);
-			DrawString(out, power, { { 159, y + 13 }, { 227, 13 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, power, { { 159, y + 14 }, { 227, 13 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
 		}
 	}
 	const int pages = gbIsHellfire ? 5 : 4;
 	for (int page = 0; page < pages; ++page) {
-		const Rectangle button { { 7 + page * 386 / pages, CtrSpellTabsY }, { 386 / pages - 2, 20 } };
+		const Rectangle button { { 7 + page * 386 / pages, CtrSpellTabsY }, { 386 / pages - 2, 18 } };
 		FillRect(out, button.position.x, button.position.y, button.size.width, button.size.height, page == SpellbookTab ? PAL16_BEIGE + 11 : PAL16_GRAY + 13);
 		UnsafeDrawBorder2px(out, button, PAL16_BEIGE + 8);
 		DrawString(out, std::to_string(page + 1), button, { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorWhite });
@@ -289,7 +289,7 @@ void CheckSBook()
 	// end up with an extra pixel somewhere around the buttons. Vanilla Diablo had the buttons left-aligned, devilutionX
 	// instead justifies the buttons and puts the gap between buttons 2/3. See DrawSpellBook
 #ifdef __3DS__
-	if (Rectangle { { 7, CtrSpellTabsY }, { 386, 20 } }.contains(mousePos))
+	if (Rectangle { { 7, CtrSpellTabsY }, { 386, 18 } }.contains(mousePos))
 		SpellbookTab = (mousePos.x - 7) * (gbIsHellfire ? 5 : 4) / 386;
 	return;
 #else

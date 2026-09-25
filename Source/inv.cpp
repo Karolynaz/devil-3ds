@@ -7,6 +7,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "control/control_panel.hpp"
 #include "panels/quest_log.hpp"
 #endif
 

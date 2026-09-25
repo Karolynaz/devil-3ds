@@ -15,9 +15,9 @@ constexpr Rectangle CtrStatButtons[4] = {
 	{ { 179, 140 }, { 22, 20 } },
 	{ { 179, 162 }, { 22, 20 } },
 };
-constexpr int CtrSpellRowsY = 29;
-constexpr int CtrSpellRowHeight = 26;
-constexpr int CtrSpellTabsY = 216;
+constexpr int CtrSpellRowsY = 27;
+constexpr int CtrSpellRowHeight = 27;
+constexpr int CtrSpellTabsY = 218;
 
 constexpr Point CtrTopToScreen(Point p, int screenWidth)
 {

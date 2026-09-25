@@ -1422,7 +1422,7 @@ void DrawView(const Surface &out, Point startPosition)
 			// Stretch only the decorative border; scale all slots/items uniformly
 			// to the centered 218x240 native-pixel content area.
 			DrawCtrPanelFrame(*TopPanelBuffer);
-			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 6), MakeSdlRect(0, 0, 400, 4));
+			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 128, 6), MakeSdlRect(0, 0, 400, 4));
 			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 346, 320, 6), MakeSdlRect(0, 236, 400, 4));
 			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 6, 6, 340), MakeSdlRect(0, 4, 4, 232));
 			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(314, 6, 6, 340), MakeSdlRect(396, 4, 4, 232));

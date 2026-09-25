@@ -308,7 +308,8 @@ void DrawChr3DS(const Surface &out)
 			const Rectangle button = CtrStatButtons[i];
 			FillRect(out, button.position.x, button.position.y, button.size.width, button.size.height, CharPanelButton[i] ? PAL16_BEIGE + 12 : PAL16_GRAY + 12);
 			UnsafeDrawBorder2px(out, button, PAL16_BEIGE + 6);
-			DrawString(out, "+", button, { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorWhite });
+			DrawHorizontalLine(out, button.Center() - Displacement { 4, 0 }, 9, PAL16_GRAY);
+			DrawVerticalLine(out, button.Center() - Displacement { 0, 4 }, 9, PAL16_GRAY);
 		}
 	}
 	label(_("Points to distribute"), { { 12, 185 }, { 157, 15 } });
