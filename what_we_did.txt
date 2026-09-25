@@ -200,6 +200,37 @@ C. Low-Level Control Engine Fixes (game_controls.cpp, diablo.cpp):
   * Level-up button and Diablo messages repositioned to the bottom-left of the top screen to prevent panel clipping.
 - Latest binaries packaged in 3DS_Release/Fullscreen_UI_v3/ and synchronized with 3DS_Release/ and Azahar emulator directory.
 
+--------------------------------------------------------------------------------
+9. NPC CURSOR HIDING, SPELL SELECT NAVIGATION, SELHERO/SELGAME POLISH & DEFAULTS
+--------------------------------------------------------------------------------
+- Branch: codex/3ds-fullscreen-panels (commit 56c4a6a, CI run 36181949142).
+- NPC Dialogue Cursor Hiding (scrollrt.cpp):
+  * When in stores, dialogue menus, or quest speech (IsPlayerInStore() || qtextflag),
+    ShouldShowCursor() returns false on 3DS, hiding the mouse cursor completely.
+- Quick Spell Selection with Left Stick & A Button (plrctrls.cpp, game_controls.cpp):
+  * Removed SpellSelectFlag from Is3DSInventoryPanelOpen() so Left Stick and D-Pad movement
+    properly routes to HotSpellMove(dir) instead of being blocked.
+  * Added SpellSelectFlag to uiOpen and PerformPrimaryAction() on 3DS so pressing A instantly selects
+    the spell under cursor and closes the menu, while B / Esc cancels.
+  * Left Stick left/right smoothly navigates between available hot spells.
+- Title Screen Hero & Game Selection Clean-up (diabloui.cpp, selhero.cpp):
+  * Eliminated broken, misaligned PC decorative white/yellow box frames from selhero and selgame
+    by rendering a clean black background (retaining red demon only for title splash).
+  * Fixed character portrait squishing on 3DS top screen: rendered with 288 logical width (180 physical width)
+    at Y = 82, perfectly centered vertically with character stats and preserving 1:1 original Diablo pixel aspect ratio.
+- Centered "Game saved", Loading, and Diablo Messages (diablo_msg.cpp):
+  * Repositioned DrawDiabloMsg on 3DS to be horizontally centered ((out.w() - outerWidth) / 2)
+    and vertically centered on the top screen ((240 - outerHeight) / 2).
+- Character Sheet Max Life & Mana Display (charpanel.cpp):
+  * Displays only the total (maximum) Life and Mana values instead of current/max ratio (e.g. "72" instead of "69/72").
+- Default Gameplay & Mod Settings (options.cpp, diablo.ini):
+  * Enabled by default:
+    - Adria refills mana (Lua mod adria_refills_mana): ON
+    - Experience Bar: ON
+    - Enemy Health Bar: ON
+    - Show Monster Type: ON
+    - Show Item Labels: ON
+
 ================================================================================
                          END OF SUMMARY DOCUMENT
 ================================================================================
