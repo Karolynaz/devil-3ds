@@ -175,6 +175,31 @@ C. Low-Level Control Engine Fixes (game_controls.cpp, diablo.cpp):
   * Fixed unsigned 32-bit integer underflow bug where (currentTime + 1000 - SDL_GetTicks()) evaluated to ~4.29 billion ms when saving to SD card took over 1 second.
   * Replaced calculation with a reliable 2500ms duration, allowing the popup to dismiss itself automatically without requiring opening/closing menus.
 
+--------------------------------------------------------------------------------
+8. FULLSCREEN PANELS, CUSTOM ARTWORK & POINTER OVERHAUL (CODEX BRANCH)
+--------------------------------------------------------------------------------
+- Branch: codex/3ds-fullscreen-panels (commit 021f413, CI run 36175148431).
+- 3DS In-Game Panels Fullscreen Redesign:
+  * Full top screen (400x240) used for Character Sheet, Quest Log, and Spell Book overlays.
+  * Character and Spell panels rendered with stone background artwork (ctr_ui_background.rgb).
+  * Quest Log rendered with dark parchment background artwork (ctr_quest_background.rgb).
+  * Character sheet redesigned: Life & Mana share top row, attribute values use 22px dialog font,
+    and combat statistics are cleanly aligned on the right.
+  * Spell Book redesigned: 7 spell entries per page with distinct text lines, levels, mana costs,
+    and damage/effect power text; tab buttons at Y=218.
+  * Quest Log redesigned: 10 quest entries per page with page scrolling (< / >) and pentagram cursor.
+- Inventory & Split Screen Refinements:
+  * Carried inventory remains centered with decorative frame stretching, preserving original 320:352 slot aspect ratio.
+  * Stash / Visual Store split view cleanly aligned to 218x240 bounds.
+  * Multi-cell items, equipment, and belt hit testing validated by test_ctr_ui_geometry.py.
+- Controls & Pointer Motion Enhancements:
+  * Circle Pad analog stick works as a smooth mouse pointer when in-game panels are open.
+  * Slower, smoother cursor movement speed with 8-subpixel accumulator pooling and physical aspect compensation.
+  * D-pad grid movement is strictly confined to the carried inventory grid; elsewhere moves pointer smoothly.
+  * Primary action (A button) handles panel button clicks, item pickup/drop, quest entry selection, and spell selection.
+  * Level-up button and Diablo messages repositioned to the bottom-left of the top screen to prevent panel clipping.
+- Latest binaries packaged in 3DS_Release/Fullscreen_UI_v3/ and synchronized with 3DS_Release/ and Azahar emulator directory.
+
 ================================================================================
                          END OF SUMMARY DOCUMENT
 ================================================================================
