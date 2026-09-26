@@ -9,6 +9,15 @@ namespace devilution {
 constexpr Size CtrTopSize { 400, 240 };
 constexpr Size CtrLegacyPanelSize { 320, 352 };
 constexpr Rectangle CtrInventoryContent { { 91, 0 }, { 218, 240 } };
+constexpr Rectangle CtrBottomHealthBar { { 20, 82 }, { 26, 84 } };
+constexpr Rectangle CtrBottomManaBar { { 274, 82 }, { 26, 84 } };
+constexpr Rectangle CtrBottomExperienceBar { { 48, 206 }, { 224, 14 } };
+constexpr Rectangle CtrBottomInfoBox { { 64, 75 }, { 191, 118 } };
+
+constexpr Rectangle CtrBottomBeltSlot(int slot)
+{
+	return { { 69 + slot * 23 + (slot >= 4 ? 1 : 0), 36 }, { 21, 21 } };
+}
 constexpr Rectangle CtrStatButtons[4] = {
 	{ { 179, 108 }, { 22, 20 } },
 	{ { 179, 132 }, { 22, 20 } },

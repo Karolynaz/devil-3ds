@@ -1543,10 +1543,14 @@ void DrawView(const Surface &out, Point startPosition)
 	DrawPlrMsg(out);
 	gmenu_draw(out);
 	doom_draw(out);
+#ifdef __3DS__
+	UpdateLifeManaPercent();
+#else
 	DrawInfoBox(out);
 	UpdateLifeManaPercent(); // Update life/mana totals before rendering any portion of the flask.
 	DrawLifeFlaskUpper(out);
 	DrawManaFlaskUpper(out);
+#endif
 }
 
 /**
@@ -1940,7 +1944,9 @@ void DrawAndBlit()
 	bool drawInfoBox = false;
 	bool drawCtrlPan = false;
 
+#ifndef __3DS__
 	const Rectangle &mainPanel = GetMainPanel();
+#endif
 
 #ifdef __3DS__
 	drawHealth = true;
@@ -1978,6 +1984,11 @@ void DrawAndBlit()
 	SDL_FillRect(out.surface, &bottomRect, blackColor);
 #endif
 	DrawView(out, ViewPosition);
+#ifdef __3DS__
+	if (!invflag && !CharFlag && !QuestLogIsOpen && !SpellbookFlag)
+		DrawSpell(out);
+	DrawCtrBottomHud(out);
+#else
 	if (drawCtrlPan) {
 		DrawMainPanel(out);
 	}
@@ -1995,9 +2006,11 @@ void DrawAndBlit()
 	if (drawBelt) {
 		DrawInvBelt(out);
 	}
+#endif
 	if (drawChatInput) {
 		DrawChatBox(out);
 	}
+#ifndef __3DS__
 	DrawXPBar(out);
 	if (*GetOptions().Gameplay.showHealthValues)
 		DrawFlaskValues(out, { mainPanel.position.x + 134, mainPanel.position.y + 28 }, MyPlayer->_pHitPoints >> 6, MyPlayer->_pMaxHP >> 6);
@@ -2005,6 +2018,7 @@ void DrawAndBlit()
 		DrawFlaskValues(out, { mainPanel.position.x + mainPanel.size.width - 138, mainPanel.position.y + 28 },
 		    (HasAnyOf(InspectPlayer->_pIFlags, ItemSpecialEffect::NoMana) || MyPlayer->hasNoMana()) ? 0 : MyPlayer->_pMana >> 6,
 		    HasAnyOf(InspectPlayer->_pIFlags, ItemSpecialEffect::NoMana) ? 0 : MyPlayer->_pMaxMana >> 6);
+#endif
 	if (*GetOptions().Gameplay.floatingInfoBox)
 		DrawFloatingInfoBox(out);
 

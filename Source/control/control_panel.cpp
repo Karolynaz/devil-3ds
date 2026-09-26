@@ -532,62 +532,15 @@ void CheckMainPanelButton()
 {
 #ifdef __3DS__
 	if (MousePosition.y >= 240) {
-		// 1. Left column buttons: Char, Quests, Automap, Menu
-		if (MousePosition.x <= 95) {
-			if (MousePosition.y < 385)
-				SetMainPanelButtonDown(PanelButtonCharinfo);
-			else if (MousePosition.y < 415)
-				SetMainPanelButtonDown(PanelButtonQlog);
-			else if (MousePosition.y < 448)
-				SetMainPanelButtonDown(PanelButtonAutomap);
-			else
-				SetMainPanelButtonDown(PanelButtonMainmenu);
+		const Point local { MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (!CtrBottomBeltSlot(slot).contains(local))
+				continue;
+			if (!SpellSelectFlag && !invflag && !CharFlag && !QuestLogIsOpen && !SpellbookFlag && MyPlayer->HoldItem.isEmpty())
+				UseBeltSlot(slot);
 			return;
 		}
-
-		// 2. Right column buttons: Inv, Spells, Spell Select / Speedbook
-		if (MousePosition.x >= 550) {
-			if (MousePosition.y < 385) {
-				SetMainPanelButtonDown(PanelButtonInventory);
-			} else if (MousePosition.y < 415) {
-				SetMainPanelButtonDown(PanelButtonSpellbook);
-			} else {
-				if (!SpellSelectFlag) {
-					if ((SDL_GetModState() & SDL_KMOD_SHIFT) != 0) {
-						Player &myPlayer = *MyPlayer;
-						myPlayer._pRSpell = SpellID::Invalid;
-						myPlayer._pRSplType = SpellType::Invalid;
-						RedrawEverything();
-						return;
-					}
-					DoSpeedBook();
-					gamemenu_off();
-				}
-			}
-			return;
-		}
-
-		// 3. Life globe: drink healing potion
-		if (MousePosition.x > 95 && MousePosition.x < 195 && MousePosition.y >= 300) {
-			UseBeltItem(BeltItemType::Healing);
-			return;
-		}
-
-		// 4. Mana globe: drink mana potion
-		if (MousePosition.x > 445 && MousePosition.x < 550 && MousePosition.y >= 300) {
-			UseBeltItem(BeltItemType::Mana);
-			return;
-		}
-
-		Rectangle belt = BeltRect;
-		SetPanelObjectPosition(UiPanels::Main, belt);
-		if (belt.contains(MousePosition)) {
-			if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || !MyPlayer->HoldItem.isEmpty())
-				return;
-			const int slot = (MousePosition.x - belt.position.x) / 29;
-			UseBeltSlot(std::clamp(slot, 0, 7));
-			return;
-		}
+		return;
 	}
 #endif
 
@@ -623,10 +576,8 @@ void CheckMainPanelButton()
 void CheckMainPanelButtonDead()
 {
 #ifdef __3DS__
-	if (MousePosition.x <= 95 && MousePosition.y >= 240) {
-		SetMainPanelButtonDown(PanelButtonMainmenu);
+	if (MousePosition.y >= 240)
 		return;
-	}
 #endif
 
 	Rectangle menuButton = MainPanelButtonRect[PanelButtonMainmenu];

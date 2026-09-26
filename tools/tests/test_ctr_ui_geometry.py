@@ -60,6 +60,16 @@ int main() {
   check((CtrScreenToTop(screen,640).y-CtrSpellRowsY)/CtrSpellRowHeight==row);
  }
  check(CtrSpellRowsY+7*CtrSpellRowHeight<CtrSpellTabsY);
+ check(CtrBottomHealthBar.position==Point(20,82) && CtrBottomHealthBar.size==Size(26,84));
+ check(CtrBottomManaBar.position==Point(274,82) && CtrBottomManaBar.size==Size(26,84));
+ check(CtrBottomExperienceBar.position==Point(48,206) && CtrBottomExperienceBar.size==Size(224,14));
+ check(CtrBottomInfoBox.position==Point(64,75) && CtrBottomInfoBox.size==Size(191,118));
+ for(int slot=0;slot<8;++slot) {
+  const Rectangle belt=CtrBottomBeltSlot(slot);
+  check(belt.position.x==69+slot*23+(slot>=4?1:0));
+  check(belt.position.y==36 && belt.size==Size(21,21));
+  if(slot) check(CtrBottomBeltSlot(slot-1).position.x+21<=belt.position.x);
+ }
  for(int page=0;page<4;++page) {
   const Rectangle tab=CtrSpellTabRect(page,false);
   check(tab.position.x==16+95*page);

@@ -1,5 +1,8 @@
 #include "control.hpp"
 #include "control_panel.hpp"
+#ifdef __3DS__
+#include "platform/ctr/ui_geometry.hpp"
+#endif
 #include "controls/control_mode.hpp"
 #include "engine/render/primitive_render.hpp"
 #include "inv.h"
@@ -31,9 +34,13 @@ void PrintInfo(const Surface &out)
 		return;
 
 	const int space[] = { 18, 12, 6, 3, 0 };
+#ifdef __3DS__
+	Rectangle infoBox = CtrBottomInfoBox;
+#else
 	Rectangle infoBox = InfoBoxRect;
 
 	SetPanelObjectPosition(UiPanels::Main, infoBox);
+#endif
 
 	const auto newLineCount = static_cast<int>(c_count(InfoString.str(), '\n'));
 	const int spaceIndex = std::min(4, newLineCount);
@@ -311,6 +318,13 @@ void CheckPanelInfo()
 	InfoString = StringOrView {};
 	FloatingInfoString = StringOrView {};
 
+#ifdef __3DS__
+	if (MousePosition.y >= 240) {
+		pcursinvitem = CheckInvHLight();
+		return;
+	}
+#endif
+
 	const int totalButtons = IsChatAvailable() ? TotalMpMainPanelButtons : TotalSpMainPanelButtons;
 
 	for (int i = 0; i < totalButtons; i++) {
@@ -391,7 +405,9 @@ void CheckPanelInfo()
 
 void DrawInfoBox(const Surface &out)
 {
+#ifndef __3DS__
 	DrawPanelBox(out, MakeSdlRect(InfoBoxRect.position.x, InfoBoxRect.position.y + PanelPaddingHeight, InfoBoxRect.size.width, InfoBoxRect.size.height), GetMainPanel().position + Displacement { InfoBoxRect.position.x, InfoBoxRect.position.y });
+#endif
 	if (!MainPanelFlag && !trigflag && pcursinvitem == -1 && pcursstashitem == StashStruct::EmptyCell && pcursstoreitem == -1 && pcursstorebtn == -1 && !SpellSelectFlag && pcurs != CURSOR_HOURGLASS) {
 		InfoString = StringOrView {};
 		InfoColor = UiFlags::ColorWhite;
@@ -445,6 +461,12 @@ void DrawInfoBox(const Surface &out)
 	}
 	if (!InfoString.empty())
 		PrintInfo(out);
+#ifdef __3DS__
+	else
+		DrawString(out, _("SELECT: Open panels\nL/R: Switch panels"), CtrBottomInfoBox,
+		    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::KerningFitSpacing,
+		      .spacing = 1, .lineHeight = 18 });
+#endif
 }
 
 void DrawFloatingInfoBox(const Surface &out)

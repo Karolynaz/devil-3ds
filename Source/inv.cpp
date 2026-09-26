@@ -365,11 +365,21 @@ int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 	}
 #endif
 
+#ifdef __3DS__
+	if (cursorPosition.y >= 240) {
+		const Point local { cursorPosition.x * 320 / gnScreenWidth, cursorPosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (CtrBottomBeltSlot(slot).contains(local))
+				return SLOTXY_BELT_FIRST + slot;
+		}
+	}
+#else
 	const Displacement beltOffset = Point { 0, 0 } - GetMainPanel().position;
 	for (int r = SLOTXY_BELT_FIRST; r <= SLOTXY_BELT_LAST; r++) {
 		if (InvRect[r].contains(cursorPosition + beltOffset))
 			return r;
 	}
+#endif
 	return NUM_XY_SLOTS;
 }
 
@@ -680,13 +690,21 @@ std::optional<inv_xy_slot> FindSlotUnderCursor(Point cursorPosition)
 	}
 #endif
 
-	auto testBeltPos = static_cast<Point>(cursorPosition - GetMainPanel().position);
-	for (std::underlying_type_t<inv_xy_slot> r = SLOTXY_BELT_FIRST; r != NUM_XY_SLOTS; r++) {
-		// check which belt rectangle the mouse is in, if any
-		if (InvRect[r].contains(testBeltPos)) {
-			return static_cast<inv_xy_slot>(r);
+#ifdef __3DS__
+	if (cursorPosition.y >= 240) {
+		const Point local { cursorPosition.x * 320 / gnScreenWidth, cursorPosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (CtrBottomBeltSlot(slot).contains(local))
+				return static_cast<inv_xy_slot>(SLOTXY_BELT_FIRST + slot);
 		}
 	}
+#else
+	auto testBeltPos = static_cast<Point>(cursorPosition - GetMainPanel().position);
+	for (std::underlying_type_t<inv_xy_slot> r = SLOTXY_BELT_FIRST; r != NUM_XY_SLOTS; r++) {
+		if (InvRect[r].contains(testBeltPos))
+			return static_cast<inv_xy_slot>(r);
+	}
+#endif
 
 	return {};
 }
@@ -1360,6 +1378,38 @@ void DrawInvBelt(const Surface &out)
 	}
 }
 
+#ifdef __3DS__
+void DrawCtrInvBelt(const Surface &out)
+{
+	if (ChatFlag)
+		return;
+
+	constexpr int IconSourceSize = 29;
+	OwnedSurface icon(IconSourceSize, IconSourceSize);
+	const Player &player = *InspectPlayer;
+	for (int slot = 0; slot < MaxBeltItems; ++slot) {
+		const Item &item = player.SpdList[slot];
+		if (item.isEmpty())
+			continue;
+
+		FillRect(icon, 0, 0, IconSourceSize, IconSourceSize, 0);
+		const ClxSprite sprite = GetInvItemSprite(item._iCurs + CURSOR_FIRSTITEM);
+		if (pcursinvitem == slot + INVITEM_BELT_FIRST)
+			ClxDrawOutline(icon, GetOutlineColor(item, true), { 0, IconSourceSize }, sprite);
+		DrawItem(item, icon, { 0, IconSourceSize }, sprite);
+
+		const Rectangle target = CtrBottomBeltSlot(slot);
+		for (int y = 0; y < target.size.height; ++y) {
+			for (int x = 0; x < target.size.width; ++x) {
+				const uint8_t color = *icon.at(x * IconSourceSize / target.size.width, y * IconSourceSize / target.size.height);
+				if (color != 0)
+					*out.at(target.position.x + x, target.position.y + y) = color;
+			}
+		}
+	}
+}
+#endif
+
 void RemoveEquipment(Player &player, inv_body_loc bodyLocation, bool hiPri)
 {
 	if (&player == MyPlayer) {
@@ -1703,14 +1753,19 @@ void CheckInvItem(bool isShiftHeld, bool isCtrlHeld)
 
 void CheckInvScrn(bool isShiftHeld, bool isCtrlHeld)
 {
-	const Point mainPanelPosition = GetMainPanel().position;
 #ifdef __3DS__
-	Rectangle belt = BeltRect;
-	belt.position += Displacement { mainPanelPosition.x, mainPanelPosition.y };
-	if (belt.contains(MousePosition)
-	    && (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || !MyPlayer->HoldItem.isEmpty()))
-		CheckInvItem(isShiftHeld, isCtrlHeld);
+	if (MousePosition.y >= 240) {
+		const Point local { MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (CtrBottomBeltSlot(slot).contains(local)) {
+				if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || !MyPlayer->HoldItem.isEmpty())
+					CheckInvItem(isShiftHeld, isCtrlHeld);
+				return;
+			}
+		}
+	}
 #else
+	const Point mainPanelPosition = GetMainPanel().position;
 	if (MousePosition.x > 190 + mainPanelPosition.x && MousePosition.x < 437 + mainPanelPosition.x
 	    && MousePosition.y > mainPanelPosition.y && MousePosition.y < 33 + mainPanelPosition.y) {
 		CheckInvItem(isShiftHeld, isCtrlHeld);
@@ -1972,38 +2027,42 @@ int SyncDropEar(Point position, uint16_t icreateinfo, uint32_t iseed, uint8_t cu
 int8_t CheckInvHLight()
 {
 #ifdef __3DS__
-	Point mousePos = invflag ? CtrScreenToInventory(MousePosition) : Point { -1, -1 };
+	const Point mousePos = invflag ? CtrScreenToInventory(MousePosition) : Point { -1, -1 };
+	int8_t r = NUM_XY_SLOTS;
+	if (MousePosition.y >= 240) {
+		const Point local { MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (CtrBottomBeltSlot(slot).contains(local)) {
+				r = SLOTXY_BELT_FIRST + slot;
+				break;
+			}
+		}
+	} else if (invflag) {
+		for (int8_t slot = 0; slot < SLOTXY_BELT_FIRST; ++slot) {
+			if (InvRect[slot].contains(mousePos)) {
+				r = slot;
+				break;
+			}
+		}
+	}
 #else
-	Point mousePos = MousePosition;
-#endif
-
+	const Point mousePos = MousePosition;
 	int8_t r = 0;
 	for (; r < NUM_XY_SLOTS; r++) {
 		int xo = 0;
 		int yo = 0;
-#ifdef __3DS__
-		if (r >= SLOTXY_BELT_FIRST) {
-			xo = GetMainPanel().position.x;
-			yo = GetMainPanel().position.y;
-		}
-#else
 		xo = GetRightPanel().position.x;
 		yo = GetRightPanel().position.y;
 		if (r >= SLOTXY_BELT_FIRST) {
 			xo = GetMainPanel().position.x;
 			yo = GetMainPanel().position.y;
 		}
-#endif
-
-#ifdef __3DS__
-		const Point testPoint = r >= SLOTXY_BELT_FIRST ? MousePosition : mousePos;
-#else
 		const Point testPoint = mousePos;
-#endif
 		if (InvRect[r].contains(testPoint - Displacement(xo, yo))) {
 			break;
 		}
 	}
+#endif
 
 	if (r >= NUM_XY_SLOTS)
 		return -1;

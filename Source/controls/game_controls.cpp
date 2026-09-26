@@ -246,10 +246,10 @@ bool CanDeferToMovementHandler(const PadmapperOptions::Action &action)
 }
 
 #ifdef __3DS__
-void DrinkPotion3DS(BeltItemType type)
+void DrinkPotion3DS(int firstSlot, int lastSlot)
 {
 	Player &player = *MyPlayer;
-	for (int i = 0; i < MaxBeltItems; i++) {
+	for (int i = firstSlot; i < lastSlot; i++) {
 		const Item &item = player.SpdList[i];
 		if (item.isEmpty())
 			continue;
@@ -258,23 +258,8 @@ void DrinkPotion3DS(BeltItemType type)
 		const bool isHealing = isRejuvenation || IsAnyOf(item._iMiscId, IMISC_HEAL, IMISC_FULLHEAL) || item.isScrollOf(SpellID::Healing);
 		const bool isMana = isRejuvenation || IsAnyOf(item._iMiscId, IMISC_MANA, IMISC_FULLMANA);
 
-		if ((type == BeltItemType::Healing && isHealing) || (type == BeltItemType::Mana && isMana)) {
+		if (isHealing || isMana) {
 			UseInvItem(INVITEM_BELT_FIRST + i);
-			return;
-		}
-	}
-
-	for (int i = 0; i < player._pNumInv; i++) {
-		const Item &item = player.InvList[i];
-		if (item.isEmpty())
-			continue;
-
-		const bool isRejuvenation = IsAnyOf(item._iMiscId, IMISC_REJUV, IMISC_FULLREJUV) || (item._iMiscId == IMISC_ARENAPOT && player.isOnArenaLevel());
-		const bool isHealing = isRejuvenation || IsAnyOf(item._iMiscId, IMISC_HEAL, IMISC_FULLHEAL) || item.isScrollOf(SpellID::Healing);
-		const bool isMana = isRejuvenation || IsAnyOf(item._iMiscId, IMISC_MANA, IMISC_FULLMANA);
-
-		if ((type == BeltItemType::Healing && isHealing) || (type == BeltItemType::Mana && isMana)) {
-			UseInvItem(INVITEM_INV_FIRST + i);
 			return;
 		}
 	}
@@ -282,18 +267,19 @@ void DrinkPotion3DS(BeltItemType type)
 
 void SwitchUiTab(bool forward)
 {
+	// Tab order follows the 3DS menu carousel: quests, character, inventory, spells.
 	int current = -1;
-	if (CharFlag)
+	if (QuestLogIsOpen)
 		current = 0;
-	else if (invflag)
+	else if (CharFlag)
 		current = 1;
-	else if (QuestLogIsOpen)
+	else if (invflag)
 		current = 2;
 	else if (SpellbookFlag)
 		current = 3;
 
 	if (current == -1)
-		current = 1;
+		current = 2;
 
 	const int next = forward ? ((current + 1) % 4) : ((current + 3) % 4);
 
@@ -310,6 +296,9 @@ void SwitchUiTab(bool forward)
 
 	switch (next) {
 	case 0:
+		StartQuestlog();
+		break;
+	case 1:
 		OpenCharPanel();
 		if (CharFlag) {
 			if (pcurs == CURSOR_DISARM)
@@ -317,14 +306,11 @@ void SwitchUiTab(bool forward)
 			FocusOnCharInfo();
 		}
 		break;
-	case 1:
+	case 2:
 		invflag = true;
 		if (pcurs == CURSOR_DISARM)
 			NewCursor(CURSOR_HAND);
 		FocusOnInventory();
-		break;
-	case 2:
-		StartQuestlog();
 		break;
 	case 3:
 		SpellbookFlag = true;
@@ -548,11 +534,11 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_LEFTSHOULDER:
-			DrinkPotion3DS(BeltItemType::Healing);
+			DrinkPotion3DS(0, 4);
 			return;
 
 		case ControllerButton_BUTTON_RIGHTSHOULDER:
-			DrinkPotion3DS(BeltItemType::Mana);
+			DrinkPotion3DS(4, MaxBeltItems);
 			return;
 
 		case ControllerButton_BUTTON_DPAD_UP:
@@ -564,7 +550,10 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_BACK:
-			ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
+			if (MyPlayer->_pStatPts > 0)
+				ProcessGameAction(GameAction { GameActionType_TOGGLE_CHARACTER_INFO });
+			else
+				ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
 			return;
 
 		case ControllerButton_BUTTON_START:

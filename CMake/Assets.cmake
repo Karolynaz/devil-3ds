@@ -244,7 +244,8 @@ if(NINTENDO_3DS)
     data/ctr_spells_background.pal8
     data/ctr_inventory_warrior.pal8
     data/ctr_inventory_rogue.pal8
-    data/ctr_inventory_sorcerer.pal8)
+    data/ctr_inventory_sorcerer.pal8
+    data/ctr_bottom_ui.pal8)
 endif()
 
 if(APPLE)

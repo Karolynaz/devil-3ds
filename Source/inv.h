@@ -111,6 +111,9 @@ void InitInv();
 void DrawInv(const Surface &out, bool drawBackground = true);
 
 void DrawInvBelt(const Surface &out);
+#ifdef __3DS__
+void DrawCtrInvBelt(const Surface &out);
+#endif
 
 /**
  * @brief Removes equipment from the specified location on the player's body.

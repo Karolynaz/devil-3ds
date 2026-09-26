@@ -104,7 +104,11 @@ void DrawSpell(const Surface &out)
 		st = SpellType::Invalid;
 
 	SetSpellTrans(st);
+#ifdef __3DS__
+	const Point position { gnScreenWidth - SPLICONLENGTH - 8, 232 };
+#else
 	const Point position = GetMainPanel().position + Displacement { 565, 119 };
+#endif
 	DrawLargeSpellIcon(out, position, spl);
 
 	std::optional<std::string_view> hotkeyName = GetHotkeyName(spl, myPlayer._pRSplType, true);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert 400x240 PNG art to 3DS paletted assets using a Diablo town palette.
+"""Convert 3DS panel PNG art to paletted assets using a Diablo town palette.
 
 Usage: python3 tools/convert_3ds_panel_art.py town.pal
 Requires ffmpeg; town.pal is extracted from the user's own DIABDAT.MPQ.
@@ -53,6 +53,32 @@ def main():
         target = root / 'assets/data' / output_name
         target.write_bytes(pixels)
         print(target, len(pixels))
+
+    # The bottom-screen frame contains transparent windows for the three bars.
+    source = root / 'art/3ds/bottom_screen_ui.png'
+    result = subprocess.run(
+        ['ffmpeg', '-loglevel', 'error', '-i', str(source), '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'],
+        capture_output=True, check=True,
+    )
+    rgba = result.stdout
+    if len(rgba) != 320 * 240 * 4:
+        raise ValueError(f'{source} is not 320x240 RGBA')
+    pixels = bytearray(320 * 240)
+    for offset in range(0, len(rgba), 4):
+        r, g, b, a = rgba[offset:offset + 4]
+        if a < 128:
+            continue
+        color = (r, g, b)
+        index = cache.get(color)
+        if index is None or index == 0:
+            index = 128 + min(range(128), key=lambda i: (
+                (r - colors[i][0]) ** 2 + (g - colors[i][1]) ** 2 + (b - colors[i][2]) ** 2
+            ))
+            cache[color] = index
+        pixels[offset // 4] = index
+    target = root / 'assets/data/ctr_bottom_ui.pal8'
+    target.write_bytes(pixels)
+    print(target, len(pixels))
 
 
 if __name__ == '__main__':

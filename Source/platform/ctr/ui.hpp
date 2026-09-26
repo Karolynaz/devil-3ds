@@ -24,4 +24,6 @@ inline void DrawCtrPanelFrame(const Surface &out)
 	DrawVerticalLine(out, { 3, 3 }, out.h() - 6, PAL16_BEIGE + 3);
 }
 
+void DrawCtrBottomHud(const Surface &out);
+
 } // namespace devilution
