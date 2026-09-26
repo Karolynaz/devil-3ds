@@ -16,6 +16,10 @@
 #include "engine/render/primitive_render.hpp"
 #include "game_mode.hpp"
 #include "options.h"
+#ifdef __3DS__
+#include "platform/ctr/ui_geometry.hpp"
+#include "utils/display.h"
+#endif
 #include "tables/playerdat.hpp"
 #include "utils/format.hpp"
 #include "utils/format_int.hpp"
@@ -31,8 +35,10 @@ using ColorGradient = std::array<Uint8, 12>;
 constexpr ColorGradient GoldGradient = { 0xCF, 0xCE, 0xCD, 0xCC, 0xCB, 0xCA, 0xC9, 0xC8, 0xC7, 0xC6, 0xC5, 0xC4 };
 constexpr ColorGradient SilverGradient = { 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8, 0xF7, 0xF6, 0xF5, 0xF4, 0xF3 };
 
+#ifndef __3DS__
 constexpr int BackWidth = 313;
 constexpr int BackHeight = 9;
+#endif
 
 OptionalOwnedClxSpriteList xpbarArt;
 
@@ -121,6 +127,7 @@ void DrawXPBar(const Surface &out)
 
 bool CheckXPBarInfo()
 {
+#ifndef __3DS__
 	if (!*GetOptions().Gameplay.experienceBar)
 		return false;
 	const Rectangle &mainPanel = GetMainPanel();
@@ -130,6 +137,10 @@ bool CheckXPBarInfo()
 
 	if (MousePosition.x < backX || MousePosition.x >= backX + BackWidth || MousePosition.y < backY || MousePosition.y >= backY + BackHeight)
 		return false;
+#else
+	if (MousePosition.y < 240 || !CtrBottomExperienceBar.contains({ MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 }))
+		return false;
+#endif
 
 	const Player &player = *MyPlayer;
 

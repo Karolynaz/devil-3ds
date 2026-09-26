@@ -9,9 +9,11 @@
 #include "platform/ctr/ui.hpp"
 #endif
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 #ifdef USE_SDL3
 #include <SDL3/SDL_keyboard.h>
@@ -71,6 +73,7 @@
 #include "qol/visual_store.h"
 #include "qol/xpbar.h"
 #include "stores.h"
+#include "tables/playerdat.hpp"
 #include "towners.h"
 #include "utils/attributes.h"
 #include "utils/display.h"
@@ -1928,6 +1931,53 @@ void scrollrt_draw_game_screen()
 	DrawMain(hgt, false, false, false, false, false);
 	RenderPresent();
 }
+
+#ifdef __3DS__
+void DrawCtrLiquidBar(const Surface &out, Rectangle rect, int filled, uint8_t color, bool vertical)
+{
+	filled = std::clamp(filled, 0, vertical ? rect.size.height : rect.size.width);
+	const int phase = SDL_GetTicks() / 90;
+	for (int y = 0; y < rect.size.height; ++y) {
+		for (int x = 0; x < rect.size.width; ++x) {
+			if (vertical ? y < rect.size.height - filled : x >= filled)
+				continue;
+			const int shimmer = (x * 3 + y + phase) % 6;
+			const int highlight = vertical && y == rect.size.height - filled ? 2 : 0;
+			*out.at(rect.position.x + x, rect.position.y + y) = color + 2 + shimmer - highlight;
+		}
+	}
+}
+
+int CtrExperienceFill()
+{
+	const Player &player = *MyPlayer;
+	if (player.isMaxCharacterLevel())
+		return CtrBottomExperienceBar.size.width;
+	const int level = player.getCharacterLevel();
+	const uint64_t previous = GetNextExperienceThresholdForLevel(level - 1);
+	const uint64_t next = GetNextExperienceThresholdForLevel(level);
+	if (next <= previous || player._pExperience <= previous)
+		return 0;
+	return static_cast<int>(std::min<uint64_t>(CtrBottomExperienceBar.size.width,
+	    (player._pExperience - previous) * CtrBottomExperienceBar.size.width / (next - previous)));
+}
+
+void DrawCtrBottomHud(const Surface &out)
+{
+	static std::optional<OwnedSurface> buffer;
+	if (!buffer)
+		buffer.emplace(320, 240);
+	Surface &hud = *buffer;
+	FillRect(hud, 0, 0, 320, 240, 0);
+	DrawCtrLiquidBar(hud, CtrBottomHealthBar, CtrBottomHealthBar.size.height * std::clamp(MyPlayer->_pHPPer, 0, 81) / 81, PAL16_RED, true);
+	DrawCtrLiquidBar(hud, CtrBottomManaBar, CtrBottomManaBar.size.height * std::clamp(MyPlayer->_pManaPer, 0, 81) / 81, PAL16_BLUE, true);
+	DrawCtrLiquidBar(hud, CtrBottomExperienceBar, CtrExperienceFill(), PAL16_YELLOW, false);
+	DrawCtrBottomBackground(hud);
+	DrawCtrInvBelt(hud);
+	DrawInfoBox(hud);
+	out.ScaleBlitFrom(hud, { 0, 0, 320, 240 }, { 0, 240, gnScreenWidth, 240 });
+}
+#endif
 
 void DrawAndBlit()
 {

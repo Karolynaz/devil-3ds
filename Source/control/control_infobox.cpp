@@ -321,6 +321,8 @@ void CheckPanelInfo()
 #ifdef __3DS__
 	if (MousePosition.y >= 240) {
 		pcursinvitem = CheckInvHLight();
+		if (CheckXPBarInfo())
+			MainPanelFlag = true;
 		return;
 	}
 #endif
