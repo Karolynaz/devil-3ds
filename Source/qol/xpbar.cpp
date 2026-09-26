@@ -138,7 +138,7 @@ bool CheckXPBarInfo()
 	if (MousePosition.x < backX || MousePosition.x >= backX + BackWidth || MousePosition.y < backY || MousePosition.y >= backY + BackHeight)
 		return false;
 #else
-	if (MousePosition.y < 240 || !CtrBottomExperienceBar.contains({ MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 }))
+	if (MousePosition.y < 240 || !CtrBottomExperienceBar.contains(Point { MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 }))
 		return false;
 #endif
 
