@@ -1385,23 +1385,25 @@ void DrawCtrInvBelt(const Surface &out)
 		return;
 
 	constexpr int IconSourceSize = 29;
-	OwnedSurface icon(IconSourceSize, IconSourceSize);
+	static std::optional<OwnedSurface> icon;
+	if (!icon)
+		icon.emplace(IconSourceSize, IconSourceSize);
 	const Player &player = *InspectPlayer;
 	for (int slot = 0; slot < MaxBeltItems; ++slot) {
 		const Item &item = player.SpdList[slot];
 		if (item.isEmpty())
 			continue;
 
-		FillRect(icon, 0, 0, IconSourceSize, IconSourceSize, 0);
+		FillRect(*icon, 0, 0, IconSourceSize, IconSourceSize, 0);
 		const ClxSprite sprite = GetInvItemSprite(item._iCurs + CURSOR_FIRSTITEM);
 		if (pcursinvitem == slot + INVITEM_BELT_FIRST)
-			ClxDrawOutline(icon, GetOutlineColor(item, true), { 0, IconSourceSize }, sprite);
-		DrawItem(item, icon, { 0, IconSourceSize }, sprite);
+			ClxDrawOutline(*icon, GetOutlineColor(item, true), { 0, IconSourceSize }, sprite);
+		DrawItem(item, *icon, { 0, IconSourceSize }, sprite);
 
 		const Rectangle target = CtrBottomBeltSlot(slot);
 		for (int y = 0; y < target.size.height; ++y) {
 			for (int x = 0; x < target.size.width; ++x) {
-				const uint8_t color = *icon.at(x * IconSourceSize / target.size.width, y * IconSourceSize / target.size.height);
+				const uint8_t color = *icon->at(x * IconSourceSize / target.size.width, y * IconSourceSize / target.size.height);
 				if (color != 0)
 					*out.at(target.position.x + x, target.position.y + y) = color;
 			}
