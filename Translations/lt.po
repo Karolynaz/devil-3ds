@@ -502,7 +502,7 @@ msgstr ""
 #: Source/DiabloUI/multi/selgame.cpp:100 Source/options.cpp:425
 #: Source/options.cpp:473 Source/translation_dummy.cpp:630
 msgid "Diablo"
-msgstr ""
+msgstr "Diablas"
 
 #: Source/DiabloUI/multi/selgame.cpp:103
 msgid "Diablo Shareware"
@@ -1109,7 +1109,7 @@ msgstr[3] "{:s} aukso monetos"
 
 #: Source/control.cpp:1489
 msgid "Requirements not met"
-msgstr ""
+msgstr "Reikalavimai netenkinami"
 
 #: Source/control.cpp:1518
 #, c++-format
@@ -1119,11 +1119,11 @@ msgstr ""
 #: Source/control.cpp:1519
 #, c++-format
 msgid "Hit Points {:d} of {:d}"
-msgstr ""
+msgstr "Gyvybės taškai: {:d} iš {:d}"
 
 #: Source/control.cpp:1525
 msgid "Right click to inspect"
-msgstr ""
+msgstr "Spustelėkite dešiniuoju pelės klavišu, kad apžiūrėtumėte"
 
 #: Source/control.cpp:1573
 msgid "Level Up"
@@ -1494,7 +1494,7 @@ msgstr ""
 
 #: Source/diablo.cpp:1936 Source/diablo.cpp:2274
 msgid "Quest log"
-msgstr ""
+msgstr "Užduočių žurnalas"
 
 #: Source/diablo.cpp:1937 Source/diablo.cpp:2275
 msgid "Open Quest log."
@@ -2480,47 +2480,47 @@ msgstr ""
 
 #: Source/inv.cpp:2228
 msgid "No room for item"
-msgstr ""
+msgstr "Nėra vietos daiktui"
 
 #: Source/items.cpp:212 Source/translation_dummy.cpp:298
 msgid "Oil of Accuracy"
-msgstr ""
+msgstr "Taiklumo aliejus"
 
 #: Source/items.cpp:213
 msgid "Oil of Mastery"
-msgstr ""
+msgstr "Meistriškumo aliejus"
 
 #: Source/items.cpp:214 Source/translation_dummy.cpp:299
 msgid "Oil of Sharpness"
-msgstr ""
+msgstr "Aštrumo aliejus"
 
 #: Source/items.cpp:215
 msgid "Oil of Death"
-msgstr ""
+msgstr "Mirties aliejus"
 
 #: Source/items.cpp:216
 msgid "Oil of Skill"
-msgstr ""
+msgstr "Įgūdžių aliejus"
 
 #: Source/items.cpp:217 Source/translation_dummy.cpp:251
 msgid "Blacksmith Oil"
-msgstr ""
+msgstr "Kalvio aliejus"
 
 #: Source/items.cpp:218
 msgid "Oil of Fortitude"
-msgstr ""
+msgstr "Ištvermės aliejus"
 
 #: Source/items.cpp:219
 msgid "Oil of Permanence"
-msgstr ""
+msgstr "Patvarumo aliejus"
 
 #: Source/items.cpp:220
 msgid "Oil of Hardening"
-msgstr ""
+msgstr "Sutvirtinimo aliejus"
 
 #: Source/items.cpp:221
 msgid "Oil of Imperviousness"
-msgstr ""
+msgstr "Nepralaidumo aliejus"
 
 #. TRANSLATORS: Constructs item names. Format: {Item} of {Spell}. Example: War Staff of Firewall
 #: Source/items.cpp:1104
@@ -3236,7 +3236,7 @@ msgstr ""
 
 #: Source/levels/setmaps.cpp:28
 msgid "Chamber of Bone"
-msgstr ""
+msgstr "Kaulų menė"
 
 #. TRANSLATORS: Quest Map
 #: Source/levels/setmaps.cpp:29 Source/quests.cpp:78
@@ -3245,11 +3245,11 @@ msgstr ""
 
 #: Source/levels/setmaps.cpp:30 Source/translation_dummy.cpp:637
 msgid "Poisoned Water Supply"
-msgstr ""
+msgstr "Užnuodytas vanduo"
 
 #: Source/levels/setmaps.cpp:31
 msgid "Archbishop Lazarus' Lair"
-msgstr ""
+msgstr "Arkivyskupo Lazaruso guolis"
 
 #: Source/levels/setmaps.cpp:32
 msgid "Church Arena"
@@ -3323,7 +3323,7 @@ msgstr ""
 
 #: Source/levels/trigs.cpp:671 Source/translation_dummy.cpp:646
 msgid "Cornerstone of the World"
-msgstr ""
+msgstr "Pasaulio kertinis akmuo"
 
 #: Source/levels/trigs.cpp:676
 #, c++-format
@@ -3562,7 +3562,7 @@ msgstr ""
 
 #: Source/objects.cpp:142 Source/translation_dummy.cpp:494
 msgid "Holy"
-msgstr ""
+msgstr "Šventas"
 
 #: Source/objects.cpp:143
 msgid "Sacred"
@@ -4742,7 +4742,7 @@ msgstr ""
 #. TRANSLATORS: Quest Map
 #: Source/quests.cpp:77 Source/translation_dummy.cpp:638
 msgid "The Chamber of Bone"
-msgstr ""
+msgstr "Kaulų menė"
 
 #. TRANSLATORS: Quest Map
 #: Source/quests.cpp:79
@@ -5455,7 +5455,7 @@ msgstr ""
 #: Source/translation_dummy.cpp:67
 msgctxt "monster"
 msgid "Blood Stone"
-msgstr ""
+msgstr "Kraujo akmuo"
 
 #: Source/translation_dummy.cpp:68
 msgctxt "monster"
@@ -6203,7 +6203,7 @@ msgstr "Trumpasis kardas"
 
 #: Source/translation_dummy.cpp:218
 msgid "Buckler"
-msgstr ""
+msgstr "Mažasis skydas"
 
 #: Source/translation_dummy.cpp:219
 msgid "Club"
@@ -6211,91 +6211,91 @@ msgstr "Vėzdas"
 
 #: Source/translation_dummy.cpp:220
 msgid "Short Bow"
-msgstr ""
+msgstr "Trumpasis lankas"
 
 #: Source/translation_dummy.cpp:221
 msgid "Short Staff of Mana"
-msgstr ""
+msgstr "Trumpasis manos skeptras"
 
 #: Source/translation_dummy.cpp:222
 msgid "Cleaver"
-msgstr ""
+msgstr "Mėsininko kirvis"
 
 #: Source/translation_dummy.cpp:223
 msgid "The Undead Crown"
-msgstr ""
+msgstr "Nemirėlio karūna"
 
 #: Source/translation_dummy.cpp:224
 msgid "Empyrean Band"
-msgstr ""
+msgstr "Dangiškasis žiedas"
 
 #: Source/translation_dummy.cpp:225
 msgid "Magic Rock"
-msgstr ""
+msgstr "Magiškasis akmuo"
 
 #: Source/translation_dummy.cpp:226
 msgid "Optic Amulet"
-msgstr ""
+msgstr "Regėjimo amuletas"
 
 #: Source/translation_dummy.cpp:227
 msgid "Ring of Truth"
-msgstr ""
+msgstr "Tiesos žiedas"
 
 #: Source/translation_dummy.cpp:228
 msgid "Tavern Sign"
-msgstr ""
+msgstr "Smuklės iškaba"
 
 #: Source/translation_dummy.cpp:229
 msgid "Harlequin Crest"
-msgstr ""
+msgstr "Arlekino karūna"
 
 #: Source/translation_dummy.cpp:230
 msgid "Veil of Steel"
-msgstr ""
+msgstr "Plieno šydas"
 
 #: Source/translation_dummy.cpp:231
 msgid "Golden Elixir"
-msgstr ""
+msgstr "Auksinis eliksyras"
 
 #: Source/translation_dummy.cpp:232
 msgid "Anvil of Fury"
-msgstr ""
+msgstr "Įniršio priekalas"
 
 #: Source/translation_dummy.cpp:233
 msgid "Black Mushroom"
-msgstr ""
+msgstr "Juodasis grybas"
 
 #: Source/translation_dummy.cpp:234
 msgid "Brain"
-msgstr ""
+msgstr "Smegenys"
 
 #: Source/translation_dummy.cpp:235
 msgid "Fungal Tome"
-msgstr ""
+msgstr "Grybų tomas"
 
 #: Source/translation_dummy.cpp:236
 msgid "Spectral Elixir"
-msgstr ""
+msgstr "Šmėklų eliksyras"
 
 #: Source/translation_dummy.cpp:237
 msgid "Blood Stone"
-msgstr ""
+msgstr "Kraujo akmuo"
 
 #: Source/translation_dummy.cpp:238
 msgid "Cathedral Map"
-msgstr ""
+msgstr "Katedros žemėlapis"
 
 #: Source/translation_dummy.cpp:239
 msgid "Ear"
-msgstr ""
+msgstr "Ausis"
 
 #: Source/translation_dummy.cpp:240
 msgid "Potion of Healing"
-msgstr ""
+msgstr "Gydymo eliksyras"
 
 #: Source/translation_dummy.cpp:241
 msgid "Potion of Mana"
-msgstr ""
+msgstr "Manos eliksyras"
 
 #: Source/translation_dummy.cpp:242
 msgid "Scroll of Identify"
@@ -6307,39 +6307,39 @@ msgstr "Miesto portalo ritinys"
 
 #: Source/translation_dummy.cpp:244
 msgid "Arkaine's Valor"
-msgstr ""
+msgstr "Arkaino narsumas"
 
 #: Source/translation_dummy.cpp:245
 msgid "Potion of Full Healing"
-msgstr ""
+msgstr "Visiško gydymo eliksyras"
 
 #: Source/translation_dummy.cpp:246
 msgid "Potion of Full Mana"
-msgstr ""
+msgstr "Visiško manos eliksyras"
 
 #: Source/translation_dummy.cpp:247
 msgid "Griswold's Edge"
-msgstr ""
+msgstr "Grisvoldo ašmenys"
 
 #: Source/translation_dummy.cpp:248
 msgid "Bovine Plate"
-msgstr ""
+msgstr "Galvijo šarvai"
 
 #: Source/translation_dummy.cpp:249
 msgid "Staff of Lazarus"
-msgstr ""
+msgstr "Lozoriaus skeptras"
 
 #: Source/translation_dummy.cpp:250
 msgid "Scroll of Resurrect"
-msgstr ""
+msgstr "Prikėlimo ritinys"
 
 #: Source/translation_dummy.cpp:252
 msgid "Short Staff"
-msgstr ""
+msgstr "Trumpasis skeptras"
 
 #: Source/translation_dummy.cpp:253
 msgid "Sword"
-msgstr ""
+msgstr "Kardas"
 
 #: Source/translation_dummy.cpp:254
 msgid "Dagger"
@@ -6347,39 +6347,39 @@ msgstr "Durklas"
 
 #: Source/translation_dummy.cpp:255
 msgid "Rune Bomb"
-msgstr ""
+msgstr "Runų bomba"
 
 #: Source/translation_dummy.cpp:256
 msgid "Theodore"
-msgstr ""
+msgstr "Teodoras"
 
 #: Source/translation_dummy.cpp:257
 msgid "Auric Amulet"
-msgstr ""
+msgstr "Auksinis amuletas"
 
 #: Source/translation_dummy.cpp:258
 msgid "Torn Note 1"
-msgstr ""
+msgstr "Suplėšytas raštelis 1"
 
 #: Source/translation_dummy.cpp:259
 msgid "Torn Note 2"
-msgstr ""
+msgstr "Suplėšytas raštelis 2"
 
 #: Source/translation_dummy.cpp:260
 msgid "Torn Note 3"
-msgstr ""
+msgstr "Suplėšytas raštelis 3"
 
 #: Source/translation_dummy.cpp:261
 msgid "Reconstructed Note"
-msgstr ""
+msgstr "Atkurtas raštelis"
 
 #: Source/translation_dummy.cpp:262
 msgid "Brown Suit"
-msgstr ""
+msgstr "Rudas kostiumas"
 
 #: Source/translation_dummy.cpp:263
 msgid "Grey Suit"
-msgstr ""
+msgstr "Pilkas kostiumas"
 
 #: Source/translation_dummy.cpp:264
 msgid "Cap"
@@ -6387,7 +6387,7 @@ msgstr "Kepurė"
 
 #: Source/translation_dummy.cpp:265
 msgid "Skull Cap"
-msgstr ""
+msgstr "Kaukolės kepurė"
 
 #: Source/translation_dummy.cpp:266
 msgid "Helm"
@@ -6395,35 +6395,35 @@ msgstr " šalmas"
 
 #: Source/translation_dummy.cpp:267
 msgid "Full Helm"
-msgstr ""
+msgstr "Uždaras šalmas"
 
 #: Source/translation_dummy.cpp:268
 msgid "Crown"
-msgstr ""
+msgstr "Karūna"
 
 #: Source/translation_dummy.cpp:269
 msgid "Great Helm"
-msgstr ""
+msgstr "Didysis šalmas"
 
 #: Source/translation_dummy.cpp:270
 msgid "Cape"
-msgstr ""
+msgstr "Apsiaustas"
 
 #: Source/translation_dummy.cpp:271
 msgid "Rags"
-msgstr ""
+msgstr "Skarmalai"
 
 #: Source/translation_dummy.cpp:272
 msgid "Cloak"
-msgstr ""
+msgstr "Mantija"
 
 #: Source/translation_dummy.cpp:273
 msgid "Robe"
-msgstr ""
+msgstr "Rūbas"
 
 #: Source/translation_dummy.cpp:274
 msgid "Quilted Armor"
-msgstr ""
+msgstr "Dygsniuoti šarvai"
 
 #: Source/translation_dummy.cpp:276
 msgid "Leather Armor"
@@ -6431,19 +6431,19 @@ msgstr "Odiniai šarvai"
 
 #: Source/translation_dummy.cpp:277
 msgid "Hard Leather Armor"
-msgstr ""
+msgstr "Tvirti odiniai šarvai"
 
 #: Source/translation_dummy.cpp:278
 msgid "Studded Leather Armor"
-msgstr ""
+msgstr "Kniedyti odiniai šarvai"
 
 #: Source/translation_dummy.cpp:279
 msgid "Ring Mail"
-msgstr ""
+msgstr "Žiediniai šarvai"
 
 #: Source/translation_dummy.cpp:280
 msgid "Mail"
-msgstr ""
+msgstr "Grandininiai šarvai"
 
 #: Source/translation_dummy.cpp:281
 msgid "Chain Mail"
@@ -6451,19 +6451,19 @@ msgstr "Žiediniai šarvai"
 
 #: Source/translation_dummy.cpp:282
 msgid "Scale Mail"
-msgstr ""
+msgstr "Žvyniniai šarvai"
 
 #: Source/translation_dummy.cpp:283
 msgid "Breast Plate"
-msgstr ""
+msgstr "Krūtinės šarvai"
 
 #: Source/translation_dummy.cpp:284
 msgid "Plate"
-msgstr ""
+msgstr "Plokštiniai šarvai"
 
 #: Source/translation_dummy.cpp:285
 msgid "Splint Mail"
-msgstr ""
+msgstr "Sutvirtinti šarvai"
 
 #: Source/translation_dummy.cpp:286
 msgid "Plate Mail"
@@ -6471,15 +6471,15 @@ msgstr "Plokštiniai šarvai"
 
 #: Source/translation_dummy.cpp:287
 msgid "Field Plate"
-msgstr ""
+msgstr "Lauko šarvai"
 
 #: Source/translation_dummy.cpp:288
 msgid "Gothic Plate"
-msgstr ""
+msgstr "Gotikiniai plokštiniai šarvai"
 
 #: Source/translation_dummy.cpp:289
 msgid "Full Plate Mail"
-msgstr ""
+msgstr "Visiški plokštiniai šarvai"
 
 #: Source/translation_dummy.cpp:290
 msgid "Shield"
@@ -6487,35 +6487,35 @@ msgstr "Skydas"
 
 #: Source/translation_dummy.cpp:291
 msgid "Small Shield"
-msgstr ""
+msgstr "Mažas skydas"
 
 #: Source/translation_dummy.cpp:292
 msgid "Large Shield"
-msgstr ""
+msgstr "Didelis skydas"
 
 #: Source/translation_dummy.cpp:293
 msgid "Kite Shield"
-msgstr ""
+msgstr "Aitvaro skydas"
 
 #: Source/translation_dummy.cpp:294
 msgid "Tower Shield"
-msgstr ""
+msgstr "Bokšto skydas"
 
 #: Source/translation_dummy.cpp:295
 msgid "Gothic Shield"
-msgstr ""
+msgstr "Gotikinis skydas"
 
 #: Source/translation_dummy.cpp:296
 msgid "Potion of Rejuvenation"
-msgstr ""
+msgstr "Atjaunėjimo eliksyras"
 
 #: Source/translation_dummy.cpp:297
 msgid "Potion of Full Rejuvenation"
-msgstr ""
+msgstr "Visiško atjaunėjimo eliksyras"
 
 #: Source/translation_dummy.cpp:300
 msgid "Oil"
-msgstr ""
+msgstr "Aliejus"
 
 #: Source/translation_dummy.cpp:301
 msgid "Elixir of Strength"
@@ -6535,83 +6535,83 @@ msgstr "Gyvybingumo eliksyras"
 
 #: Source/translation_dummy.cpp:305
 msgid "Scroll of Healing"
-msgstr ""
+msgstr "Gydymo ritinys"
 
 #: Source/translation_dummy.cpp:306
 msgid "Scroll of Search"
-msgstr ""
+msgstr "Paieškos ritinys"
 
 #: Source/translation_dummy.cpp:307
 msgid "Scroll of Lightning"
-msgstr ""
+msgstr "Žaibo ritinys"
 
 #: Source/translation_dummy.cpp:308
 msgid "Scroll of Fire Wall"
-msgstr ""
+msgstr "Ugnies sienos ritinys"
 
 #: Source/translation_dummy.cpp:309
 msgid "Scroll of Inferno"
-msgstr ""
+msgstr "Pragaro liepsnos ritinys"
 
 #: Source/translation_dummy.cpp:310
 msgid "Scroll of Flash"
-msgstr ""
+msgstr "Blykstelėjimo ritinys"
 
 #: Source/translation_dummy.cpp:311
 msgid "Scroll of Infravision"
-msgstr ""
+msgstr "Infraregėjimo ritinys"
 
 #: Source/translation_dummy.cpp:312
 msgid "Scroll of Phasing"
-msgstr ""
+msgstr "Perėjimo ritinys"
 
 #: Source/translation_dummy.cpp:313
 msgid "Scroll of Mana Shield"
-msgstr ""
+msgstr "Manos skydo ritinys"
 
 #: Source/translation_dummy.cpp:314
 msgid "Scroll of Flame Wave"
-msgstr ""
+msgstr "Liepsnų bangos ritinys"
 
 #: Source/translation_dummy.cpp:315
 msgid "Scroll of Fireball"
-msgstr ""
+msgstr "Ugnies kamuolio ritinys"
 
 #: Source/translation_dummy.cpp:316
 msgid "Scroll of Stone Curse"
-msgstr ""
+msgstr "Suakmenėjimo ritinys"
 
 #: Source/translation_dummy.cpp:317
 msgid "Scroll of Chain Lightning"
-msgstr ""
+msgstr "Grandininio žaibo ritinys"
 
 #: Source/translation_dummy.cpp:318
 msgid "Scroll of Guardian"
-msgstr ""
+msgstr "Sargybinio ritinys"
 
 #: Source/translation_dummy.cpp:319
 msgid "Scroll of Nova"
-msgstr ""
+msgstr "Novos ritinys"
 
 #: Source/translation_dummy.cpp:320
 msgid "Scroll of Golem"
-msgstr ""
+msgstr "Golemo ritinys"
 
 #: Source/translation_dummy.cpp:321
 msgid "Scroll of Teleport"
-msgstr ""
+msgstr "Teleportacijos ritinys"
 
 #: Source/translation_dummy.cpp:322
 msgid "Scroll of Apocalypse"
-msgstr ""
+msgstr "Apokalipsės ritinys"
 
 #: Source/translation_dummy.cpp:323
 msgid "Falchion"
-msgstr ""
+msgstr "Falchionas"
 
 #: Source/translation_dummy.cpp:324
 msgid "Scimitar"
-msgstr ""
+msgstr "Scimitaras"
 
 #: Source/translation_dummy.cpp:325
 msgid "Claymore"
@@ -6619,11 +6619,11 @@ msgstr "Dvirankis kardas"
 
 #: Source/translation_dummy.cpp:326
 msgid "Blade"
-msgstr ""
+msgstr "Ašmenys"
 
 #: Source/translation_dummy.cpp:327
 msgid "Sabre"
-msgstr ""
+msgstr "Špaga"
 
 #: Source/translation_dummy.cpp:328
 msgid "Long Sword"
@@ -6635,19 +6635,19 @@ msgstr "Platusis kardas"
 
 #: Source/translation_dummy.cpp:330
 msgid "Bastard Sword"
-msgstr ""
+msgstr "Pusantrokas kardas"
 
 #: Source/translation_dummy.cpp:331
 msgid "Two-Handed Sword"
-msgstr ""
+msgstr "Dvirankis kardas"
 
 #: Source/translation_dummy.cpp:332
 msgid "Great Sword"
-msgstr ""
+msgstr "Didysis kardas"
 
 #: Source/translation_dummy.cpp:333
 msgid "Small Axe"
-msgstr ""
+msgstr "Mažas kirvis"
 
 #: Source/translation_dummy.cpp:334
 msgid "Axe"
@@ -6655,19 +6655,19 @@ msgstr "Kirvis"
 
 #: Source/translation_dummy.cpp:335
 msgid "Large Axe"
-msgstr ""
+msgstr "Didysis kirvis"
 
 #: Source/translation_dummy.cpp:336
 msgid "Broad Axe"
-msgstr ""
+msgstr "Platusis kirvis"
 
 #: Source/translation_dummy.cpp:337
 msgid "Battle Axe"
-msgstr ""
+msgstr "Kovos kirvis"
 
 #: Source/translation_dummy.cpp:338
 msgid "Great Axe"
-msgstr ""
+msgstr "Didysis kirvis"
 
 #: Source/translation_dummy.cpp:339
 msgid "Mace"
@@ -6675,27 +6675,27 @@ msgstr "Buozė"
 
 #: Source/translation_dummy.cpp:340
 msgid "Morning Star"
-msgstr ""
+msgstr "Rytinė žvaigždė"
 
 #: Source/translation_dummy.cpp:341
 msgid "War Hammer"
-msgstr ""
+msgstr "Karo kūjis"
 
 #: Source/translation_dummy.cpp:342
 msgid "Hammer"
-msgstr ""
+msgstr "Kūjis"
 
 #: Source/translation_dummy.cpp:343
 msgid "Spiked Club"
-msgstr ""
+msgstr "Dygliuota kuoka"
 
 #: Source/translation_dummy.cpp:344
 msgid "Flail"
-msgstr ""
+msgstr "Spragilas"
 
 #: Source/translation_dummy.cpp:345
 msgid "Maul"
-msgstr ""
+msgstr "Kūjis"
 
 #: Source/translation_dummy.cpp:346
 msgid "Bow"
@@ -6703,47 +6703,47 @@ msgstr "Lankas"
 
 #: Source/translation_dummy.cpp:347
 msgid "Hunter's Bow"
-msgstr ""
+msgstr "Medžiotojo lankas"
 
 #: Source/translation_dummy.cpp:348
 msgid "Long Bow"
-msgstr ""
+msgstr "Ilgasis lankas"
 
 #: Source/translation_dummy.cpp:349
 msgid "Composite Bow"
-msgstr ""
+msgstr "Sudėtinis lankas"
 
 #: Source/translation_dummy.cpp:350
 msgid "Short Battle Bow"
-msgstr ""
+msgstr "Trumpasis kovos lankas"
 
 #: Source/translation_dummy.cpp:351
 msgid "Long Battle Bow"
-msgstr ""
+msgstr "Ilgasis kovos lankas"
 
 #: Source/translation_dummy.cpp:352
 msgid "Short War Bow"
-msgstr ""
+msgstr "Trumpasis karo lankas"
 
 #: Source/translation_dummy.cpp:353
 msgid "Long War Bow"
-msgstr ""
+msgstr "Ilgasis karo lankas"
 
 #: Source/translation_dummy.cpp:355
 msgid "Long Staff"
-msgstr ""
+msgstr "Ilgasis skeptras"
 
 #: Source/translation_dummy.cpp:356
 msgid "Composite Staff"
-msgstr ""
+msgstr "Sudėtinis skeptras"
 
 #: Source/translation_dummy.cpp:357
 msgid "Quarter Staff"
-msgstr ""
+msgstr "Kovos lazda"
 
 #: Source/translation_dummy.cpp:358
 msgid "War Staff"
-msgstr ""
+msgstr "Karo skeptras"
 
 #: Source/translation_dummy.cpp:359
 msgid "Ring"
@@ -6755,107 +6755,107 @@ msgstr "Amuletas"
 
 #: Source/translation_dummy.cpp:361
 msgid "Rune of Fire"
-msgstr ""
+msgstr "Ugnies runa"
 
 #: Source/translation_dummy.cpp:362
 msgid "Rune"
-msgstr ""
+msgstr "Runa"
 
 #: Source/translation_dummy.cpp:363
 msgid "Rune of Lightning"
-msgstr ""
+msgstr "Žaibo runa"
 
 #: Source/translation_dummy.cpp:364
 msgid "Greater Rune of Fire"
-msgstr ""
+msgstr "Didžioji ugnies runa"
 
 #: Source/translation_dummy.cpp:365
 msgid "Greater Rune of Lightning"
-msgstr ""
+msgstr "Didžioji žaibo runa"
 
 #: Source/translation_dummy.cpp:366
 msgid "Rune of Stone"
-msgstr ""
+msgstr "Akmens runa"
 
 #: Source/translation_dummy.cpp:367
 msgid "Short Staff of Charged Bolt"
-msgstr ""
+msgstr "Trumpasis įelektrinto žaibo skeptras"
 
 #: Source/translation_dummy.cpp:368
 msgid "Arena Potion"
-msgstr ""
+msgstr "Arenos eliksyras"
 
 #: Source/translation_dummy.cpp:369
 msgid "The Butcher's Cleaver"
-msgstr ""
+msgstr "Mėsininko skerdynės"
 
 #: Source/translation_dummy.cpp:370
 msgid "Lightforge"
-msgstr ""
+msgstr "Šviesos kalvė"
 
 #: Source/translation_dummy.cpp:371
 msgid "The Rift Bow"
-msgstr ""
+msgstr "Plyšio lankas"
 
 #: Source/translation_dummy.cpp:372
 msgid "The Needler"
-msgstr ""
+msgstr "Adatininkas"
 
 #: Source/translation_dummy.cpp:373
 msgid "The Celestial Bow"
-msgstr ""
+msgstr "Dangiškasis lankas"
 
 #: Source/translation_dummy.cpp:374
 msgid "Deadly Hunter"
-msgstr ""
+msgstr "Mirtinas medžiotojas"
 
 #: Source/translation_dummy.cpp:375
 msgid "Bow of the Dead"
-msgstr ""
+msgstr "Mirusiųjų lankas"
 
 #: Source/translation_dummy.cpp:376
 msgid "The Blackoak Bow"
-msgstr ""
+msgstr "Juodojo ąžuolo lankas"
 
 #: Source/translation_dummy.cpp:377
 msgid "Flamedart"
-msgstr ""
+msgstr "Liepsnos strėlė"
 
 #: Source/translation_dummy.cpp:378
 msgid "Fleshstinger"
-msgstr ""
+msgstr "Mėsos geluonis"
 
 #: Source/translation_dummy.cpp:379
 msgid "Windforce"
-msgstr ""
+msgstr "Vėjo jėga"
 
 #: Source/translation_dummy.cpp:380
 msgid "Eaglehorn"
-msgstr ""
+msgstr "Erelio ragas"
 
 #: Source/translation_dummy.cpp:381
 msgid "Gonnagal's Dirk"
-msgstr ""
+msgstr "Gonagalo durklas"
 
 #: Source/translation_dummy.cpp:382
 msgid "The Defender"
-msgstr ""
+msgstr "Gynėjas"
 
 #: Source/translation_dummy.cpp:383
 msgid "Gryphon's Claw"
-msgstr ""
+msgstr "Grifo nagas"
 
 #: Source/translation_dummy.cpp:384
 msgid "Black Razor"
-msgstr ""
+msgstr "Juodasis skustuvas"
 
 #: Source/translation_dummy.cpp:385
 msgid "Gibbous Moon"
-msgstr ""
+msgstr "Pusmėnulis"
 
 #: Source/translation_dummy.cpp:386
 msgid "Ice Shank"
-msgstr ""
+msgstr "Ledo durklas"
 
 #: Source/translation_dummy.cpp:387
 msgid "The Executioner's Blade"
@@ -7123,23 +7123,23 @@ msgstr ""
 
 #: Source/translation_dummy.cpp:453
 msgid "Bronze"
-msgstr ""
+msgstr "Bronzinis"
 
 #: Source/translation_dummy.cpp:454
 msgid "Iron"
-msgstr ""
+msgstr "Geležinis"
 
 #: Source/translation_dummy.cpp:455
 msgid "Steel"
-msgstr ""
+msgstr "Plieninis"
 
 #: Source/translation_dummy.cpp:456
 msgid "Silver"
-msgstr ""
+msgstr "Sidabrinis"
 
 #: Source/translation_dummy.cpp:457
 msgid "Platinum"
-msgstr ""
+msgstr "Platina"
 
 #: Source/translation_dummy.cpp:458
 msgid "Mithril"
@@ -7159,23 +7159,23 @@ msgstr ""
 
 #: Source/translation_dummy.cpp:463
 msgid "Bent"
-msgstr ""
+msgstr "Sulinkęs"
 
 #: Source/translation_dummy.cpp:464
 msgid "Weak"
-msgstr ""
+msgstr "Silpnas"
 
 #: Source/translation_dummy.cpp:465
 msgid "Jagged"
-msgstr ""
+msgstr "Dantytas"
 
 #: Source/translation_dummy.cpp:466
 msgid "Deadly"
-msgstr ""
+msgstr "Mirtinas"
 
 #: Source/translation_dummy.cpp:467
 msgid "Heavy"
-msgstr ""
+msgstr "Sunkus"
 
 #: Source/translation_dummy.cpp:468
 msgid "Vicious"
@@ -7187,11 +7187,11 @@ msgstr ""
 
 #: Source/translation_dummy.cpp:470
 msgid "Massive"
-msgstr ""
+msgstr "Galingas"
 
 #: Source/translation_dummy.cpp:471
 msgid "Savage"
-msgstr ""
+msgstr "Laukinis"
 
 #: Source/translation_dummy.cpp:472
 msgid "Ruthless"
@@ -7199,227 +7199,227 @@ msgstr ""
 
 #: Source/translation_dummy.cpp:473
 msgid "Merciless"
-msgstr ""
+msgstr "Negailestingas"
 
 #: Source/translation_dummy.cpp:474
 msgid "Clumsy"
-msgstr ""
+msgstr "Nerangus"
 
 #: Source/translation_dummy.cpp:475
 msgid "Dull"
-msgstr ""
+msgstr "Atbukęs"
 
 #: Source/translation_dummy.cpp:476
 msgid "Sharp"
-msgstr ""
+msgstr "Aštrus"
 
 #: Source/translation_dummy.cpp:477
 msgid "Fine"
-msgstr ""
+msgstr "Puikus"
 
 #: Source/translation_dummy.cpp:478
 msgid "Warrior's"
-msgstr ""
+msgstr "Kario"
 
 #: Source/translation_dummy.cpp:479
 msgid "Soldier's"
-msgstr ""
+msgstr "Kareivio"
 
 #: Source/translation_dummy.cpp:480
 msgid "Lord's"
-msgstr ""
+msgstr "Valdovo"
 
 #: Source/translation_dummy.cpp:481
 msgid "Knight's"
-msgstr ""
+msgstr "Riterio"
 
 #: Source/translation_dummy.cpp:482
 msgid "Master's"
-msgstr ""
+msgstr "Meistro"
 
 #: Source/translation_dummy.cpp:483
 msgid "Champion's"
-msgstr ""
+msgstr "Čempiono"
 
 #: Source/translation_dummy.cpp:484
 msgid "King's"
-msgstr ""
+msgstr "Karaliaus"
 
 #: Source/translation_dummy.cpp:485
 msgid "Vulnerable"
-msgstr ""
+msgstr "Pažeidžiamas"
 
 #: Source/translation_dummy.cpp:486
 msgid "Rusted"
-msgstr ""
+msgstr "Surūdijęs"
 
 #: Source/translation_dummy.cpp:487
 msgid "Strong"
-msgstr ""
+msgstr "Tvirtas"
 
 #: Source/translation_dummy.cpp:488
 msgid "Grand"
-msgstr ""
+msgstr "Didysis"
 
 #: Source/translation_dummy.cpp:489
 msgid "Valiant"
-msgstr ""
+msgstr "Narsus"
 
 #: Source/translation_dummy.cpp:490
 msgid "Glorious"
-msgstr ""
+msgstr "Šlovingas"
 
 #: Source/translation_dummy.cpp:491
 msgid "Blessed"
-msgstr ""
+msgstr "Palaimintas"
 
 #: Source/translation_dummy.cpp:492
 msgid "Saintly"
-msgstr ""
+msgstr "Šventasis"
 
 #: Source/translation_dummy.cpp:493
 msgid "Awesome"
-msgstr ""
+msgstr "Nuostabus"
 
 #: Source/translation_dummy.cpp:495
 msgid "Godly"
-msgstr ""
+msgstr "Dieviškas"
 
 #: Source/translation_dummy.cpp:496
 msgid "Red"
-msgstr ""
+msgstr "Raudonas"
 
 #: Source/translation_dummy.cpp:497
 msgid "Crimson"
-msgstr ""
+msgstr "Tamsiai raudonas"
 
 #: Source/translation_dummy.cpp:498
 msgid "Garnet"
-msgstr ""
+msgstr "Granato"
 
 #: Source/translation_dummy.cpp:499
 msgid "Ruby"
-msgstr ""
+msgstr "Rubino"
 
 #: Source/translation_dummy.cpp:500
 msgid "Blue"
-msgstr ""
+msgstr "Mėlynas"
 
 #: Source/translation_dummy.cpp:501
 msgid "Azure"
-msgstr ""
+msgstr "Žydras"
 
 #: Source/translation_dummy.cpp:502
 msgid "Lapis"
-msgstr ""
+msgstr "Lazurito"
 
 #: Source/translation_dummy.cpp:503
 msgid "Cobalt"
-msgstr ""
+msgstr "Kobalto"
 
 #: Source/translation_dummy.cpp:504
 msgid "Sapphire"
-msgstr ""
+msgstr "Safyro"
 
 #: Source/translation_dummy.cpp:505
 msgid "White"
-msgstr ""
+msgstr "Baltas"
 
 #: Source/translation_dummy.cpp:506
 msgid "Pearl"
-msgstr ""
+msgstr "Perlo"
 
 #: Source/translation_dummy.cpp:507
 msgid "Ivory"
-msgstr ""
+msgstr "Dramblio kaulo"
 
 #: Source/translation_dummy.cpp:508
 msgid "Crystal"
-msgstr ""
+msgstr "Krištolo"
 
 #: Source/translation_dummy.cpp:509
 msgid "Diamond"
-msgstr ""
+msgstr "Deimanto"
 
 #: Source/translation_dummy.cpp:510
 msgid "Topaz"
-msgstr ""
+msgstr "Topazo"
 
 #: Source/translation_dummy.cpp:511
 msgid "Amber"
-msgstr ""
+msgstr "Gintaro"
 
 #: Source/translation_dummy.cpp:512
 msgid "Jade"
-msgstr ""
+msgstr "Nefrito"
 
 #: Source/translation_dummy.cpp:513
 msgid "Obsidian"
-msgstr ""
+msgstr "Obsidiano"
 
 #: Source/translation_dummy.cpp:514
 msgid "Emerald"
-msgstr ""
+msgstr "Smaragdo"
 
 #: Source/translation_dummy.cpp:515
 msgid "Hyena's"
-msgstr ""
+msgstr "Hienos"
 
 #: Source/translation_dummy.cpp:516
 msgid "Frog's"
-msgstr ""
+msgstr "Varlės"
 
 #: Source/translation_dummy.cpp:517
 msgid "Spider's"
-msgstr ""
+msgstr "Voro"
 
 #: Source/translation_dummy.cpp:518
 msgid "Raven's"
-msgstr ""
+msgstr "Varno"
 
 #: Source/translation_dummy.cpp:519
 msgid "Snake's"
-msgstr ""
+msgstr "Gyvatės"
 
 #: Source/translation_dummy.cpp:520
 msgid "Serpent's"
-msgstr ""
+msgstr "Slibino"
 
 #: Source/translation_dummy.cpp:521
 msgid "Drake's"
-msgstr ""
+msgstr "Drakono"
 
 #: Source/translation_dummy.cpp:522
 msgid "Dragon's"
-msgstr ""
+msgstr "Slibino"
 
 #: Source/translation_dummy.cpp:523
 msgid "Wyrm's"
-msgstr ""
+msgstr "Slibino"
 
 #: Source/translation_dummy.cpp:524
 msgid "Hydra's"
-msgstr ""
+msgstr "Hidros"
 
 #: Source/translation_dummy.cpp:525
 msgid "Angel's"
-msgstr ""
+msgstr "Angelo"
 
 #: Source/translation_dummy.cpp:526
 msgid "Arch-Angel's"
-msgstr ""
+msgstr "Arkangelo"
 
 #: Source/translation_dummy.cpp:527
 msgid "Plentiful"
-msgstr ""
+msgstr "Gausus"
 
 #: Source/translation_dummy.cpp:528
 msgid "Bountiful"
-msgstr ""
+msgstr "Dosnus"
 
 #: Source/translation_dummy.cpp:529
 msgid "Flaming"
-msgstr ""
+msgstr "Liepsnojantis"
 
 #: Source/translation_dummy.cpp:530
 msgid "Lightning"
@@ -7427,351 +7427,351 @@ msgstr "Žaibas"
 
 #: Source/translation_dummy.cpp:531
 msgid "quality"
-msgstr ""
+msgstr "kokybės"
 
 #: Source/translation_dummy.cpp:532
 msgid "maiming"
-msgstr ""
+msgstr "žalojimo"
 
 #: Source/translation_dummy.cpp:533
 msgid "slaying"
-msgstr ""
+msgstr "žudymo"
 
 #: Source/translation_dummy.cpp:534
 msgid "gore"
-msgstr ""
+msgstr "skerdynių"
 
 #: Source/translation_dummy.cpp:535
 msgid "carnage"
-msgstr ""
+msgstr "skerdynių"
 
 #: Source/translation_dummy.cpp:536
 msgid "slaughter"
-msgstr ""
+msgstr "žudynių"
 
 #: Source/translation_dummy.cpp:537
 msgid "pain"
-msgstr ""
+msgstr "skausmo"
 
 #: Source/translation_dummy.cpp:538
 msgid "tears"
-msgstr ""
+msgstr "ašarų"
 
 #: Source/translation_dummy.cpp:539
 msgid "health"
-msgstr ""
+msgstr "sveikatos"
 
 #: Source/translation_dummy.cpp:540
 msgid "protection"
-msgstr ""
+msgstr "apsaugos"
 
 #: Source/translation_dummy.cpp:541
 msgid "absorption"
-msgstr ""
+msgstr "sugėrimo"
 
 #: Source/translation_dummy.cpp:542
 msgid "deflection"
-msgstr ""
+msgstr "nukreipimo"
 
 #: Source/translation_dummy.cpp:543
 msgid "osmosis"
-msgstr ""
+msgstr "osmoso"
 
 #: Source/translation_dummy.cpp:544
 msgid "frailty"
-msgstr ""
+msgstr "trapumo"
 
 #: Source/translation_dummy.cpp:545
 msgid "weakness"
-msgstr ""
+msgstr "silpnumo"
 
 #: Source/translation_dummy.cpp:546
 msgid "strength"
-msgstr ""
+msgstr "jėgos"
 
 #: Source/translation_dummy.cpp:547
 msgid "might"
-msgstr ""
+msgstr "galios"
 
 #: Source/translation_dummy.cpp:548
 msgid "power"
-msgstr ""
+msgstr "jėgos"
 
 #: Source/translation_dummy.cpp:549
 msgid "giants"
-msgstr ""
+msgstr "milžinų"
 
 #: Source/translation_dummy.cpp:550
 msgid "titans"
-msgstr ""
+msgstr "titanų"
 
 #: Source/translation_dummy.cpp:551
 msgid "paralysis"
-msgstr ""
+msgstr "paralyžiaus"
 
 #: Source/translation_dummy.cpp:552
 msgid "atrophy"
-msgstr ""
+msgstr "atrofijos"
 
 #: Source/translation_dummy.cpp:553
 msgid "dexterity"
-msgstr ""
+msgstr "vikrumo"
 
 #: Source/translation_dummy.cpp:554
 msgid "skill"
-msgstr ""
+msgstr "įgūdžių"
 
 #: Source/translation_dummy.cpp:555
 msgid "accuracy"
-msgstr ""
+msgstr "taiklumo"
 
 #: Source/translation_dummy.cpp:556
 msgid "precision"
-msgstr ""
+msgstr "tikslumo"
 
 #: Source/translation_dummy.cpp:557
 msgid "perfection"
-msgstr ""
+msgstr "tobulumo"
 
 #: Source/translation_dummy.cpp:558
 msgid "the fool"
-msgstr ""
+msgstr "kvailio"
 
 #: Source/translation_dummy.cpp:559
 msgid "dyslexia"
-msgstr ""
+msgstr "disleksijos"
 
 #: Source/translation_dummy.cpp:560
 msgid "magic"
-msgstr ""
+msgstr "magijos"
 
 #: Source/translation_dummy.cpp:561
 msgid "the mind"
-msgstr ""
+msgstr "proto"
 
 #: Source/translation_dummy.cpp:562
 msgid "brilliance"
-msgstr ""
+msgstr "spindesio"
 
 #: Source/translation_dummy.cpp:563
 msgid "sorcery"
-msgstr ""
+msgstr "kerų"
 
 #: Source/translation_dummy.cpp:564
 msgid "wizardry"
-msgstr ""
+msgstr "burtininkystės"
 
 #: Source/translation_dummy.cpp:565
 msgid "illness"
-msgstr ""
+msgstr "ligos"
 
 #: Source/translation_dummy.cpp:566
 msgid "disease"
-msgstr ""
+msgstr "negalios"
 
 #: Source/translation_dummy.cpp:567
 msgid "vitality"
-msgstr ""
+msgstr "gyvybingumo"
 
 #: Source/translation_dummy.cpp:568
 msgid "zest"
-msgstr ""
+msgstr "žvalumo"
 
 #: Source/translation_dummy.cpp:569
 msgid "vim"
-msgstr ""
+msgstr "energingumo"
 
 #: Source/translation_dummy.cpp:570
 msgid "vigor"
-msgstr ""
+msgstr "gyvybingumo"
 
 #: Source/translation_dummy.cpp:571
 msgid "life"
-msgstr ""
+msgstr "gyvybės"
 
 #: Source/translation_dummy.cpp:572
 msgid "trouble"
-msgstr ""
+msgstr "bėdos"
 
 #: Source/translation_dummy.cpp:573
 msgid "the pit"
-msgstr ""
+msgstr "bedugnės"
 
 #: Source/translation_dummy.cpp:574
 msgid "the sky"
-msgstr ""
+msgstr "dangaus"
 
 #: Source/translation_dummy.cpp:575
 msgid "the moon"
-msgstr ""
+msgstr "mėnulio"
 
 #: Source/translation_dummy.cpp:576
 msgid "the stars"
-msgstr ""
+msgstr "žvaigždžių"
 
 #: Source/translation_dummy.cpp:577
 msgid "the heavens"
-msgstr ""
+msgstr "dangaus"
 
 #: Source/translation_dummy.cpp:578
 msgid "the zodiac"
-msgstr ""
+msgstr "zodiako"
 
 #: Source/translation_dummy.cpp:579
 msgid "the vulture"
-msgstr ""
+msgstr "grifų"
 
 #: Source/translation_dummy.cpp:580
 msgid "the jackal"
-msgstr ""
+msgstr "šakalo"
 
 #: Source/translation_dummy.cpp:581
 msgid "the fox"
-msgstr ""
+msgstr "lapės"
 
 #: Source/translation_dummy.cpp:582
 msgid "the jaguar"
-msgstr ""
+msgstr "jaguaro"
 
 #: Source/translation_dummy.cpp:583
 msgid "the eagle"
-msgstr ""
+msgstr "erelio"
 
 #: Source/translation_dummy.cpp:584
 msgid "the wolf"
-msgstr ""
+msgstr "vilko"
 
 #: Source/translation_dummy.cpp:585
 msgid "the tiger"
-msgstr ""
+msgstr "tigro"
 
 #: Source/translation_dummy.cpp:586
 msgid "the lion"
-msgstr ""
+msgstr "liūto"
 
 #: Source/translation_dummy.cpp:587
 msgid "the mammoth"
-msgstr ""
+msgstr "mamuto"
 
 #: Source/translation_dummy.cpp:588
 msgid "the whale"
-msgstr ""
+msgstr "banginio"
 
 #: Source/translation_dummy.cpp:589
 msgid "fragility"
-msgstr ""
+msgstr "trapumo"
 
 #: Source/translation_dummy.cpp:590
 msgid "brittleness"
-msgstr ""
+msgstr "lūžumo"
 
 #: Source/translation_dummy.cpp:591
 msgid "sturdiness"
-msgstr ""
+msgstr "tvirtumo"
 
 #: Source/translation_dummy.cpp:592
 msgid "craftsmanship"
-msgstr ""
+msgstr "meistrystės"
 
 #: Source/translation_dummy.cpp:593
 msgid "structure"
-msgstr ""
+msgstr "sandaros"
 
 #: Source/translation_dummy.cpp:594
 msgid "the ages"
-msgstr ""
+msgstr "amžių"
 
 #: Source/translation_dummy.cpp:595
 msgid "the dark"
-msgstr ""
+msgstr "tamsos"
 
 #: Source/translation_dummy.cpp:596
 msgid "the night"
-msgstr ""
+msgstr "nakties"
 
 #: Source/translation_dummy.cpp:597
 msgid "light"
-msgstr ""
+msgstr "šviesos"
 
 #: Source/translation_dummy.cpp:598
 msgid "radiance"
-msgstr ""
+msgstr "spindesio"
 
 #: Source/translation_dummy.cpp:599
 msgid "flame"
-msgstr ""
+msgstr "liepsnos"
 
 #: Source/translation_dummy.cpp:600
 msgid "fire"
-msgstr ""
+msgstr "ugnies"
 
 #: Source/translation_dummy.cpp:601
 msgid "burning"
-msgstr ""
+msgstr "degimo"
 
 #: Source/translation_dummy.cpp:602
 msgid "shock"
-msgstr ""
+msgstr "smūgio"
 
 #: Source/translation_dummy.cpp:603
 msgid "lightning"
-msgstr ""
+msgstr "žaibo"
 
 #: Source/translation_dummy.cpp:604
 msgid "thunder"
-msgstr ""
+msgstr "griaustinio"
 
 #: Source/translation_dummy.cpp:605
 msgid "many"
-msgstr ""
+msgstr "gausos"
 
 #: Source/translation_dummy.cpp:606
 msgid "plenty"
-msgstr ""
+msgstr "daugybės"
 
 #: Source/translation_dummy.cpp:607
 msgid "thorns"
-msgstr ""
+msgstr "erškėčių"
 
 #: Source/translation_dummy.cpp:608
 msgid "corruption"
-msgstr ""
+msgstr "gedimo"
 
 #: Source/translation_dummy.cpp:609
 msgid "thieves"
-msgstr ""
+msgstr "vagių"
 
 #: Source/translation_dummy.cpp:610
 msgid "the bear"
-msgstr ""
+msgstr "meškos"
 
 #: Source/translation_dummy.cpp:611
 msgid "the bat"
-msgstr ""
+msgstr "šikšnosparnio"
 
 #: Source/translation_dummy.cpp:612
 msgid "vampires"
-msgstr ""
+msgstr "vampyrų"
 
 #: Source/translation_dummy.cpp:613
 msgid "the leech"
-msgstr ""
+msgstr "dėlės"
 
 #: Source/translation_dummy.cpp:614
 msgid "blood"
-msgstr ""
+msgstr "kraujo"
 
 #: Source/translation_dummy.cpp:615
 msgid "piercing"
-msgstr ""
+msgstr "pradūrimo"
 
 #: Source/translation_dummy.cpp:616
 msgid "puncturing"
-msgstr ""
+msgstr "pradūrimo"
 
 #: Source/translation_dummy.cpp:617
 msgid "bashing"
-msgstr ""
+msgstr "daužymo"
 
 #: Source/translation_dummy.cpp:618
 msgid "readiness"
@@ -10671,7 +10671,7 @@ msgstr ""
 #: Source/translation_dummy.cpp:1039
 msgctxt "spell"
 msgid "Rune of Fire"
-msgstr ""
+msgstr "Ugnies runa"
 
 #: Source/translation_dummy.cpp:1040
 msgctxt "spell"
@@ -10691,7 +10691,7 @@ msgstr ""
 #: Source/translation_dummy.cpp:1043
 msgctxt "spell"
 msgid "Rune of Stone"
-msgstr ""
+msgstr "Akmens runa"
 
 #. TRANSLATORS: Thousands separator
 #: Source/utils/format_int.cpp:28 Source/utils/format_int.cpp:64
