@@ -38,14 +38,14 @@ int FirstFinishedQuest;
 /** Currently selected quest list item */
 int SelectedQuest;
 #ifdef __3DS__
-constexpr int CtrQuestRows = 10;
+constexpr int CtrQuestRows = 9;
 constexpr int CtrQuestRowHeight = 18;
 int QuestScrollOffset;
 Point LastQuestMouse { -1, -1 };
 
 int CtrQuestListY()
 {
-	return 34 + (CtrQuestRows - std::min(EncounteredQuestCount, CtrQuestRows)) * CtrQuestRowHeight / 2;
+	return 42 + (CtrQuestRows - std::min(EncounteredQuestCount, CtrQuestRows)) * CtrQuestRowHeight / 2;
 }
 
 void FocusQuest3DS()
@@ -122,7 +122,7 @@ void DrawQuestLog(const Surface &out)
 		LastQuestMouse = MousePosition;
 	}
 	DrawCtrPanelBackground(out, CtrPanelBackground::Quest);
-	DrawString(out, _("Quest Log"), { { 12, 7 }, { 376, 24 } }, { .flags = UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorWhitegold });
+	DrawString(out, _("Quest Log"), { { 12, 14 }, { 376, 22 } }, { .flags = UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorWhitegold });
 	const int count = std::min(CtrQuestRows, EncounteredQuestCount - QuestScrollOffset);
 	for (int row = 0; row < count; ++row) {
 		const int index = QuestScrollOffset + row;
@@ -136,9 +136,9 @@ void DrawQuestLog(const Surface &out)
 			ClxDraw(out, { 18, y + 13 }, (*pSPentSpn2Cels)[PentSpn2Spin()]);
 	}
 	if (EncounteredQuestCount > CtrQuestRows) {
-		DrawString(out, StrCat(QuestScrollOffset + 1, "-", QuestScrollOffset + count, " / ", EncounteredQuestCount), { { 115, 220 }, { 170, 16 } }, { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
-		DrawString(out, "<", { { 30, 220 }, { 30, 16 } }, { .flags = UiFlags::ColorWhite });
-		DrawString(out, ">", { { 340, 220 }, { 30, 16 } }, { .flags = UiFlags::ColorWhite });
+		DrawString(out, StrCat(QuestScrollOffset + 1, "-", QuestScrollOffset + count, " / ", EncounteredQuestCount), { { 115, 208 }, { 170, 18 } }, { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
+		DrawString(out, "<", { { 30, 208 }, { 30, 18 } }, { .flags = UiFlags::ColorWhite });
+		DrawString(out, ">", { { 340, 208 }, { 30, 18 } }, { .flags = UiFlags::ColorWhite });
 	}
 	return;
 #endif
@@ -275,7 +275,7 @@ void QuestlogESC()
 {
 #ifdef __3DS__
 	const Point p = CtrScreenToTop(MousePosition);
-	if (EncounteredQuestCount > CtrQuestRows && p.y >= 218) {
+	if (EncounteredQuestCount > CtrQuestRows && p.y >= 208 && p.y < 227) {
 		const int delta = p.x < 100 ? -CtrQuestRows : (p.x >= 300 ? CtrQuestRows : 0);
 		SelectedQuest = std::clamp(SelectedQuest + delta, 0, EncounteredQuestCount - 1);
 		FocusQuest3DS();

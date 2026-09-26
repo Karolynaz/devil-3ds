@@ -123,8 +123,8 @@ StringOrView GetSpellPowerText(SpellID spell, int spellLevel)
 #ifdef __3DS__
 void DrawSpellBook3DS(const Surface &out)
 {
-	DrawCtrPanelBackground(out, CtrPanelBackground::Stone);
-	DrawString(out, _("Spell Book"), { { 12, 7 }, { 376, 18 } }, { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
+	DrawCtrPanelBackground(out, CtrPanelBackground::Spells);
+	DrawString(out, _("Spell Book"), { { 12, 14 }, { 376, 18 } }, { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
 	const Player &player = *InspectPlayer;
 	const uint64_t spells = player._pMemSpells | player._pISpells | player._pAblSpells;
 	for (size_t entry = 0; entry < SpellBookPageEntries; ++entry) {
@@ -135,7 +135,7 @@ void DrawSpellBook3DS(const Surface &out)
 		const SpellType type = GetSBookTrans(spell, true);
 		const bool selected = spell == player._pRSpell && type == player._pRSplType && !IsInspectingPlayer();
 		if (selected)
-			FillRect(out, 6, y, 388, CtrSpellRowHeight, PAL16_GRAY + 13);
+			DrawHalfTransparentRectTo(out, 12, y, 376, CtrSpellRowHeight, PAL16_RED + 7);
 		const Surface icon = SidePanelBuffer->subregion(0, 0, 40, 40);
 		FillRect(icon, 0, 0, 40, 40, 0);
 		SetSpellTrans(type);
@@ -145,26 +145,30 @@ void DrawSpellBook3DS(const Surface &out)
 			DrawSmallSpellIconBorder(icon, { 0, 37 });
 		}
 		out.ScaleBlitFrom(icon, MakeSdlRect(0, 0, 37, 38), MakeSdlRect(10, y + 1, 22, 23));
-		DrawString(out, pgettext("spell", GetSpellData(spell).sNameText), { { 40, y }, { 265, 13 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing, .spacing = 0 });
+		DrawString(out, pgettext("spell", GetSpellData(spell).sNameText), { { 40, y }, { 265, 12 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing, .spacing = 0 });
 		const SpellType infoType = GetSBookTrans(spell, false);
 		if (infoType == SpellType::Skill) {
-			DrawString(out, _("Skill"), { { 40, y + 14 }, { 346, 13 } }, { .flags = UiFlags::ColorWhitegold });
+			DrawString(out, _("Skill"), { { 40, y + 12 }, { 346, 12 } }, { .flags = UiFlags::ColorWhitegold });
 		} else if (infoType == SpellType::Charges) {
 			const int charges = player.InvBody[INVLOC_HAND_LEFT]._iCharges;
-			DrawString(out, FormatRuntime(ngettext("Staff ({:d} charge)", "Staff ({:d} charges)", charges), charges), { { 40, y + 14 }, { 346, 13 } }, { .flags = UiFlags::ColorWhitegold });
+			DrawString(out, FormatRuntime(ngettext("Staff ({:d} charge)", "Staff ({:d} charges)", charges), charges), { { 40, y + 12 }, { 346, 12 } }, { .flags = UiFlags::ColorWhitegold });
 		} else {
 			const int level = player.GetSpellLevel(spell);
-			DrawString(out, FormatRuntime(pgettext("spellbook", "Level {:d}"), level), { { 305, y }, { 81, 13 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
-			DrawString(out, FormatRuntime(pgettext("spellbook", "Mana: {:d}"), GetManaAmount(player, spell) >> 6), { { 40, y + 14 }, { 117, 13 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, FormatRuntime(pgettext("spellbook", "Level {:d}"), level), { { 305, y }, { 81, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, FormatRuntime(pgettext("spellbook", "Mana: {:d}"), GetManaAmount(player, spell) >> 6), { { 40, y + 12 }, { 117, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
 			const StringOrView power = GetSpellPowerText(spell, level);
-			DrawString(out, power, { { 159, y + 14 }, { 227, 13 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, power, { { 159, y + 12 }, { 227, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
 		}
 	}
 	const int pages = gbIsHellfire ? 5 : 4;
 	for (int page = 0; page < pages; ++page) {
-		const Rectangle button { { 7 + page * 386 / pages, CtrSpellTabsY }, { 386 / pages - 2, 18 } };
-		FillRect(out, button.position.x, button.position.y, button.size.width, button.size.height, page == SpellbookTab ? PAL16_BEIGE + 11 : PAL16_GRAY + 13);
-		UnsafeDrawBorder2px(out, button, PAL16_BEIGE + 8);
+		const Rectangle button = CtrSpellTabRect(page, gbIsHellfire);
+		// Two 50% black blends leave roughly a quarter of the original stone
+		// visible through the tab, without painting over the supplied frame.
+		DrawHalfTransparentRectTo(out, button.position.x, button.position.y, button.size.width, button.size.height);
+		DrawHalfTransparentRectTo(out, button.position.x, button.position.y, button.size.width, button.size.height);
+		if (page == SpellbookTab)
+			DrawHalfTransparentRectTo(out, button.position.x, button.position.y, button.size.width, button.size.height, PAL16_RED + 10);
 		DrawString(out, std::to_string(page + 1), button, { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorWhite });
 	}
 }
@@ -260,7 +264,7 @@ void CheckSBook()
 	// enough to the height of the space given to spell descriptions that we can reuse that value and subtract the
 	// padding from the end of the area.
 #ifdef __3DS__
-	const Rectangle iconArea { { 6, CtrSpellRowsY }, { 388, CtrSpellRowHeight * 7 } };
+	const Rectangle iconArea { { 12, CtrSpellRowsY }, { 376, CtrSpellRowHeight * 7 } };
 	constexpr int rowHeight = CtrSpellRowHeight;
 #else
 	const Rectangle iconArea = { GetPanelPosition(UiPanels::Spell, { 11, 18 }), Size { 37, (SpellBookDescription.height * 7) - 5 } };
@@ -289,8 +293,12 @@ void CheckSBook()
 	// end up with an extra pixel somewhere around the buttons. Vanilla Diablo had the buttons left-aligned, devilutionX
 	// instead justifies the buttons and puts the gap between buttons 2/3. See DrawSpellBook
 #ifdef __3DS__
-	if (Rectangle { { 7, CtrSpellTabsY }, { 386, 18 } }.contains(mousePos))
-		SpellbookTab = (mousePos.x - 7) * (gbIsHellfire ? 5 : 4) / 386;
+	for (int page = 0; page < (gbIsHellfire ? 5 : 4); ++page) {
+		if (CtrSpellTabRect(page, gbIsHellfire).contains(mousePos)) {
+			SpellbookTab = page;
+			break;
+		}
+	}
 	return;
 #else
 	const int buttonWidth = SpellBookButtonWidth();

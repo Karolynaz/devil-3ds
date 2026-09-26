@@ -274,7 +274,7 @@ void DrawStatButtons(const Surface &out)
 #ifdef __3DS__
 void DrawChr3DS(const Surface &out)
 {
-	DrawCtrPanelBackground(out, CtrPanelBackground::Stone);
+	DrawCtrPanelBackground(out, CtrPanelBackground::Character);
 	const auto value = [&](unsigned index, Rectangle rect) {
 		const StyledText text = (*panelEntries[index].statDisplayFunc)();
 		DrawString(out, text.text, rect, { .flags = text.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
@@ -282,29 +282,29 @@ void DrawChr3DS(const Surface &out)
 	const auto label = [&](std::string_view text, Rectangle rect) {
 		DrawString(out, text, rect, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
 	};
-	DrawString(out, InspectPlayer->_pName, { { 12, 10 }, { 235, 18 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
-	label(InspectPlayer->getClassName(), { { 251, 10 }, { 137, 18 } });
-	DrawHorizontalLine(out, { 10, 30 }, 380, PAL16_BEIGE + 8);
-	label(_("Level"), { { 12, 38 }, { 74, 16 } });
-	value(2, { { 87, 38 }, { 106, 16 } });
-	label(_("Gold"), { { 216, 38 }, { 74, 16 } });
-	value(17, { { 291, 38 }, { 97, 16 } });
-	label(_("Experience"), { { 12, 56 }, { 89, 16 } });
-	value(3, { { 102, 56 }, { 91, 16 } });
-	label(_("Next level"), { { 216, 56 }, { 85, 16 } });
-	value(4, { { 302, 56 }, { 86, 16 } });
-	DrawHorizontalLine(out, { 10, 76 }, 380, PAL16_BEIGE + 8);
-	label(_("Life"), { { 12, 84 }, { 37, 17 } });
+	DrawString(out, InspectPlayer->_pName, { { 12, 14 }, { 235, 18 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
+	label(InspectPlayer->getClassName(), { { 251, 14 }, { 137, 18 } });
+	DrawHorizontalLine(out, { 12, 36 }, 376, PAL16_BEIGE + 8);
+	label(_("Level"), { { 12, 42 }, { 74, 16 } });
+	value(2, { { 87, 42 }, { 106, 16 } });
+	label(_("Gold"), { { 216, 42 }, { 74, 16 } });
+	value(17, { { 291, 42 }, { 97, 16 } });
+	label(_("Experience"), { { 12, 59 }, { 89, 16 } });
+	value(3, { { 102, 59 }, { 91, 16 } });
+	label(_("Next level"), { { 216, 59 }, { 85, 16 } });
+	value(4, { { 302, 59 }, { 86, 16 } });
+	DrawHorizontalLine(out, { 12, 78 }, 376, PAL16_BEIGE + 8);
+	label(_("Life"), { { 12, 86 }, { 37, 17 } });
 	const StyledText maxLife = (*panelEntries[21].statDisplayFunc)();
-	DrawString(out, maxLife.text, { { 48, 84 }, { 53, 17 } },
+	DrawString(out, maxLife.text, { { 48, 86 }, { 53, 17 } },
 	    { .flags = maxLife.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
-	label(_("Mana"), { { 108, 84 }, { 40, 17 } });
+	label(_("Mana"), { { 108, 86 }, { 40, 17 } });
 	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
-	DrawString(out, maxMana.text, { { 147, 84 }, { 54, 17 } },
+	DrawString(out, maxMana.text, { { 147, 86 }, { 54, 17 } },
 	    { .flags = maxMana.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
 	for (unsigned i = 0; i < 4; ++i) {
 		const unsigned index = 7 + i * 2;
-		const int y = 111 + i * 24;
+		const int y = 110 + i * 24;
 		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 94, 18 } });
 		const StyledText base = (*panelEntries[index].statDisplayFunc)();
 		DrawString(out, base.text, { { 111, y - 4 }, { 61, 22 } },
@@ -319,14 +319,14 @@ void DrawChr3DS(const Surface &out)
 			DrawVerticalLine(out, button.Center() - Displacement { 0, 4 }, 9, PAL16_GRAY);
 		}
 	}
-	label(_("Points to distribute"), { { 12, 213 }, { 157, 16 } });
-	value(15, { { 170, 213 }, { 31, 16 } });
-	DrawVerticalLine(out, { 207, 82 }, 151, PAL16_BEIGE + 10);
+	label(_("Points to distribute"), { { 12, 208 }, { 157, 16 } });
+	value(15, { { 170, 208 }, { 31, 16 } });
+	DrawVerticalLine(out, { 207, 83 }, 141, PAL16_BEIGE + 10);
 	constexpr unsigned combat[] = { 18, 19, 20, 25, 26, 27 };
 	for (unsigned i = 0; i < 6; ++i) {
-		const int y = 88 + i * 24;
-		label(LanguageTranslate(panelEntries[combat[i]].label), { { 216, y }, { 112, 20 } });
-		value(combat[i], { { 331, y }, { 57, 20 } });
+		const int y = 87 + i * 23;
+		label(LanguageTranslate(panelEntries[combat[i]].label), { { 216, y }, { 112, 18 } });
+		value(combat[i], { { 331, y }, { 57, 18 } });
 	}
 }
 #endif

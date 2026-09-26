@@ -60,6 +60,13 @@ int main() {
   check((CtrScreenToTop(screen,640).y-CtrSpellRowsY)/CtrSpellRowHeight==row);
  }
  check(CtrSpellRowsY+7*CtrSpellRowHeight<CtrSpellTabsY);
+ for(int page=0;page<4;++page) {
+  const Rectangle tab=CtrSpellTabRect(page,false);
+  check(tab.position.x==16+95*page);
+  check(tab.position.y==240-9-17);
+  check(tab.size==Size(85,17));
+  check(tab.position.x+tab.size.width<=400-9);
+ }
  const Rectangle inv=CtrInventoryScreenRect(640,false);
  check(inv.position.x*2+inv.size.width==640);
  // Physical pixels preserve the 320:352 original item/slot aspect ratio.
@@ -72,4 +79,4 @@ with tempfile.TemporaryDirectory() as tmp:
     cpp.write_text(test)
     subprocess.run([os.environ.get('CXX','c++'),'-std=c++17','-Wall','-Wextra','-Werror','-I'+str(ROOT/'Source'),str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
-print('PASS: equipment, 40 inventory slots, 8 belt slots, multi-cell items, stat buttons, spell rows, screen boundaries, aspect ratio')
+print('PASS: equipment, 40 inventory slots, 8 belt slots, multi-cell items, stat buttons, spell tabs, screen boundaries, aspect ratio')

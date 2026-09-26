@@ -239,8 +239,12 @@ endif()
 
 if(NINTENDO_3DS)
   list(APPEND devilutionx_assets
-    data/ctr_ui_background.rgb
-    data/ctr_quest_background.rgb)
+    data/ctr_character_background.pal8
+    data/ctr_quest_background.pal8
+    data/ctr_spells_background.pal8
+    data/ctr_inventory_warrior.pal8
+    data/ctr_inventory_rogue.pal8
+    data/ctr_inventory_sorcerer.pal8)
 endif()
 
 if(APPLE)

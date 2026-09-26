@@ -108,7 +108,7 @@ void InitInv();
 /**
  * @brief Render the inventory panel to the given buffer.
  */
-void DrawInv(const Surface &out);
+void DrawInv(const Surface &out, bool drawBackground = true);
 
 void DrawInvBelt(const Surface &out);
 

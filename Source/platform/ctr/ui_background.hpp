@@ -5,8 +5,13 @@
 namespace devilution {
 
 enum class CtrPanelBackground {
-	Stone,
+	Character,
 	Quest,
+	Spells,
+	InventoryWarrior,
+	InventoryRogue,
+	InventorySorcerer,
+	Count,
 };
 
 void DrawCtrPanelBackground(const Surface &out, CtrPanelBackground background);

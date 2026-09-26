@@ -1223,9 +1223,10 @@ void InitInv()
 	pInvCels = LoadCel(StrCat("data\\inv\\", invName).c_str(), static_cast<uint16_t>(SidePanelSize.width));
 }
 
-void DrawInv(const Surface &out)
+void DrawInv(const Surface &out, bool drawBackground)
 {
-	ClxDraw(out, GetPanelPosition(UiPanels::Inventory, { 0, 351 }), (*pInvCels)[0]);
+	if (drawBackground)
+		ClxDraw(out, GetPanelPosition(UiPanels::Inventory, { 0, 351 }), (*pInvCels)[0]);
 
 	const Size slotSize[] = {
 		{ 2, 2 }, // head

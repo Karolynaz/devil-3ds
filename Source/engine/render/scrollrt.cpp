@@ -75,6 +75,7 @@
 #include "utils/attributes.h"
 #include "utils/display.h"
 #include "utils/is_of.hpp"
+#include "utils/language.h"
 #include "utils/log.hpp"
 #include "utils/sdl_compat.h"
 #include "utils/sdl_thread.h"
@@ -1416,24 +1417,45 @@ void DrawView(const Surface &out, Point startPosition)
 #ifdef __3DS__
 	if (invflag) {
 		FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
-		DrawInv(*SidePanelBuffer);
-		if (DropGoldFlag)
-			DrawGoldSplit(*SidePanelBuffer);
 		const Rectangle rect = CtrInventoryScreenRect();
 		if (IsStashOpen || IsVisualStoreOpen) {
+			DrawInv(*SidePanelBuffer);
+			if (DropGoldFlag)
+				DrawGoldSplit(*SidePanelBuffer);
 			out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(rect.position.x, 0, rect.size.width, 240));
 		} else {
-			// Stretch only the decorative border; scale all slots/items uniformly
-			// to the centered 218x240 native-pixel content area.
-			DrawCtrPanelFrame(*TopPanelBuffer);
-			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 128, 6), MakeSdlRect(0, 0, 400, 4));
-			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 346, 320, 6), MakeSdlRect(0, 236, 400, 4));
-			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 6, 6, 340), MakeSdlRect(0, 4, 4, 232));
-			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(314, 6, 6, 340), MakeSdlRect(396, 4, 4, 232));
+			CtrPanelBackground background = CtrPanelBackground::InventoryWarrior;
+			switch (MyPlayer->_pClass) {
+			case HeroClass::Rogue:
+			case HeroClass::Bard:
+				background = CtrPanelBackground::InventoryRogue;
+				break;
+			case HeroClass::Sorcerer:
+			case HeroClass::Monk:
+				background = CtrPanelBackground::InventorySorcerer;
+				break;
+			default:
+				break;
+			}
+			DrawCtrPanelBackground(*TopPanelBuffer, background);
+
+			// Seed the original 320x352 item canvas with exactly the pixels that
+			// its 218x240 scaled output will sample. DrawInv can then preserve
+			// item slot tints without repainting the new inventory artwork.
+			for (int y = 0; y < CtrInventoryContent.size.height; ++y) {
+				const int sourceY = y * SidePanelSize.height / CtrInventoryContent.size.height;
+				for (int x = 0; x < CtrInventoryContent.size.width; ++x) {
+					const int sourceX = x * SidePanelSize.width / CtrInventoryContent.size.width;
+					*SidePanelBuffer->at(sourceX, sourceY) = *TopPanelBuffer->at(CtrInventoryContent.position.x + x, y);
+				}
+			}
+			DrawInv(*SidePanelBuffer, false);
+			if (DropGoldFlag)
+				DrawGoldSplit(*SidePanelBuffer);
+			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(CtrInventoryContent));
+			DrawString(*TopPanelBuffer, _("Inventory"), { { 16, 14 }, { 160, 22 } },
+			    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
 			out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
-			// Clip the legacy frame off the centered content (no second inner frame).
-			const int insetX = 6 * rect.size.width / 320;
-			out.subregion(rect.position.x + insetX, 0, rect.size.width - 2 * insetX, 240).ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(-insetX, 0, rect.size.width, 240));
 		}
 	} else if (SpellbookFlag) {
 		DrawSpellBook(*TopPanelBuffer);

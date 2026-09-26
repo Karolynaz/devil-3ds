@@ -695,10 +695,9 @@ void Prepare3DSBackground()
 
 	SDL_FillSurfaceRect(UiBottomBackgroundBuffer->surface, nullptr, 0);
 
-	// Scale the box area (rows 204..430, height 226) into bottom screen (rows 2..188, height 186)
-	// That maps to virtual Y 242..428.
+	// Center the 186-pixel menu box on the 240-pixel bottom screen.
 	const SDL_Rect srcRect = { 0, 204, 640, 226 };
-	const SDL_Rect dstRect = { 0, 2, 640, 186 };
+	const SDL_Rect dstRect = { 0, (240 - 186) / 2, 640, 186 };
 	UiBottomBackgroundBuffer->ScaleBlitFrom(tempSurface, srcRect, dstRect);
 }
 #endif
@@ -954,16 +953,16 @@ void Render(const UiImageClx &uiImage)
 	if (ArtBackground && sprite == (*ArtBackground)[0] && sprite.height() >= 480) {
 		const Surface &out = Surface(DiabloUiSurface());
 		if (gb3DSUseBottomBoxBackground) {
-			SDL_Rect topRect = MakeSdlRect(0, 0, 640, 240);
+			SDL_Rect topRect = MakeSdlRect(0, 0, out.w(), 240);
 			SDL_FillSurfaceRect(out.surface, &topRect, 0);
 
 			if (!UiBottomBackgroundBuffer) {
 				Prepare3DSBackground();
 			}
 			if (UiBottomBackgroundBuffer) {
-				out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { 0, 240 });
+				out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { (out.w() - 640) / 2, 240 });
 			} else {
-				SDL_Rect bottomRect = MakeSdlRect(0, 240, 640, 240);
+				SDL_Rect bottomRect = MakeSdlRect(0, 240, out.w(), 240);
 				SDL_FillSurfaceRect(out.surface, &bottomRect, 0);
 			}
 			return;

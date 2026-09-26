@@ -15,9 +15,22 @@ constexpr Rectangle CtrStatButtons[4] = {
 	{ { 179, 156 }, { 22, 20 } },
 	{ { 179, 180 }, { 22, 20 } },
 };
-constexpr int CtrSpellRowsY = 27;
-constexpr int CtrSpellRowHeight = 27;
-constexpr int CtrSpellTabsY = 218;
+constexpr int CtrSpellRowsY = 36;
+constexpr int CtrSpellRowHeight = 24;
+constexpr int CtrSpellTabsY = 214;
+constexpr int CtrSpellTabFirstX = 16;
+constexpr int CtrSpellTabWidth = 85;
+constexpr int CtrSpellTabHeight = 17;
+constexpr int CtrSpellTabGap = 10;
+
+constexpr Rectangle CtrSpellTabRect(int page, bool hellfire)
+{
+	// Diablo has four framed tabs in the supplied artwork. Hellfire has a
+	// fifth page, so it uses five smaller targets within the same strip.
+	return hellfire
+	    ? Rectangle { { CtrSpellTabFirstX + page * 74, CtrSpellTabsY }, { 66, CtrSpellTabHeight } }
+	    : Rectangle { { CtrSpellTabFirstX + page * (CtrSpellTabWidth + CtrSpellTabGap), CtrSpellTabsY }, { CtrSpellTabWidth, CtrSpellTabHeight } };
+}
 
 constexpr Point CtrTopToScreen(Point p, int screenWidth)
 {
