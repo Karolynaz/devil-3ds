@@ -124,7 +124,8 @@ StringOrView GetSpellPowerText(SpellID spell, int spellLevel)
 void DrawSpellBook3DS(const Surface &out)
 {
 	DrawCtrPanelBackground(out, CtrPanelBackground::Spells);
-	DrawString(out, _("Spell Book"), { { 12, 14 }, { 376, 18 } }, { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
+	DrawString(out, _("Spell Book"), { { 12, 12 }, { 376, 24 } },
+	    { .flags = UiFlags::AlignCenter | UiFlags::FontSizeDialog | UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
 	const Player &player = *InspectPlayer;
 	const uint64_t spells = player._pMemSpells | player._pISpells | player._pAblSpells;
 	for (size_t entry = 0; entry < SpellBookPageEntries; ++entry) {

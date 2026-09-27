@@ -282,7 +282,8 @@ void DrawChr3DS(const Surface &out)
 	const auto label = [&](std::string_view text, Rectangle rect) {
 		DrawString(out, text, rect, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
 	};
-	DrawString(out, InspectPlayer->_pName, { { 12, 14 }, { 235, 18 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
+	DrawString(out, InspectPlayer->_pName, { { 12, 12 }, { 235, 24 } },
+	    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
 	label(InspectPlayer->getClassName(), { { 251, 14 }, { 137, 18 } });
 	DrawHorizontalLine(out, { 12, 36 }, 376, PAL16_BEIGE + 8);
 	label(_("Level"), { { 12, 42 }, { 74, 16 } });

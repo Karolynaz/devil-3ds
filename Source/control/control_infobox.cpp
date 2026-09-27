@@ -465,7 +465,7 @@ void DrawInfoBox(const Surface &out)
 		PrintInfo(out);
 #ifdef __3DS__
 	else
-		DrawString(out, _("SELECT: Open panels\nL/R: Switch panels"), CtrBottomInfoBox,
+		DrawString(out, _("SELECT: Open panels\nSTART: Meniu"), CtrBottomInfoBox,
 		    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::KerningFitSpacing,
 		      .spacing = 1, .lineHeight = 18 });
 #endif

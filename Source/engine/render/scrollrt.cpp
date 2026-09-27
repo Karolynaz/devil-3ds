@@ -1456,8 +1456,10 @@ void DrawView(const Surface &out, Point startPosition)
 			if (DropGoldFlag)
 				DrawGoldSplit(*SidePanelBuffer);
 			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(CtrInventoryContent));
-			DrawString(*TopPanelBuffer, _("Inventory"), { { 16, 14 }, { 160, 22 } },
+			DrawString(*TopPanelBuffer, _("Inventory"), { { 16, 12 }, { 170, 24 } },
 			    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+			DrawString(*TopPanelBuffer, _("L/R: switch panels"), { { 202, 12 }, { 186, 24 } },
+			    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::VerticalCenter | UiFlags::KerningFitSpacing });
 			out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
 		}
 	} else if (SpellbookFlag) {
@@ -1936,14 +1938,14 @@ void scrollrt_draw_game_screen()
 void DrawCtrLiquidBar(const Surface &out, Rectangle rect, int filled, uint8_t color, bool vertical)
 {
 	filled = std::clamp(filled, 0, vertical ? rect.size.height : rect.size.width);
-	const int phase = SDL_GetTicks() / 90;
 	for (int y = 0; y < rect.size.height; ++y) {
 		for (int x = 0; x < rect.size.width; ++x) {
 			if (vertical ? y < rect.size.height - filled : x >= filled)
 				continue;
-			const int shimmer = (x * 3 + y + phase) % 6;
-			const int highlight = vertical && y == rect.size.height - filled ? 2 : 0;
-			*out.at(rect.position.x + x, rect.position.y + y) = color + 2 + shimmer - highlight;
+			// Keep the flasks richly colored and free of animated bright speckles.
+			// Larger indices in Diablo's 16-shade ramps are darker.
+			const int shade = vertical ? 9 + (x * 3 / rect.size.width) : 7 + (y * 3 / rect.size.height);
+			*out.at(rect.position.x + x, rect.position.y + y) = color + shade;
 		}
 	}
 }
