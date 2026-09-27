@@ -125,7 +125,7 @@ void DrawSpellBook3DS(const Surface &out)
 {
 	DrawCtrPanelBackground(out, CtrPanelBackground::Spells);
 	DrawString(out, _("Spell Book"), { { 12, 12 }, { 376, 24 } },
-	    { .flags = UiFlags::AlignCenter | UiFlags::FontSizeDialog | UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+	    { .flags = UiFlags::AlignCenter | UiFlags::FontSizeDialog | UiFlags::ColorYellow | UiFlags::KerningFitSpacing });
 	const Player &player = *InspectPlayer;
 	const uint64_t spells = player._pMemSpells | player._pISpells | player._pAblSpells;
 	for (size_t entry = 0; entry < SpellBookPageEntries; ++entry) {

@@ -1457,9 +1457,10 @@ void DrawView(const Surface &out, Point startPosition)
 				DrawGoldSplit(*SidePanelBuffer);
 			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(CtrInventoryContent));
 			DrawString(*TopPanelBuffer, _("Inventory"), { { 16, 12 }, { 170, 24 } },
-			    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
-			DrawString(*TopPanelBuffer, _("L/R: switch panels"), { { 202, 12 }, { 186, 24 } },
-			    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::VerticalCenter | UiFlags::KerningFitSpacing });
+			    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorYellow | UiFlags::KerningFitSpacing });
+			DrawString(*TopPanelBuffer, _("L/R: switch\npanels"), { { 223, 12 }, { 165, 26 } },
+			    { .flags = UiFlags::ColorWhite | UiFlags::AlignRight | UiFlags::KerningFitSpacing,
+			      .lineHeight = 13 });
 			out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
 		}
 	} else if (SpellbookFlag) {
@@ -1935,21 +1936,6 @@ void scrollrt_draw_game_screen()
 }
 
 #ifdef __3DS__
-void DrawCtrLiquidBar(const Surface &out, Rectangle rect, int filled, uint8_t color, bool vertical)
-{
-	filled = std::clamp(filled, 0, vertical ? rect.size.height : rect.size.width);
-	for (int y = 0; y < rect.size.height; ++y) {
-		for (int x = 0; x < rect.size.width; ++x) {
-			if (vertical ? y < rect.size.height - filled : x >= filled)
-				continue;
-			// Keep the flasks richly colored and free of animated bright speckles.
-			// Larger indices in Diablo's 16-shade ramps are darker.
-			const int shade = vertical ? 9 + (x * 3 / rect.size.width) : 7 + (y * 3 / rect.size.height);
-			*out.at(rect.position.x + x, rect.position.y + y) = color + shade;
-		}
-	}
-}
-
 int CtrExperienceFill()
 {
 	const Player &player = *MyPlayer;
@@ -1971,9 +1957,10 @@ void DrawCtrBottomHud(const Surface &out)
 		buffer.emplace(320, 240);
 	Surface &hud = *buffer;
 	FillRect(hud, 0, 0, 320, 240, 0);
-	DrawCtrLiquidBar(hud, CtrBottomHealthBar, CtrBottomHealthBar.size.height * std::clamp(MyPlayer->_pHPPer, 0, 81) / 81, PAL16_RED, true);
-	DrawCtrLiquidBar(hud, CtrBottomManaBar, CtrBottomManaBar.size.height * std::clamp(MyPlayer->_pManaPer, 0, 81) / 81, PAL16_BLUE, true);
-	DrawCtrLiquidBar(hud, CtrBottomExperienceBar, CtrExperienceFill(), PAL16_YELLOW, false);
+	DrawCtrBarArtwork(hud, CtrBarArtwork::Health, CtrBottomHealthBar.position, std::clamp(MyPlayer->_pHPPer, 0, 81) / 81.0f);
+	DrawCtrBarArtwork(hud, CtrBarArtwork::Mana, CtrBottomManaBar.position, std::clamp(MyPlayer->_pManaPer, 0, 81) / 81.0f);
+	DrawCtrBarArtwork(hud, CtrBarArtwork::Experience, CtrBottomExperienceBar.position,
+	    static_cast<float>(CtrExperienceFill()) / CtrBottomExperienceBar.size.width);
 	DrawCtrBottomBackground(hud);
 	DrawCtrInvBelt(hud);
 	DrawInfoBox(hud);

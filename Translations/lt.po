@@ -10708,5 +10708,5 @@ msgstr "SELECT: Paskirstyti taškus"
 
 
 #: Source/engine/render/scrollrt.cpp
-msgid "L/R: switch panels"
-msgstr "L/R: Keisti langus"
+msgid "L/R: switch\npanels"
+msgstr "L/R: Keisti\nlangus"

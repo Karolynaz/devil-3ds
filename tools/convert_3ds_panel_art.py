@@ -19,6 +19,12 @@ ART = {
     'inventory_sorc.png': 'ctr_inventory_sorcerer.pal8',
 }
 
+BAR_ART = {
+    'ctr_health_bar.png': ('ctr_health_bar.pal8', 26, 84),
+    'ctr_mana_bar.png': ('ctr_mana_bar.pal8', 26, 84),
+    'ctr_experience_bar.png': ('ctr_experience_bar.pal8', 224, 14),
+}
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -50,6 +56,34 @@ def main():
                 ))
                 cache[color] = index
             pixels[offset // 3] = index
+        target = root / 'assets/data' / output_name
+        target.write_bytes(pixels)
+        print(target, len(pixels))
+
+    # Index zero is transparent. The bar art PNGs carry alpha from their
+    # source; the colored fills are quantized to the town palette's upper half.
+    for source_name, (output_name, width, height) in BAR_ART.items():
+        source = root / 'art/3ds' / source_name
+        result = subprocess.run(
+            ['ffmpeg', '-loglevel', 'error', '-i', str(source), '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'],
+            capture_output=True, check=True,
+        )
+        rgba = result.stdout
+        if len(rgba) != width * height * 4:
+            raise ValueError(f'{source} is not {width}x{height} RGBA')
+        pixels = bytearray(width * height)
+        for offset in range(0, len(rgba), 4):
+            r, g, b, a = rgba[offset:offset + 4]
+            if a < 128:
+                continue
+            color = (r, g, b)
+            index = cache.get(color)
+            if index is None or index == 0:
+                index = 128 + min(range(128), key=lambda i: (
+                    (r - colors[i][0]) ** 2 + (g - colors[i][1]) ** 2 + (b - colors[i][2]) ** 2
+                ))
+                cache[color] = index
+            pixels[offset // 4] = index
         target = root / 'assets/data' / output_name
         target.write_bytes(pixels)
         print(target, len(pixels))

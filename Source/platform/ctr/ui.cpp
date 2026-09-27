@@ -1,6 +1,8 @@
 #include "platform/ctr/ui_background.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -22,6 +24,32 @@ std::optional<OwnedSurface> Backgrounds[BackgroundCount];
 bool BackgroundLoadAttempted[BackgroundCount] = {};
 std::optional<OwnedSurface> BottomBackground;
 bool BottomBackgroundLoadAttempted = false;
+constexpr int VerticalBarWidth = 26;
+constexpr int VerticalBarHeight = 84;
+constexpr int ExperienceBarWidth = 224;
+constexpr int ExperienceBarHeight = 14;
+constexpr size_t BarCount = 3;
+std::optional<OwnedSurface> Bars[BarCount];
+bool BarLoadAttempted[BarCount] = {};
+
+void LoadBar(size_t index)
+{
+	BarLoadAttempted[index] = true;
+	constexpr std::array<const char *, BarCount> Paths {
+	    "data\\ctr_health_bar.pal8",
+	    "data\\ctr_mana_bar.pal8",
+	    "data\\ctr_experience_bar.pal8",
+	};
+	constexpr std::array<int, BarCount> Widths { VerticalBarWidth, VerticalBarWidth, ExperienceBarWidth };
+	constexpr std::array<int, BarCount> Heights { VerticalBarHeight, VerticalBarHeight, ExperienceBarHeight };
+	auto image = LoadAsset(Paths[index]);
+	if (!image || image->size != static_cast<size_t>(Widths[index] * Heights[index]))
+		return;
+	Bars[index].emplace(Widths[index], Heights[index]);
+	const auto *src = reinterpret_cast<const uint8_t *>(image->data.get());
+	for (int y = 0; y < Heights[index]; ++y)
+		std::memcpy(Bars[index]->at(0, y), src + y * Widths[index], Widths[index]);
+}
 
 void LoadBackground(size_t index)
 {
@@ -80,6 +108,32 @@ void DrawCtrBottomBackground(const Surface &out)
 		LoadBottomBackground();
 	if (BottomBackground)
 		out.BlitFromSkipColorIndexZero(*BottomBackground, { 0, 0, 320, 240 }, { 0, 0 });
+}
+
+void DrawCtrBarArtwork(const Surface &out, CtrBarArtwork bar, Point position, float fill)
+{
+	const size_t index = static_cast<size_t>(bar);
+	if (!BarLoadAttempted[index])
+		LoadBar(index);
+	if (!Bars[index])
+		return;
+	const int width = bar == CtrBarArtwork::Experience ? ExperienceBarWidth : VerticalBarWidth;
+	const int height = bar == CtrBarArtwork::Experience ? ExperienceBarHeight : VerticalBarHeight;
+	const bool vertical = bar != CtrBarArtwork::Experience;
+	const int fillPixels = static_cast<int>(std::lround(std::clamp(fill, 0.0f, 1.0f) * (vertical ? height : width)));
+	if (fillPixels == 0)
+		return;
+	for (int y = 0; y < (vertical ? fillPixels : height); ++y) {
+		for (int x = 0; x < (vertical ? width : fillPixels); ++x) {
+			// Scale the whole motif into the filled region so its jeweled cap
+			// follows the liquid edge as health/mana/experience changes.
+			const int sourceX = vertical ? x : x * width / fillPixels;
+			const int sourceY = vertical ? y * height / fillPixels : y;
+			const uint8_t color = (*Bars[index])[Point { sourceX, sourceY }];
+			if (color != 0)
+				out.SetPixel({ position.x + x, position.y + (vertical ? height - fillPixels + y : y) }, color);
+		}
+	}
 }
 
 } // namespace devilution
