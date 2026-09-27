@@ -782,32 +782,20 @@ msgid "Previous Menu"
 msgstr "Ankstesnis meniu"
 
 #: Source/DiabloUI/support_lines.cpp:10
-msgid ""
-"We maintain a chat server at Discord.gg/devilutionx Follow the links to join "
-"our community where we talk about things related to Diablo, and the Hellfire "
-"expansion."
-msgstr "Palaikome pokalbių serverį Discord.gg/devilutionx. Apsilankykite nuorodose ir prisijunkite prie bendruomenės, kurioje kalbamės apie „Diablo“ ir „Hellfire“ papildymą."
+msgid "For help, bug reports, and updates, visit the Devil-3Ds project: https://github.com/Karolynaz/devil-3ds"
+msgstr "Pagalbos, pranešimų apie klaidas ir naujienų ieškokite „Devil-3Ds“ projekte: https://github.com/Karolynaz/devil-3ds"
 
 #: Source/DiabloUI/support_lines.cpp:12
-msgid ""
-"DevilutionX is maintained by Diasurgical, issues and bugs can be reported at "
-"this address: https://github.com/diasurgical/devilutionX To help us better "
-"serve you, please be sure to include the version number, operating system, "
-"and the nature of the problem."
-msgstr "„DevilutionX“ prižiūri „Diasurgical“. Apie problemas ir klaidas praneškite adresu https://github.com/diasurgical/devilutionX. Kad galėtume jums geriau padėti, nurodykite versijos numerį, operacinę sistemą ir problemos pobūdį."
+msgid "Devil-3Ds is maintained by Karolynaz. Include your console model, game version, and steps to reproduce when reporting a problem."
+msgstr "„Devil-3Ds“ prižiūri Karolynaz. Pranešdami apie problemą nurodykite konsolės modelį, žaidimo versiją ir veiksmus, kuriais ją galima atkartoti."
 
 #: Source/DiabloUI/support_lines.cpp:15
 msgid "Disclaimer:"
 msgstr "Atsakomybės atsisakymas:"
 
 #: Source/DiabloUI/support_lines.cpp:16
-msgid ""
-"\tDevilutionX is not supported or maintained by Blizzard Entertainment, nor "
-"GOG.com. Neither Blizzard Entertainment nor GOG.com has tested or certified "
-"the quality or compatibility of DevilutionX. All inquiries regarding "
-"DevilutionX should be directed to Diasurgical, not to Blizzard Entertainment "
-"or GOG.com."
-msgstr "\t„DevilutionX“ nepalaiko ir neprižiūri nei „Blizzard Entertainment“, nei GOG.com. Nei „Blizzard Entertainment“, nei GOG.com netikrino ir nepatvirtino „DevilutionX“ kokybės ar suderinamumo. Visus klausimus apie „DevilutionX“ pateikite „Diasurgical“, o ne „Blizzard Entertainment“ ar GOG.com."
+msgid "\tDevil-3Ds is an independent fan project. Blizzard Entertainment and GOG.com do not support or certify it. Contact the project maintainer, not Blizzard or GOG.com, with questions about this port."
+msgstr "\t„Devil-3Ds“ yra nepriklausomas gerbėjų projektas. „Blizzard Entertainment“ ir GOG.com jo nepalaiko ir netvirtina. Klausimus apie šį portą pateikite projekto prižiūrėtojui, o ne „Blizzard“ ar GOG.com."
 
 #: Source/DiabloUI/support_lines.cpp:19
 msgid ""
@@ -1318,6 +1306,10 @@ msgstr "„Hellfire“ parinktys:"
 #: Source/diablo.cpp:1022
 msgid "Report bugs at https://github.com/diasurgical/devilutionX/"
 msgstr "Praneškite apie klaidas: https://github.com/diasurgical/devilutionX/"
+
+#: Source/diablo.cpp
+msgid "Report bugs at https://github.com/Karolynaz/devil-3ds/"
+msgstr "Praneškite apie klaidas: https://github.com/Karolynaz/devil-3ds/"
 
 #: Source/diablo.cpp:1202
 msgid "Please update devilutionx.mpq and fonts.mpq to the latest version"

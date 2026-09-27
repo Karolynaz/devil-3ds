@@ -144,7 +144,11 @@ bool cineflag;
 int PauseMode;
 clicktype sgbMouseDown;
 uint16_t gnTickDelay = 50;
+#ifdef __3DS__
+char gszProductName[64] = "Devil-3Ds vUnknown";
+#else
 char gszProductName[64] = "DevilutionX vUnknown";
+#endif
 
 #ifdef _DEBUG
 bool DebugDisableNetworkTimeout = false;
@@ -1054,7 +1058,11 @@ extern "C" void SdlLogToFile(void *userdata, int /*category*/, SDL_LogPriority p
 	PrintHelpOption("+<internal command>", "Pass commands to the engine");
 #endif
 	printNewlineInConsole();
+#ifdef __3DS__
+	printInConsole(_("Report bugs at https://github.com/Karolynaz/devil-3ds/"));
+#else
 	printInConsole(_("Report bugs at https://github.com/diasurgical/devilutionX/"));
+#endif
 	printNewlineInConsole();
 	diablo_quit(0);
 }
@@ -1224,7 +1232,11 @@ void DiabloInitScreen()
 
 void SetApplicationVersions()
 {
+#ifdef __3DS__
+	*BufCopy(gszProductName, "Devil-3Ds v", PROJECT_VERSION) = '\0';
+#else
 	*BufCopy(gszProductName, PROJECT_NAME, " v", PROJECT_VERSION) = '\0';
+#endif
 	*BufCopy(gszVersionNumber, "version ", PROJECT_VERSION) = '\0';
 }
 
