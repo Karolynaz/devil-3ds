@@ -12,14 +12,16 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "art/3ds/devil3ds_emblem_source.png"
 PALETTE = ROOT / "assets/ui_art/diablo.pal"
-CROP = "crop=900:900:359:35"
+# The wide crop keeps both horns; the icon crop keeps the face legible at 48px.
+WIDE_CROP = "crop=1536:900:0:50"
+ICON_CROP = "crop=1024:1024:256:0"
 
 
 def render_rgb(width: int, height: int, content_height: int | None = None) -> bytes:
     if content_height is None:
         content_height = height
     filt = (
-        f"{CROP},scale={width}:{content_height}:force_original_aspect_ratio=decrease:flags=lanczos,"
+        f"{WIDE_CROP},scale={width}:{content_height}:force_original_aspect_ratio=decrease:flags=bicubic,"
         f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,format=rgb24"
     )
     result = subprocess.run(
@@ -56,9 +58,9 @@ def write_pal8(width: int, height: int, output: Path, palette: bytes, content_he
     print(f"{output.relative_to(ROOT)}: {width}x{height}, {len(indices)} bytes")
 
 
-def write_png(width: int, height: int, output: Path) -> None:
+def write_png(width: int, height: int, output: Path, crop: str) -> None:
     filt = (
-        f"{CROP},scale={width}:{height}:force_original_aspect_ratio=decrease:flags=lanczos,"
+        f"{crop},scale={width}:{height}:force_original_aspect_ratio=decrease:flags=bicubic,"
         f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black"
     )
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -80,8 +82,8 @@ def main() -> None:
 
     write_pal8(400, 240, ROOT / "assets/data/ctr_brand_title.pal8", palette, content_height=195)
     write_pal8(180, 100, ROOT / "assets/data/ctr_brand_mark.pal8", palette)
-    write_png(48, 48, ROOT / "Packaging/ctr/icon.png")
-    write_png(256, 128, ROOT / "Packaging/ctr/banner.png")
+    write_png(48, 48, ROOT / "Packaging/ctr/icon.png", ICON_CROP)
+    write_png(256, 128, ROOT / "Packaging/ctr/banner.png", WIDE_CROP)
 
 
 if __name__ == "__main__":
