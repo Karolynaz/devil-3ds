@@ -1457,7 +1457,7 @@ void DrawView(const Surface &out, Point startPosition)
 				DrawGoldSplit(*SidePanelBuffer);
 			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(CtrInventoryContent));
 			DrawString(*TopPanelBuffer, _("Inventory"), { { 16, 12 }, { 170, 24 } },
-			    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+			    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
 			DrawString(*TopPanelBuffer, _("L/R: switch\npanels"), { { 223, 12 }, { 165, 26 } },
 			    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing,
 			      .lineHeight = 13 });

@@ -283,7 +283,7 @@ void DrawChr3DS(const Surface &out)
 		DrawString(out, text, rect, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
 	};
 	DrawString(out, InspectPlayer->_pName, { { 12, 12 }, { 235, 24 } },
-	    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
+	    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorDialogWhite | UiFlags::KerningFitSpacing });
 	label(InspectPlayer->getClassName(), { { 251, 14 }, { 137, 18 } });
 	DrawHorizontalLine(out, { 12, 36 }, 376, PAL16_BEIGE + 8);
 	label(_("Level"), { { 12, 42 }, { 74, 16 } });
@@ -309,7 +309,7 @@ void DrawChr3DS(const Surface &out)
 		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 94, 18 } });
 		const StyledText base = (*panelEntries[index].statDisplayFunc)();
 		DrawString(out, base.text, { { 111, y - 4 }, { 61, 22 } },
-		    { .flags = base.style | UiFlags::AlignRight | UiFlags::FontSizeDialog });
+		    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorDialogWhite | UiFlags::AlignRight });
 		const auto attr = static_cast<CharacterAttribute>(i);
 		if (!IsInspectingPlayer() && InspectPlayer->_pStatPts > 0
 		    && InspectPlayer->GetBaseAttributeValue(attr) < InspectPlayer->GetMaximumAttributeValue(attr)) {
