@@ -24,6 +24,6 @@ Issues and feedback: [github.com/Karolynaz/devil-3ds/issues](https://github.com/
 
 ## Credits and legal
 
-Devil-3Ds is builds on the work of the [DevilutionX contributors](https://github.com/diasurgical/devilutionX/graphs/contributors), the [original Devilution project](https://github.com/diasurgical/devilution#credits), and the original Diablo creators. Upstream credits and third-party notices remain in the repository.
+Devil-3Ds is builds on the work of the [DevilutionX contributors](https://github.com/diasurgical/devilutionX/graphs/contributors), the [original Devilution project](https://github.com/diasurgical/devilution#credits), and the original Diablo creators. 
 
 The source is provided under the [Sustainable Use License](LICENSE.md) and is for non-commercial use. Diablo and Blizzard Entertainment are trademarks of Blizzard Entertainment. This fan project is not affiliated with or endorsed by Blizzard Entertainment, GOG.com, or the DevilutionX maintainers. Obtain the original game data legally.
