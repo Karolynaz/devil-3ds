@@ -403,7 +403,8 @@ void UiSettingsMenu()
 			break;
 		}
 #ifdef __3DS__
-		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, 175, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
+		// Keep every settings view inside the 3DS bottom screen (y = 240..479).
+		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, 245, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
 #else
 		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, uiRectangle.position.y + 161, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
 #endif
@@ -564,10 +565,10 @@ void UiSettingsMenu()
 
 #ifdef __3DS__
 		constexpr int ListItemHeight = 25;
-		constexpr int maxListHeight = 175;
-		rectList = { { uiRectangle.position.x + 50, 244 },
+		constexpr int maxListHeight = 125;
+		rectList = { { uiRectangle.position.x + 50, 283 },
 			Size { uiRectangle.size.width - 100, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, maxListHeight) } };
-		rectDescription = { { uiRectangle.position.x + 24, 423 },
+		rectDescription = { { uiRectangle.position.x + 24, 416 },
 			Size { uiRectangle.size.width - 48, 53 } };
 #else
 		constexpr int ListItemHeight = 26;

@@ -321,6 +321,15 @@ void CheckPanelInfo()
 #ifdef __3DS__
 	if (MousePosition.y >= 240) {
 		pcursinvitem = CheckInvHLight();
+		if (pcursinvitem >= INVITEM_BELT_FIRST && pcursinvitem < INVITEM_BELT_FIRST + MaxBeltItems) {
+			const Item &item = MyPlayer->SpdList[pcursinvitem - INVITEM_BELT_FIRST];
+			const bool isPotion = IsAnyOf(item._iMiscId, IMISC_HEAL, IMISC_FULLHEAL, IMISC_MANA, IMISC_FULLMANA,
+			    IMISC_REJUV, IMISC_FULLREJUV, IMISC_ARENAPOT);
+			if (!item.isEmpty() && (isPotion || item.isScroll())) {
+				InfoString = item.getName();
+				InfoColor = item.getTextColor();
+			}
+		}
 		if (CheckXPBarInfo())
 			MainPanelFlag = true;
 		return;

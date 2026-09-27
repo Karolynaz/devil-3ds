@@ -796,9 +796,8 @@ void ResetInvCursorPosition()
 
 		mousePos = GetSlotCoord(slot);
 #ifdef __3DS__
-		const Rectangle rect = CtrInventoryScreenRect();
-		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width * rect.size.width) / (2 * 320);
-		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height * rect.size.height) / (2 * 352);
+		mousePos.x += ((itemSize.width - 1) * CtrItemSlotPitch * gnScreenWidth) / (2 * CtrTopSize.width);
+		mousePos.y += ((itemSize.height - 1) * CtrItemSlotPitch) / 2;
 #else
 		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height) / 2;
@@ -911,9 +910,8 @@ void LiftInventoryItem()
 		Slot = jumpSlot;
 		const Size newCursorSizeInCells = MyPlayer->HoldItem.isEmpty() ? GetItemSizeOnSlot(jumpSlot) : GetInventorySize(MyPlayer->HoldItem);
 #ifdef __3DS__
-		const Rectangle rect = CtrInventoryScreenRect();
-		mousePos.x += ((newCursorSizeInCells.width - 1) * InventorySlotSizeInPixels.width * rect.size.width) / (2 * 320);
-		mousePos.y += ((newCursorSizeInCells.height - 1) * InventorySlotSizeInPixels.height * rect.size.height) / (2 * 352);
+		mousePos.x += ((newCursorSizeInCells.width - 1) * CtrItemSlotPitch * gnScreenWidth) / (2 * CtrTopSize.width);
+		mousePos.y += ((newCursorSizeInCells.height - 1) * CtrItemSlotPitch) / 2;
 #else
 		mousePos.x += ((newCursorSizeInCells.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((newCursorSizeInCells.height - 1) * InventorySlotSizeInPixels.height) / 2;
@@ -1499,9 +1497,8 @@ void InventoryMove(AxisDirection dir)
 		// mousePos is the center of the top left cell of the item under the hand cursor, or the top left cell of the region that could fit the item we're holding.
 		// either way we need to offset the mouse position to account for items (we're holding or hovering over) with a dimension larger than a single cell.
 #ifdef __3DS__
-		const Rectangle rect = CtrInventoryScreenRect();
-		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width * rect.size.width) / (2 * 320);
-		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height * rect.size.height) / (2 * 352);
+		mousePos.x += ((itemSize.width - 1) * CtrItemSlotPitch * gnScreenWidth) / (2 * CtrTopSize.width);
+		mousePos.y += ((itemSize.height - 1) * CtrItemSlotPitch) / 2;
 #else
 		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height) / 2;

@@ -245,6 +245,9 @@ if(NINTENDO_3DS)
     data/ctr_inventory_warrior.pal8
     data/ctr_inventory_rogue.pal8
     data/ctr_inventory_sorcerer.pal8
+    data/ctr_inventory_warrior_stash.pal8
+    data/ctr_inventory_rogue_stash.pal8
+    data/ctr_inventory_sorcerer_stash.pal8
     data/ctr_bottom_ui.pal8
     data/ctr_health_bar.pal8
     data/ctr_mana_bar.pal8

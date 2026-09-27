@@ -9,6 +9,7 @@
 #include "platform/ctr/ui.hpp"
 #include "control/control_panel.hpp"
 #include "panels/quest_log.hpp"
+#include "engine/render/primitive_render.hpp"
 #endif
 
 #include <cmath>
@@ -1379,6 +1380,127 @@ void DrawInvBelt(const Surface &out)
 }
 
 #ifdef __3DS__
+namespace {
+
+bool CtrItemNeedsRedBackground(const Item &item)
+{
+	return !item._iStatFlag || (item._iMagical != ITEM_QUALITY_NORMAL && !item._iIdentified);
+}
+
+Rectangle CtrItemArea(Point origin, Size size)
+{
+	return { origin, { size.width * CtrItemSlotPitch - 1, size.height * CtrItemSlotPitch - 1 } };
+}
+
+void CtrTintCell(const Surface &out, Rectangle cell, const Item &item)
+{
+	DrawHalfTransparentRectTo(out, cell.position.x + 1, cell.position.y + 1,
+	    cell.size.width - 2, cell.size.height - 2,
+	    CtrItemNeedsRedBackground(item) ? PAL16_RED + 6 : PAL16_BLUE + 6);
+}
+
+} // namespace
+
+void DrawCtrScaledItem(const Surface &out, const Item &item, Rectangle target, bool highlighted)
+{
+	const int cursId = item._iCurs + CURSOR_FIRSTITEM;
+	const Size sourceSize = GetInvItemSize(cursId);
+	if (sourceSize.width <= 0 || sourceSize.height <= 0 || target.size.width <= 0 || target.size.height <= 0)
+		return;
+	static std::optional<OwnedSurface> source;
+	constexpr int ScratchSize = 128;
+	if (!source)
+		source.emplace(ScratchSize, ScratchSize);
+	if (sourceSize.width > ScratchSize || sourceSize.height > ScratchSize)
+		return;
+	FillRect(*source, 0, 0, sourceSize.width, sourceSize.height, 0);
+	const ClxSprite sprite = GetInvItemSprite(cursId);
+	if (highlighted)
+		ClxDrawOutline(*source, GetOutlineColor(item, true), { 0, sourceSize.height - 1 }, sprite);
+	DrawItem(item, *source, { 0, sourceSize.height - 1 }, sprite);
+	for (int y = 0; y < target.size.height; ++y) {
+		const int dstY = target.position.y + y;
+		if (dstY < 0 || dstY >= out.h())
+			continue;
+		for (int x = 0; x < target.size.width; ++x) {
+			const int dstX = target.position.x + x;
+			if (dstX < 0 || dstX >= out.w())
+				continue;
+			const uint8_t color = *source->at(x * sourceSize.width / target.size.width, y * sourceSize.height / target.size.height);
+			if (color != 0)
+				*out.at(dstX, dstY) = color;
+		}
+	}
+}
+
+std::optional<Rectangle> GetCtrHeldItemPreviewRect()
+{
+	if (!invflag || MyPlayer->HoldItem.isEmpty() || MousePosition.y >= 240)
+		return std::nullopt;
+	const Size size = GetInventorySize(MyPlayer->HoldItem);
+	const int slot = FindTargetSlotUnderItemCursor(MousePosition, size);
+	if (slot < SLOTXY_EQUIPPED_FIRST || slot > SLOTXY_INV_LAST)
+		return std::nullopt;
+	if (slot < SLOTXY_INV_FIRST) {
+		const item_equip_type desired = MyPlayer->GetItemLocation(MyPlayer->HoldItem);
+		if (GetItemEquipType(slot, desired) != desired)
+			return std::nullopt;
+		return CtrInventorySlotRect(slot, IsStashOpen || IsVisualStoreOpen);
+	}
+	const int index = slot - SLOTXY_INV_FIRST;
+	if (index % InventorySizeInSlots.width + size.width > InventorySizeInSlots.width
+	    || index / InventorySizeInSlots.width + size.height > InventorySizeInSlots.height)
+		return std::nullopt;
+	return CtrItemArea(CtrInventorySlotRect(slot, IsStashOpen || IsVisualStoreOpen).position, size);
+}
+
+void DrawCtrInventoryItems(const Surface &out, bool split)
+{
+	const Player &player = *InspectPlayer;
+	for (int slot = SLOTXY_EQUIPPED_FIRST; slot <= SLOTXY_EQUIPPED_LAST; ++slot) {
+		const Item &item = player.InvBody[slot];
+		if (item.isEmpty())
+			continue;
+		const Rectangle cell = CtrInventorySlotRect(slot, split);
+		CtrTintCell(out, cell, item);
+		const Size size = GetInventorySize(item);
+		const Size scaled { size.width * CtrItemSlotPitch - 1, size.height * CtrItemSlotPitch - 1 };
+		const Rectangle target { { cell.position.x + (cell.size.width - scaled.width) / 2,
+		    cell.position.y + (cell.size.height - scaled.height) / 2 }, scaled };
+		DrawCtrScaledItem(out, item, target, pcursinvitem == slot);
+	}
+	for (int index = 0; index < InventoryGridCells; ++index) {
+		const int id = player.InvGrid[index];
+		if (id == 0)
+			continue;
+		const Item &item = player.InvList[std::abs(id) - 1];
+		CtrTintCell(out, CtrInventorySlotRect(SLOTXY_INV_FIRST + index, split), item);
+	}
+	for (int index = 0; index < InventoryGridCells; ++index) {
+		const int id = player.InvGrid[index];
+		if (id <= 0)
+			continue;
+		const Item &item = player.InvList[id - 1];
+		const Size size = GetInventorySize(item);
+		const int topIndex = index - (size.height - 1) * InventorySizeInSlots.width;
+		if (topIndex < 0)
+			continue;
+		const Rectangle target = CtrItemArea(CtrInventorySlotRect(SLOTXY_INV_FIRST + topIndex, split).position, size);
+		DrawCtrScaledItem(out, item, target, pcursinvitem == id - 1 + INVITEM_INV_FIRST);
+	}
+	if (const auto preview = GetCtrHeldItemPreviewRect()) {
+		if (CtrScreenToTop(MousePosition).x >= (split ? 210 : 114)) {
+			for (int y = preview->position.y; y < preview->position.y + preview->size.height; y += CtrItemSlotPitch) {
+				for (int x = preview->position.x; x < preview->position.x + preview->size.width; x += CtrItemSlotPitch) {
+					const int width = std::min(CtrItemSlotPixels, preview->position.x + preview->size.width - x);
+					const int height = std::min(CtrItemSlotPixels, preview->position.y + preview->size.height - y);
+					FillRect(out, x, y, width, height, 0);
+				}
+			}
+		}
+	}
+}
+
 void DrawCtrInvBelt(const Surface &out)
 {
 	if (ChatFlag)

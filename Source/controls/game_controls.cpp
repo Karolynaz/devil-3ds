@@ -434,9 +434,31 @@ void PressControllerButton(ControllerButton button)
 	if (uiOpen) {
 		switch (button) {
 		case ControllerButton_BUTTON_DPAD_UP:
-		case ControllerButton_BUTTON_DPAD_DOWN:
+			if (!IsStashOpen && !IsPlayerInStore() && !qtextflag && !SpellSelectFlag) {
+				OpenCharPanel();
+				FocusOnCharInfo();
+			}
+			return;
 		case ControllerButton_BUTTON_DPAD_LEFT:
+			if (!IsStashOpen && !IsPlayerInStore() && !qtextflag && !SpellSelectFlag)
+				StartQuestlog();
+			return;
 		case ControllerButton_BUTTON_DPAD_RIGHT:
+			if (!IsStashOpen && !IsPlayerInStore() && !qtextflag && !SpellSelectFlag) {
+				CloseCharPanel();
+				CloseInventory();
+				QuestLogIsOpen = false;
+				SpellbookFlag = true;
+			}
+			return;
+		case ControllerButton_BUTTON_DPAD_DOWN:
+			if (!IsStashOpen && !IsPlayerInStore() && !qtextflag && !SpellSelectFlag) {
+				CloseCharPanel();
+				CloseInventory();
+				QuestLogIsOpen = false;
+				SpellbookFlag = false;
+				DoAutoMap();
+			}
 			return;
 
 		case ControllerButton_BUTTON_A:
@@ -454,18 +476,19 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_X:
-			if (invflag) {
-				if (MyPlayer->HoldItem.isEmpty()) {
-					PerformPrimaryAction();
-				}
-				if (!MyPlayer->HoldItem.isEmpty()) {
-					TryDropItem();
-				}
-			}
+			if (invflag)
+				PerformPrimaryAction();
 			return;
 
 		case ControllerButton_BUTTON_Y:
-			PerformSecondaryAction();
+			if (invflag) {
+				if (MyPlayer->HoldItem.isEmpty())
+					PerformPrimaryAction();
+				if (!MyPlayer->HoldItem.isEmpty())
+					TryDropItem();
+			} else {
+				PerformSecondaryAction();
+			}
 			return;
 
 		case ControllerButton_BUTTON_LEFTSHOULDER:
@@ -542,12 +565,27 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_DPAD_UP:
-			DoAutoMap();
+			OpenCharPanel();
+			if (CharFlag) {
+				if (pcurs == CURSOR_DISARM)
+					NewCursor(CURSOR_HAND);
+				FocusOnCharInfo();
+			}
+			return;
+
+		case ControllerButton_BUTTON_DPAD_LEFT:
+			StartQuestlog();
+			return;
+
+		case ControllerButton_BUTTON_DPAD_RIGHT:
+			CharFlag = false;
+			invflag = false;
+			QuestLogIsOpen = false;
+			SpellbookFlag = true;
 			return;
 
 		case ControllerButton_BUTTON_DPAD_DOWN:
-		case ControllerButton_BUTTON_DPAD_LEFT:
-		case ControllerButton_BUTTON_DPAD_RIGHT:
+			DoAutoMap();
 			return;
 
 		case ControllerButton_BUTTON_BACK:

@@ -79,8 +79,9 @@ void MainmenuLoad(const char *name)
 
 	vecMainMenuDialog.push_back(std::make_unique<UiList>(vecMenuItems, vecMenuItems.size(), menuX, menuY, menuWidth, itemHeight, UiFlags::FontSize30 | UiFlags::ColorUiGold | UiFlags::AlignCenter, 4));
 
-	const SDL_Rect rect2 = { 17, (Sint16)(gnScreenHeight - 22), 605, 20 };
-	vecMainMenuDialog.push_back(std::make_unique<UiArtText>(name, rect2, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark));
+	// Keep the product name and version centered in the bottom screen area.
+	const SDL_Rect rect2 = { 0, (Sint16)(gnScreenHeight - 40), 640, 32 };
+	vecMainMenuDialog.push_back(std::make_unique<UiArtText>(name, rect2, UiFlags::FontSize24 | UiFlags::ColorUiSilverDark | UiFlags::AlignCenter));
 #else
 	UiAddBackground(&vecMainMenuDialog);
 	UiAddLogo(&vecMainMenuDialog);

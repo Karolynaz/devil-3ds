@@ -318,6 +318,28 @@ void DrawCursor(const Surface &out)
 		return;
 	}
 
+#ifdef __3DS__
+	if (!MyPlayer->HoldItem.isEmpty()) {
+		const Size slots = GetInventorySize(MyPlayer->HoldItem);
+		const int physicalScreenWidth = MousePosition.y < 240 ? CtrTopSize.width : 320;
+		const Size drawnSize {
+			(slots.width * CtrItemSlotPitch - 1) * gnScreenWidth / physicalScreenWidth,
+			slots.height * CtrItemSlotPitch - 1,
+		};
+		const Point position = MousePosition - Displacement { drawnSize / 2 };
+		const Rectangle target { position, drawnSize };
+		Rectangle &rect = cursor.rect;
+		rect.position = { std::max(0, target.position.x), std::max(0, target.position.y) };
+		rect.size = { std::max(0, std::min(out.w(), target.position.x + target.size.width) - rect.position.x),
+		    std::max(0, std::min(out.h(), target.position.y + target.size.height) - rect.position.y) };
+		if (rect.size.width != 0 && rect.size.height != 0) {
+			BlitCursor(cursor.behindBuffer, rect.size.width, &out[rect.position], out.pitch(), rect.size.width, rect.size.height);
+			DrawCtrScaledItem(out, MyPlayer->HoldItem, target, true);
+		}
+		return;
+	}
+#endif
+
 	constexpr auto Clip = [](int &pos, int &length, int posEnd) {
 		if (pos + length <= 0 || pos >= posEnd) {
 			pos = 0;
@@ -1419,49 +1441,52 @@ void DrawView(const Surface &out, Point startPosition)
 		DrawSText(out);
 #ifdef __3DS__
 	if (invflag) {
-		FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
-		const Rectangle rect = CtrInventoryScreenRect();
-		if (IsStashOpen || IsVisualStoreOpen) {
+		if (IsVisualStoreOpen) {
+			FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
 			DrawInv(*SidePanelBuffer);
 			if (DropGoldFlag)
 				DrawGoldSplit(*SidePanelBuffer);
+			const Rectangle rect = CtrInventoryScreenRect();
 			out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(rect.position.x, 0, rect.size.width, 240));
 		} else {
-			CtrPanelBackground background = CtrPanelBackground::InventoryWarrior;
+			CtrPanelBackground background = IsStashOpen ? CtrPanelBackground::InventoryWarriorStash : CtrPanelBackground::InventoryWarrior;
 			switch (MyPlayer->_pClass) {
 			case HeroClass::Rogue:
 			case HeroClass::Bard:
-				background = CtrPanelBackground::InventoryRogue;
+				background = IsStashOpen ? CtrPanelBackground::InventoryRogueStash : CtrPanelBackground::InventoryRogue;
 				break;
 			case HeroClass::Sorcerer:
 			case HeroClass::Monk:
-				background = CtrPanelBackground::InventorySorcerer;
+				background = IsStashOpen ? CtrPanelBackground::InventorySorcererStash : CtrPanelBackground::InventorySorcerer;
 				break;
 			default:
 				break;
 			}
 			DrawCtrPanelBackground(*TopPanelBuffer, background);
-
-			// Seed the original 320x352 item canvas with exactly the pixels that
-			// its 218x240 scaled output will sample. DrawInv can then preserve
-			// item slot tints without repainting the new inventory artwork.
-			for (int y = 0; y < CtrInventoryContent.size.height; ++y) {
-				const int sourceY = y * SidePanelSize.height / CtrInventoryContent.size.height;
-				for (int x = 0; x < CtrInventoryContent.size.width; ++x) {
-					const int sourceX = x * SidePanelSize.width / CtrInventoryContent.size.width;
-					*SidePanelBuffer->at(sourceX, sourceY) = *TopPanelBuffer->at(CtrInventoryContent.position.x + x, y);
+			DrawCtrInventoryItems(*TopPanelBuffer, IsStashOpen);
+			if (IsStashOpen)
+				DrawCtrStashItems(*TopPanelBuffer);
+			DrawString(*TopPanelBuffer, "L: Character", { { 16, 12 }, { 170, 24 } },
+			    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+			DrawString(*TopPanelBuffer, "R: Spell Book", { { 218, 12 }, { 170, 24 } },
+			    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
+			DrawString(*TopPanelBuffer, "Y: Drop item", { { 16, IsStashOpen ? 219 : 207 }, { 150, 18 } },
+			    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+			out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
+			// The original gold entry widgets still use the legacy panel canvas.
+			if (DropGoldFlag || IsWithdrawGoldOpen) {
+				FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
+				if (IsWithdrawGoldOpen) {
+					DrawStash(*SidePanelBuffer);
+					DrawGoldWithdraw(*SidePanelBuffer);
+					out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(0, 0, 218, 240));
+				} else {
+					DrawInv(*SidePanelBuffer);
+					DrawGoldSplit(*SidePanelBuffer);
+					const Rectangle rect = CtrInventoryScreenRect();
+					out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(rect.position.x, 0, rect.size.width, 240));
 				}
 			}
-			DrawInv(*SidePanelBuffer, false);
-			if (DropGoldFlag)
-				DrawGoldSplit(*SidePanelBuffer);
-			TopPanelBuffer->ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(CtrInventoryContent));
-			DrawString(*TopPanelBuffer, _("Inventory"), { { 16, 12 }, { 170, 24 } },
-			    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
-			DrawString(*TopPanelBuffer, _("L/R: switch\npanels"), { { 223, 12 }, { 165, 26 } },
-			    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing,
-			      .lineHeight = 13 });
-			out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
 		}
 	} else if (SpellbookFlag) {
 		DrawSpellBook(*TopPanelBuffer);
@@ -1492,7 +1517,7 @@ void DrawView(const Surface &out, Point startPosition)
 		else
 			DrawQuestLog(*TopPanelBuffer);
 		out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
-	} else if (IsStashOpen || IsVisualStoreOpen) {
+	} else if (IsVisualStoreOpen || (IsStashOpen && !invflag)) {
 		FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
 		if (IsStashOpen) {
 			DrawStash(*SidePanelBuffer);

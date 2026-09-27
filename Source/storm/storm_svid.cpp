@@ -444,6 +444,12 @@ bool SVidPlayBegin(const char *filename, int flags)
 
 	// Set the background to black.
 	SDL_FillSurfaceRect(GetOutputSurface(), nullptr, 0x000000);
+#ifdef __3DS__
+	// The two 3DS screens retain their last presented pixels independently.
+	// Present the cleared surface before the first movie frame so the title
+	// menu cannot remain visible on the lower screen during attract playback.
+	RenderPresent();
+#endif
 
 	// The buffer for the frame. It is not the same as the SDL surface because the SDL surface also has pitch padding.
 	SVidFrameBuffer = std::unique_ptr<uint8_t[]> { new uint8_t[static_cast<size_t>(SVidWidth * SVidHeight)] };

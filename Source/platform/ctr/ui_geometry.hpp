@@ -8,7 +8,8 @@ namespace devilution {
 // at 400x240 and the lower half at 320x240. Panel text uses native top pixels.
 constexpr Size CtrTopSize { 400, 240 };
 constexpr Size CtrLegacyPanelSize { 320, 352 };
-constexpr Rectangle CtrInventoryContent { { 91, 0 }, { 218, 240 } };
+constexpr int CtrItemSlotPixels = 16;
+constexpr int CtrItemSlotPitch = 17;
 constexpr Rectangle CtrBottomHealthBar { { 20, 82 }, { 26, 84 } };
 constexpr Rectangle CtrBottomManaBar { { 274, 82 }, { 26, 84 } };
 constexpr Rectangle CtrBottomExperienceBar { { 48, 206 }, { 224, 14 } };
@@ -53,27 +54,34 @@ constexpr Point CtrScreenToTop(Point p, int screenWidth)
 	return { p.x * CtrTopSize.width / screenWidth, p.y };
 }
 
-constexpr Rectangle CtrInventoryScreenRect(int screenWidth, bool split)
+constexpr Rectangle CtrInventorySlotRect(int slot, bool split)
 {
-	if (split)
-		return { { screenWidth - 218, 0 }, { 218, 240 } };
-	const int width = CtrInventoryContent.size.width * screenWidth / CtrTopSize.width;
-	return { { (screenWidth - width) / 2, 0 }, { width, 240 } };
+	const int shift = split ? 97 : 0;
+	switch (slot) {
+	case 0: return { { 183 + shift, 20 }, { 33, 33 } }; // helmet
+	case 1: return { { 132 + shift, 124 }, { 16, 16 } }; // left ring
+	case 2: return { { 251 + shift, 125 }, { 16, 16 } }; // right ring
+	case 3: return { { 234 + shift, 37 }, { 16, 16 } }; // amulet
+	case 4: return { { 116 + shift, 64 }, { 33, 50 } }; // left hand
+	case 5: return { { 250 + shift, 64 }, { 33, 50 } }; // right hand
+	case 6: return { { 183 + shift, 64 }, { 33, 50 } }; // armor
+	default:
+		if (slot < 7 || slot > 46)
+			return {};
+		return { { 115 + shift + ((slot - 7) % 10) * CtrItemSlotPitch,
+		             152 + ((slot - 7) / 10) * CtrItemSlotPitch },
+			{ CtrItemSlotPixels, CtrItemSlotPixels } };
+	}
 }
 
-constexpr Point CtrInventoryToScreen(Point p, int screenWidth, bool split)
+constexpr Rectangle CtrStashSlotRect(Point slot)
 {
-	const Rectangle rect = CtrInventoryScreenRect(screenWidth, split);
-	return { rect.position.x + (p.x * rect.size.width + 160) / 320,
-		(p.y * rect.size.height + 176) / 352 };
+	return { { 19 + slot.x * CtrItemSlotPitch, 50 + slot.y * CtrItemSlotPitch },
+		{ CtrItemSlotPixels, CtrItemSlotPixels } };
 }
 
-constexpr Point CtrScreenToInventory(Point p, int screenWidth, bool split)
-{
-	const Rectangle rect = CtrInventoryScreenRect(screenWidth, split);
-	if (!rect.contains(p))
-		return { -1, -1 }; // Never interpret bottom-screen or margin pixels as inventory slots.
-	return { (p.x - rect.position.x) * 320 / rect.size.width, p.y * 352 / rect.size.height };
-}
+Rectangle CtrInventoryScreenRect(int screenWidth, bool split);
+Point CtrInventoryToScreen(Point p, int screenWidth, bool split);
+Point CtrScreenToInventory(Point p, int screenWidth, bool split);
 
 } // namespace devilution

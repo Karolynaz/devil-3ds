@@ -86,6 +86,9 @@ void TransferItemToInventory(Player &player, uint16_t itemId);
  * @brief Render the inventory panel to the given buffer.
  */
 void DrawStash(const Surface &out);
+#ifdef __3DS__
+void DrawCtrStashItems(const Surface &out);
+#endif
 void CheckStashItem(Point mousePosition, bool isShiftHeld = false, bool isCtrlHeld = false);
 bool UseStashItem(uint16_t cii);
 uint16_t CheckStashHLight(Point mousePosition);
