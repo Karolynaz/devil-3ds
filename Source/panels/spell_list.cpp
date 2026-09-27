@@ -105,15 +105,31 @@ void DrawSpell(const Surface &out)
 
 	SetSpellTrans(st);
 #ifdef __3DS__
-	const Point position { gnScreenWidth - SPLICONLENGTH - 8, 232 };
+	// The top screen is 400 physical pixels wide while its game surface is
+	// gnScreenWidth pixels wide. Render the 56px icon square first, then widen
+	// only its destination so it stays square on the actual display.
+	static OwnedSurface iconSurface(SPLICONLENGTH, SPLICONLENGTH);
+	const int width = (SPLICONLENGTH * gnScreenWidth + 200) / 400;
+	const int margin = (8 * gnScreenWidth + 200) / 400;
+	const int x = gnScreenWidth - width - margin;
+	const int y = 240 - SPLICONLENGTH - 8;
+	iconSurface.ScaleBlitFrom(out, MakeSdlRect(x, y, width, SPLICONLENGTH),
+	    MakeSdlRect(0, 0, SPLICONLENGTH, SPLICONLENGTH));
+	const Point position { 0, SPLICONLENGTH };
+	DrawLargeSpellIcon(iconSurface, position, spl);
+	std::optional<std::string_view> hotkeyName = GetHotkeyName(spl, myPlayer._pRSplType, true);
+	if (hotkeyName)
+		PrintSBookHotkey(iconSurface, position, *hotkeyName);
+	out.ScaleBlitFrom(iconSurface, MakeSdlRect(0, 0, SPLICONLENGTH, SPLICONLENGTH),
+	    MakeSdlRect(x, y, width, SPLICONLENGTH));
 #else
 	const Point position = GetMainPanel().position + Displacement { 565, 119 };
-#endif
 	DrawLargeSpellIcon(out, position, spl);
 
 	std::optional<std::string_view> hotkeyName = GetHotkeyName(spl, myPlayer._pRSplType, true);
 	if (hotkeyName)
 		PrintSBookHotkey(out, position, *hotkeyName);
+#endif
 }
 
 void DrawSpellList(const Surface &out)

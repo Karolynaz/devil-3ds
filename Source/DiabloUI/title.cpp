@@ -1,5 +1,4 @@
 #include <memory>
-#include <cstring>
 #include <optional>
 #include <vector>
 
@@ -17,7 +16,6 @@
 #include "controls/input.h"
 #include "controls/menu_controls.h"
 #include "discord/discord.h"
-#include "engine/assets.hpp"
 #include "engine/clx_sprite.hpp"
 #include "engine/load_clx.hpp"
 #include "engine/load_pcx.hpp"
@@ -26,7 +24,6 @@
 #include "utils/language.h"
 #include "utils/sdl_compat.h"
 #include "utils/sdl_geometry.h"
-#include "utils/surface_to_clx.hpp"
 #include "utils/ui_fwd.h"
 
 namespace devilution {
@@ -38,18 +35,6 @@ std::vector<std::unique_ptr<UiItemBase>> vecTitleScreen;
 
 void TitleLoad()
 {
-#ifdef __3DS__
-	UiLoadBlackBackground();
-	ArtBackgroundWidescreen = std::nullopt;
-	auto image = LoadAsset("data\\ctr_brand_title.pal8");
-	if (image && image->size == 400 * 240) {
-		OwnedSurface surface(400, 240);
-		const auto *pixels = reinterpret_cast<const uint8_t *>(image->data.get());
-		for (int y = 0; y < 240; ++y)
-			std::memcpy(surface.at(0, y), pixels + y * 400, 400);
-		ArtBackground = SurfaceToClx(surface);
-	}
-#else
 	ArtBackgroundWidescreen = LoadOptionalClx("ui_art\\hf_titlew.clx");
 	if (ArtBackgroundWidescreen.has_value()) {
 		LoadBackgroundArt("ui_art\\hf_logo1", 16);
@@ -57,7 +42,6 @@ void TitleLoad()
 		LoadBackgroundArt("ui_art\\title");
 		DiabloTitleLogo = LoadPcxSpriteList("ui_art\\logo", /*numFrames=*/15, /*transparentColor=*/250);
 	}
-#endif
 }
 
 void TitleFree()
@@ -84,9 +68,8 @@ void UiTitleDialog()
 		UiAddBackground(&vecTitleScreen);
 
 #ifdef __3DS__
-		vecTitleScreen.push_back(std::make_unique<UiArtText>("Devil-3Ds",
-		    MakeSdlRect(0, 203, gnScreenWidth, 32),
-		    UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+		vecTitleScreen.push_back(std::make_unique<UiImageAnimatedClx>(
+		    *DiabloTitleLogo, MakeSdlRect(0, 20, 0, 0), UiFlags::AlignCenter));
 
 		const SDL_Rect rect = MakeSdlRect(uiPosition.x, 410, 640, 26);
 		vecTitleScreen.push_back(std::make_unique<UiArtText>(_("Copyright © 1996-2001 Blizzard Entertainment").data(), rect, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver));

@@ -251,6 +251,10 @@ AxisDirection GetLeftStickOrDpadDirection(bool usePadmapper)
 #ifdef __3DS__
 	if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag)
 		result = { AxisDirectionX_NONE, AxisDirectionY_NONE };
+	// The 3DS D-pad is reserved for map/UI shortcuts. Only the Circle Pad
+	// moves the hero; panel navigation below still uses the D-pad.
+	if (usePadmapper)
+		return result;
 #endif
 
 	bool isUpPressed = false;

@@ -239,8 +239,6 @@ endif()
 
 if(NINTENDO_3DS)
   list(APPEND devilutionx_assets
-    data/ctr_brand_title.pal8
-    data/ctr_brand_mark.pal8
     data/ctr_character_background.pal8
     data/ctr_quest_background.pal8
     data/ctr_spells_background.pal8

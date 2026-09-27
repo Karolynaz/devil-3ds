@@ -18,7 +18,7 @@ The 3DS can display a 400 × 240 game image on its upper screen. The interface u
 
 ## Development
 
-The [3DS workflow](.github/workflows/3ds.yml) builds installable files. The source remains compatible with the upstream asset and data format. The new 3DS emblem and its conversion script are in [`art/3ds`](art/3ds) and [`tools/build_3ds_brand_art.py`](tools/build_3ds_brand_art.py).
+The [3DS workflow](.github/workflows/3ds.yml) builds installable files. The source remains compatible with the upstream asset and data format. The user-supplied HOME Menu artwork is in [`art/3ds/home_menu_source.png`](art/3ds/home_menu_source.png); [`tools/build_3ds_home_art.py`](tools/build_3ds_home_art.py) converts it into the 3DS icon and banner. In-game title artwork remains the original Diablo art.
 
 Issues and feedback: [github.com/Karolynaz/devil-3ds/issues](https://github.com/Karolynaz/devil-3ds/issues).
 

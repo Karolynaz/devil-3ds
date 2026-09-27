@@ -14,6 +14,7 @@ Copy `DIABDAT.MPQ` from a legally obtained Diablo installation to `/3ds/deviluti
 - The lower screen displays the belt, life, mana, experience, and information area.
 - Select opens the panels. When a panel is open, L and R switch between quests, character, inventory, and spells.
 - Start opens the game menu.
+- X casts the selected spell; Y opens spell selection. B cancels an open panel or prompt. D-pad Up toggles the automap during gameplay.
 - Tap a belt item on the lower screen to use it. The stylus can also move the pointer and select items.
 
 For controls and settings that may change during development, follow the prompts shown in the game.

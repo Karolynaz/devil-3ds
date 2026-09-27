@@ -4,7 +4,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <memory>
 #include <optional>
 #include <string>
@@ -38,7 +37,6 @@
 #include "discord/discord.h"
 #include "effects.h"
 #include "engine/clx_sprite.hpp"
-#include "engine/assets.hpp"
 #include "engine/dx.h"
 #include "engine/load_pcx.hpp"
 #include "engine/palette.h"
@@ -62,7 +60,6 @@
 #include "utils/sdl_compat.h"
 #include "utils/sdl_geometry.h"
 #include "utils/str_cat.hpp"
-#include "utils/surface_to_clx.hpp"
 #include "utils/ui_fwd.h"
 #include "utils/utf8.hpp"
 
@@ -663,17 +660,6 @@ void LoadUiGFX()
 	if (!ArtLogo.has_value()) {
 		ArtLogo = LoadPcxSpriteList("ui_art\\smlogo", /*numFrames=*/15, /*transparentColor=*/250);
 	}
-#ifdef __3DS__
-	// The 3DS menus use their own mark instead of the original animated Diablo logo.
-	auto brandMark = LoadAsset("data\\ctr_brand_mark.pal8");
-	if (brandMark && brandMark->size == 180 * 100) {
-		OwnedSurface surface(180, 100);
-		const auto *pixels = reinterpret_cast<const uint8_t *>(brandMark->data.get());
-		for (int y = 0; y < 100; ++y)
-			std::memcpy(surface.at(0, y), pixels + y * 180, 180);
-		ArtLogo = SurfaceToClx(surface, 1, 0);
-	}
-#endif
 	DifficultyIndicator = LoadPcx("ui_art\\r1_gry", /*transparentColor=*/0);
 	ArtFocus[FOCUS_SMALL] = LoadPcxSpriteList("ui_art\\focus16", /*numFrames=*/8, /*transparentColor=*/250);
 	ArtFocus[FOCUS_MED] = LoadPcxSpriteList("ui_art\\focus", /*numFrames=*/8, /*transparentColor=*/250);
@@ -857,11 +843,6 @@ void UiAddLogo(std::vector<std::unique_ptr<UiItemBase>> *vecDialog, int y)
 {
 	vecDialog->push_back(std::make_unique<UiImageAnimatedClx>(
 	    *ArtLogo, MakeSdlRect(0, y, 0, 0), UiFlags::AlignCenter));
-#ifdef __3DS__
-	vecDialog->push_back(std::make_unique<UiArtText>("Devil-3Ds",
-	    MakeSdlRect(0, y + 102, gnScreenWidth, 32),
-	    UiFlags::FontSize30 | UiFlags::ColorUiGold | UiFlags::AlignCenter));
-#endif
 }
 
 void UiFadeIn()

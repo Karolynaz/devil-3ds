@@ -331,7 +331,7 @@ void ReleaseControllerButton(ControllerButton button)
 			LastPlayerAction = PlayerActionType::None;
 		}
 		PerformPrimaryActionRelease();
-	} else if (button == ControllerButton_BUTTON_B) {
+	} else if (button == ControllerButton_BUTTON_X) {
 		if (ControllerActionHeld == GameActionType_CAST_SPELL) {
 			ControllerActionHeld = GameActionType_NONE;
 			LastPlayerAction = PlayerActionType::None;
@@ -520,13 +520,13 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_B:
-			ControllerActionHeld = GameActionType_CAST_SPELL;
-			LastPlayerAction = PlayerActionType::None;
-			PerformSpellAction();
+			PressEscKey();
 			return;
 
 		case ControllerButton_BUTTON_X:
-			CycleSpellHotkeys(true);
+			ControllerActionHeld = GameActionType_CAST_SPELL;
+			LastPlayerAction = PlayerActionType::None;
+			PerformSpellAction();
 			return;
 
 		case ControllerButton_BUTTON_Y:
@@ -542,11 +542,12 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_DPAD_UP:
-			ProcessGameAction(GameAction { GameActionType_TOGGLE_CHARACTER_INFO });
+			DoAutoMap();
 			return;
 
 		case ControllerButton_BUTTON_DPAD_DOWN:
-			DoAutoMap();
+		case ControllerButton_BUTTON_DPAD_LEFT:
+		case ControllerButton_BUTTON_DPAD_RIGHT:
 			return;
 
 		case ControllerButton_BUTTON_BACK:

@@ -184,6 +184,10 @@ int CapStatPointsToAdd(int remainingStatPoints, const Player &player, CharacterA
 	return std::min(remainingStatPoints, pointsToReachCap);
 }
 
+#ifdef __3DS__
+bool IsLevelUpButtonVisible();
+#endif
+
 int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 {
 	const int durabilityThresholdGold = 5;
@@ -226,6 +230,31 @@ int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 	}
 
 	// Draw icon
+#ifdef __3DS__
+	// Keep durability warnings on the left of the top screen, away from the
+	// selected spell on the right. Move them up when the level-up prompt shows.
+	// Scale only this tiny icon area to compensate for the 640->400 top view.
+	const int width = (*pDurIcons)[c].width();
+	const int top = IsLevelUpButtonVisible() ? 164 : 200;
+	const int left = (x * gnScreenWidth + 200) / 400;
+	const int right = ((x + width) * gnScreenWidth + 200) / 400;
+	static std::optional<OwnedSurface> iconSurface;
+	if (!iconSurface || iconSurface->surface->w != width || iconSurface->surface->h != height)
+		iconSurface.emplace(width, height);
+	iconSurface->ScaleBlitFrom(out, MakeSdlRect(left, top, right - left, height),
+	    MakeSdlRect(0, 0, width, height));
+	if (partition > 0) {
+		const Surface gold = iconSurface->subregionY(height - partition, partition);
+		ClxDraw(gold, { 0, partition }, (*pDurIcons)[c + 8]);
+	}
+	if (partition != height) {
+		const Surface red = iconSurface->subregionY(0, height - partition);
+		ClxDraw(red, { 0, height }, (*pDurIcons)[c]);
+	}
+	out.ScaleBlitFrom(*iconSurface, MakeSdlRect(0, 0, width, height),
+	    MakeSdlRect(left, top, right - left, height));
+	return x + width + 8;
+#else
 	const int y = -17 + GetMainPanel().position.y;
 	if (partition > 0) {
 		const Surface stenciledBuffer = out.subregionY(y - partition, partition);
@@ -237,6 +266,7 @@ int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 	}
 
 	return x - (*pDurIcons)[c].height() - 8; // Add in spacing for the next durability icon
+#endif
 }
 
 bool IsLevelUpButtonVisible()
@@ -875,6 +905,14 @@ void ReleaseChrBtns(bool addAllStatPoints)
 
 void DrawDurIcon(const Surface &out)
 {
+#ifdef __3DS__
+	int x = 8;
+	Player &myPlayer = *MyPlayer;
+	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HEAD], x, 3);
+	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_CHEST], x, 2);
+	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HAND_LEFT], x, 0);
+	DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HAND_RIGHT], x, 0);
+#else
 	const bool hasRoomBetweenPanels = RightPanel.position.x - (LeftPanel.position.x + LeftPanel.size.width) >= 16 + (32 + 8 + 32 + 8 + 32 + 8 + 32) + 16;
 	const bool hasRoomUnderPanels = MainPanel.position.y - (RightPanel.position.y + RightPanel.size.height) >= 16 + 32 + 16;
 
@@ -894,6 +932,7 @@ void DrawDurIcon(const Surface &out)
 	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_CHEST], x, 2);
 	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HAND_LEFT], x, 0);
 	DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HAND_RIGHT], x, 0);
+#endif
 }
 
 void RedBack(const Surface &out)
