@@ -43,12 +43,6 @@
 #include "utils/sdl_geometry.h"
 #include "utils/sdl_thread.h"
 
-#ifdef __3DS__
-#include "DiabloUI/ui_flags.hpp"
-#include "engine/render/text_render.hpp"
-#include "platform/ctr/ui_background.hpp"
-#endif
-
 #ifndef USE_SDL1
 #include "controls/touch/renderers.h"
 #endif
@@ -61,10 +55,6 @@
 namespace devilution {
 
 namespace {
-
-#ifdef __3DS__
-bool is3DSLoadingScreen = false;
-#endif
 
 constexpr uint32_t MaxProgress = 534;
 constexpr uint32_t ProgressStepSize = 23;
@@ -150,24 +140,13 @@ void LoadCutsceneBackground(interface_mode uMsg)
 	const char *palPath;
 
 	const Cutscenes cutscene = PickCutscene(uMsg);
-#ifdef __3DS__
-	is3DSLoadingScreen = (cutscene == CutStart);
-#endif
-
 	switch (cutscene) {
 	case CutStart:
-#ifdef __3DS__
-		celPath = "";
-		palPath = "ui_art\\diablo.pal";
-		progress_id = 1;
-		break;
-#else
 		ArtCutsceneWidescreen = LoadOptionalClx("gendata\\cutstartw.clx");
 		celPath = "gendata\\cutstart";
 		palPath = "gendata\\cutstart.pal";
 		progress_id = 1;
 		break;
-#endif
 	case CutTown:
 		ArtCutsceneWidescreen = LoadOptionalClx("gendata\\cutttw.clx");
 		celPath = "gendata\\cuttt";
@@ -231,12 +210,7 @@ void LoadCutsceneBackground(interface_mode uMsg)
 	}
 
 	assert(!sgpBackCel);
-#ifdef __3DS__
-	if (celPath != nullptr && celPath[0] != '\0')
-		sgpBackCel = LoadCel(celPath, 640);
-#else
 	sgpBackCel = LoadCel(celPath, 640);
-#endif
 	LoadPalette(palPath);
 	UpdateSystemPalette(logical_palette);
 
@@ -254,12 +228,6 @@ void DrawCutsceneBackground()
 	const Rectangle &uiRectangle = GetUIRectangle();
 	const Surface &out = GlobalBackBuffer();
 	SDL_FillSurfaceRect(out.surface, nullptr, 0);
-#ifdef __3DS__
-	if (is3DSLoadingScreen) {
-		Draw3DSLoadingScreen(out);
-		return;
-	}
-#endif
 	if (ArtCutsceneWidescreen) {
 		const ClxSprite sprite = (*ArtCutsceneWidescreen)[0];
 		RenderClxSprite(out, sprite, { uiRectangle.position.x - ((sprite.width() - uiRectangle.size.width) / 2), uiRectangle.position.y });
@@ -269,12 +237,6 @@ void DrawCutsceneBackground()
 
 void DrawCutsceneForeground()
 {
-#ifdef __3DS__
-	if (is3DSLoadingScreen) {
-		RenderPresent();
-		return;
-	}
-#endif
 	const Rectangle &uiRectangle = GetUIRectangle();
 	const Surface &out = GlobalBackBuffer();
 	constexpr int ProgressHeight = 22;
