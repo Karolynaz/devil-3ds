@@ -34,6 +34,7 @@
 #include "utils/is_of.hpp"
 #include "utils/language.h"
 #include "utils/log.hpp"
+#include "utils/sdl_compat.h"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
 
@@ -272,11 +273,12 @@ void DrawFont(const Surface &out, Point position, ClxSprite glyph, text_color co
 	if (doubleWidth) {
 		const int w = glyph.width();
 		const int h = glyph.height();
-		if (w > 0 && h > 0 && w <= 64 && h <= 64) {
-			static uint8_t glyphScratch[64 * 64];
-			const int scratchPitch = 64;
-			std::memset(glyphScratch, 0, scratchPitch * h);
-			Surface glyphSurface(glyphScratch, scratchPitch, w, h);
+		if (w > 0 && h > 0) {
+			static OwnedSurface glyphSurface(64, 64);
+			if (glyphSurface.w() < w || glyphSurface.h() < h) {
+				glyphSurface = OwnedSurface(std::max(64, w), std::max(64, h));
+			}
+			SDL_FillSurfaceRect(glyphSurface.surface, nullptr, 0);
 
 			if (!gbRunGame && color == ColorWhite) {
 				static constexpr auto MenuWhiteTranslation = [] {
