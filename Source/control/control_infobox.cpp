@@ -73,12 +73,12 @@ void PrintInfo(const Surface &out)
 	static uint32_t InfoScrollStartTime = 0;
 
 	const uint32_t currentTicks = SDL_GetTicks();
-	if (InfoString.view() != LastInfoText) {
-		LastInfoText = std::string(InfoString.view());
+	if (InfoString.str() != LastInfoText) {
+		LastInfoText = std::string(InfoString.str());
 		InfoScrollStartTime = currentTicks;
 	}
 
-	const std::string wrappedText = WordWrapString(InfoString.view(), maxLineWidth, GameFont12, 1);
+	const std::string wrappedText = WordWrapString(InfoString.str(), maxLineWidth, GameFont12, 1);
 	std::vector<std::string> lines;
 	for (auto lineView : SplitByChar(wrappedText, '\n')) {
 		lines.emplace_back(lineView);
@@ -368,7 +368,7 @@ void PrintFloatingInfo(const Surface &out)
 	const int vPadding = 4;
 
 	const int maxFloatingWidth = std::max(100, std::min(260, GetScreenWidth() - 20));
-	const std::string wrappedFloating = WordWrapString(FloatingInfoString.view(), maxFloatingWidth, GameFont12, textSpacing);
+	const std::string wrappedFloating = WordWrapString(FloatingInfoString.str(), maxFloatingWidth, GameFont12, textSpacing);
 
 	Rectangle floatingInfoBox = GetFloatingInfoRect(wrappedFloating, lineHeight, textSpacing);
 
