@@ -103,3 +103,17 @@ void CTR_PresentBottomScreen()
 {
 	gfxFlushBuffers();
 }
+
+void CTR_ClearBottomScreen()
+{
+	u16 fbW = 0, fbH = 0;
+	u8 *fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &fbW, &fbH);
+	if (fb == nullptr)
+		return;
+
+	const GSPGPU_FramebufferFormat format = gfxGetScreenFormat(GFX_BOTTOM);
+	const size_t bytesPerPixel = (format == GSP_RGB565_OES) ? 2 : ((format == GSP_BGR8_OES) ? 3 : 4);
+	const size_t size = 320 * 240 * bytesPerPixel;
+	memset(fb, 0, size);
+	gfxFlushBuffers();
+}

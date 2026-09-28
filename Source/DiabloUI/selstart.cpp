@@ -51,7 +51,7 @@ void UiSelStartUpGameOption()
 #ifdef __3DS__
 	constexpr int itemHeight = 40;
 	const int menuY = 240 + (240 - static_cast<int>(vecDialogItems.size()) * itemHeight) / 2;
-	vecDialog.push_back(std::make_unique<UiList>(vecDialogItems, vecDialogItems.size(), uiPosition.x + 64, menuY, 510, itemHeight, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold, 5));
+	vecDialog.push_back(std::make_unique<UiList>(vecDialogItems, vecDialogItems.size(), uiPosition.x + 64, menuY, 510, itemHeight, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold, 5));
 #else
 	vecDialog.push_back(std::make_unique<UiList>(vecDialogItems, vecDialogItems.size(), uiPosition.x + 64, uiPosition.y + 240, 510, 43, UiFlags::AlignCenter | UiFlags::FontSize42 | UiFlags::ColorUiGold, 5));
 #endif

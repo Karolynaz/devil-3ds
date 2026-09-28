@@ -85,7 +85,7 @@ void UiSelOkDialog(const char *title, const char *body, bool background)
 	}
 
 	vecSelOkDialogItems.push_back(std::make_unique<UiListItem>(_("OK"), 0));
-	vecSelOkDialog.push_back(std::make_unique<UiList>(vecSelOkDialogItems, 1, uiPosition.x + 230, 420, 180, 35, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+	vecSelOkDialog.push_back(std::make_unique<UiList>(vecSelOkDialogItems, 1, uiPosition.x + 230, 420, 180, 35, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 #else
 	if (title != nullptr) {
 		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), (Sint16)(uiPosition.y + 161), 590, 35 };

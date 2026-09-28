@@ -423,7 +423,7 @@ msgstr "Ar tikrai norite ištrinti veikėją „{:s}“?"
 
 #: Source/DiabloUI/mainmenu.cpp:48
 msgid "Single Player"
-msgstr "Vienas žaidėjas"
+msgstr "Žaisti"
 
 #: Source/DiabloUI/mainmenu.cpp:49
 msgid "Multi Player"
@@ -10717,7 +10717,7 @@ msgstr "R: Burtų knyga"
 
 #: Source/engine/render/scrollrt.cpp
 msgid "Y: Drop"
-msgstr "Y: Drop"
+msgstr "Y: Išmesti"
 
 #: Source/panels/spell_book.cpp
 msgid "Spell Book"
@@ -10739,3 +10739,20 @@ msgstr "Auksas:"
 #, c++-format
 msgid "Enter a number from 1 to {:d}."
 msgstr "Įveskite skaičių nuo 1 iki {:d}."
+
+#: Source/qol/visual_store.cpp
+msgid "Basic"
+msgstr "Paprasti"
+
+#: Source/qol/visual_store.cpp
+msgid "Premium"
+msgstr "Geresni"
+
+#: Source/qol/visual_store.cpp
+msgid "Misc"
+msgstr "Įvairūs"
+
+#: Source/qol/visual_store.cpp
+msgid "Gold: "
+msgstr "Auksas: "
+

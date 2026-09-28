@@ -72,7 +72,7 @@ bool UiSelHeroYesNoDialog(const char *title, const char *body)
 
 	vecSelYesNoDialogItems.push_back(std::make_unique<UiListItem>(_("Yes"), 0));
 	vecSelYesNoDialogItems.push_back(std::make_unique<UiListItem>(_("No"), 1));
-	vecSelYesNoDialog.push_back(std::make_unique<UiList>(vecSelYesNoDialogItems, vecSelYesNoDialogItems.size(), uiPosition.x + 230, 420, 180, 35, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
+	vecSelYesNoDialog.push_back(std::make_unique<UiList>(vecSelYesNoDialogItems, vecSelYesNoDialogItems.size(), uiPosition.x + 230, 415, 180, 28, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 #else
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), (Sint16)(uiPosition.y + 161), 590, 35 };
 	vecSelYesNoDialog.push_back(std::make_unique<UiArtText>(title, rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));

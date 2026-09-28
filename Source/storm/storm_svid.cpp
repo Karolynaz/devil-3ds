@@ -38,6 +38,10 @@
 #include "utils/sdl_compat.h"
 #include "utils/sdl_wrap.h"
 
+#ifdef __3DS__
+#include "platform/ctr/display.hpp"
+#endif
+
 namespace devilution {
 namespace {
 
@@ -439,12 +443,22 @@ bool SVidPlayBegin(const char *filename, int flags)
 	}
 #endif
 #else
+#ifdef __3DS__
+	if (PalSurface != nullptr) {
+		SDL_Rect bottomRect = MakeSdlRect(0, 240, PalSurface->w, 240);
+		SDL_FillSurfaceRect(PalSurface, &bottomRect, 0x000000);
+		RenderPresent();
+		SDL_FillSurfaceRect(PalSurface, &bottomRect, 0x000000);
+		RenderPresent();
+	}
+#endif
 	TrySetVideoModeToSVidForSDL1();
 #endif
 
 	// Set the background to black.
 	SDL_FillSurfaceRect(GetOutputSurface(), nullptr, 0x000000);
 #ifdef __3DS__
+	CTR_ClearBottomScreen();
 	// The two 3DS screens retain their last presented pixels independently.
 	// Present the cleared surface before the first movie frame so the title
 	// menu cannot remain visible on the lower screen during attract playback.

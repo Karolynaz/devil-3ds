@@ -373,7 +373,7 @@ add_subdirectory(Source)
 
 set(BIN_TARGET devilutionx)
 if(NINTENDO_3DS)
-  set(BIN_TARGET ${BIN_TARGET}.elf)
+  set(BIN_TARGET devil-3ds.elf)
 elseif(TARGET_PLATFORM STREQUAL "dos")
   set(BIN_TARGET devx)
 endif()

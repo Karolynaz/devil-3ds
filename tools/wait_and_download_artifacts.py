@@ -100,6 +100,6 @@ for a in artifacts:
     os.remove(zip_path)
 
 print(f"Artifacts successfully downloaded and extracted to:")
-print(f"  {TARGET_DIR}/devilutionx.3dsx")
-print(f"  {TARGET_DIR}/devilutionx.cia")
+print(f"  {TARGET_DIR}/devil-3ds.3dsx")
+print(f"  {TARGET_DIR}/devil-3ds.cia")
 print(f"  {version_dir}/")

@@ -168,6 +168,19 @@ extern OptionalOwnedClxSpriteList pSPentSpn2Cels;
 
 void LoadSmallSelectionSpinner();
 
+#ifdef __3DS__
+enum class CtrTextScale : uint8_t {
+	None = 0,
+	TopScreen = 1,   // 8:5 (1.6x) for CTR top screen 640->400 in menus
+	BottomScreen = 2 // 2:1 (2.0x) for CTR bottom screen 640->320
+};
+
+inline CtrTextScale DoubleWidthToScale(bool doubleWidth)
+{
+	return doubleWidth ? CtrTextScale::BottomScreen : CtrTextScale::None;
+}
+#endif
+
 /**
  * @brief Calculate pixel width of first line of text, respecting kerning
  * @param text Text to check, will read until first eol or terminator
@@ -177,6 +190,9 @@ void LoadSmallSelectionSpinner();
  * @return Line width in pixels
  */
 int GetLineWidth(std::string_view text, GameFontTables size = GameFont12, int spacing = 1, int *charactersInLine = nullptr, bool doubleWidth = false);
+#ifdef __3DS__
+int GetLineWidth(std::string_view text, GameFontTables size, int spacing, int *charactersInLine, CtrTextScale scale);
+#endif
 
 /**
  * @brief Calculate pixel width of first line of text, respecting kerning
@@ -193,6 +209,10 @@ int GetLineWidth(std::string_view text, GameFontTables size = GameFont12, int sp
  */
 int GetLineWidth(std::string_view fmt, DrawStringFormatArg *args, size_t argsLen, size_t argsOffset, GameFontTables size, int spacing, int *charactersInLine = nullptr,
     std::optional<size_t> firstArgOffset = std::nullopt, bool doubleWidth = false);
+#ifdef __3DS__
+int GetLineWidth(std::string_view fmt, DrawStringFormatArg *args, size_t argsLen, size_t argsOffset, GameFontTables size, int spacing, int *charactersInLine,
+    std::optional<size_t> firstArgOffset, CtrTextScale scale);
+#endif
 
 int GetLineHeight(std::string_view text, GameFontTables fontIndex);
 
@@ -210,6 +230,9 @@ int GetLineHeight(std::string_view text, GameFontTables fontIndex);
  * @return A copy of the source text with newlines inserted where appropriate
  */
 [[nodiscard]] std::string WordWrapString(std::string_view text, unsigned width, GameFontTables size = GameFont12, int spacing = 1, bool doubleWidth = false);
+#ifdef __3DS__
+[[nodiscard]] std::string WordWrapString(std::string_view text, unsigned width, GameFontTables size, int spacing, CtrTextScale scale);
+#endif
 
 /**
  * @brief Draws a line of text within a clipping rectangle (positioned relative to the origin of the output buffer).
