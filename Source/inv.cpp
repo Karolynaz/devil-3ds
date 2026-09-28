@@ -1380,6 +1380,48 @@ void DrawInvBelt(const Surface &out)
 }
 
 #ifdef __3DS__
+Rectangle CtrInventoryScreenRect(int screenWidth, bool split)
+{
+	const int shift = split ? 97 : 0;
+	const Point left = CtrTopToScreen({ 110 + shift, 16 }, screenWidth);
+	const Point right = CtrTopToScreen({ 286 + shift, 222 }, screenWidth);
+	return { left, { right.x - left.x, right.y - left.y } };
+}
+
+Point CtrInventoryToScreen(Point p, int screenWidth, bool split)
+{
+	for (int slot = 0; slot <= SLOTXY_INV_LAST; ++slot) {
+		const Rectangle &source = InvRect[slot];
+		if (!source.contains(p))
+			continue;
+		const Rectangle target = CtrInventorySlotRect(slot, split);
+		const Point top {
+			target.position.x + (p.x - source.position.x) * target.size.width / source.size.width,
+			target.position.y + (p.y - source.position.y) * target.size.height / source.size.height,
+		};
+		return CtrTopToScreen(top, screenWidth);
+	}
+	return { -1, -1 };
+}
+
+Point CtrScreenToInventory(Point p, int screenWidth, bool split)
+{
+	if (p.x < 0 || p.x >= screenWidth || p.y < 0 || p.y >= CtrTopSize.height)
+		return { -1, -1 };
+	const Point top = CtrScreenToTop(p, screenWidth);
+	for (int slot = 0; slot <= SLOTXY_INV_LAST; ++slot) {
+		const Rectangle target = CtrInventorySlotRect(slot, split);
+		if (!target.contains(top))
+			continue;
+		const Rectangle &source = InvRect[slot];
+		return {
+			source.position.x + (top.x - target.position.x) * source.size.width / target.size.width,
+			source.position.y + (top.y - target.position.y) * source.size.height / target.size.height,
+		};
+	}
+	return { -1, -1 };
+}
+
 namespace {
 
 bool CtrItemNeedsRedBackground(const Item &item)
