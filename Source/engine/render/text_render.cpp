@@ -38,8 +38,10 @@
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
 #ifdef __3DS__
-#include "minitext.h"
-#include "stores.h"
+namespace devilution {
+bool IsPlayerInStore();
+extern bool qtextflag;
+} // namespace devilution
 #endif
 
 namespace devilution {
