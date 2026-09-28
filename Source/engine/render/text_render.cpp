@@ -521,7 +521,7 @@ int AdjustSpacingToFitHorizontally(int &lineWidth, int maxSpacing, int character
 
 	const int overhang = lineWidth - availableWidth;
 	const int spacingRedux = (overhang + charactersInLine - 2) / (charactersInLine - 1);
-	const int minAllowedSpacing = 0;
+	const int minAllowedSpacing = -1;
 	const int allowedRedux = std::max(0, maxSpacing - minAllowedSpacing);
 	const int actualRedux = std::min(spacingRedux, allowedRedux);
 	lineWidth -= actualRedux * (charactersInLine - 1);

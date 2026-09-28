@@ -21,6 +21,7 @@
 #include "DiabloUI/ui_flags.hpp"
 #include "controls/input.h"
 #include "controls/menu_controls.h"
+#include "diablo.h"
 #include "engine/load_clx.hpp"
 #include "engine/point.hpp"
 #include "engine/render/clx_render.hpp"
@@ -146,6 +147,13 @@ void CreditsRenderer::Render()
 		DrawString(out, lineContent.text, Point { dstRect.x, dstRect.y },
 		    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorDialogWhite, .spacing = -1 });
 	}
+
+#ifdef __3DS__
+	SDL_Rect footerRect = MakeSdlRect(uiPosition.x, 452, 640, 20);
+	ScaleOutputRect(&footerRect);
+	DrawString(Surface(DiabloUiSurface()), gszProductName, { { footerRect.x, footerRect.y }, { footerRect.w, footerRect.h } },
+	    { .flags = UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter });
+#endif
 }
 
 bool TextDialog(const char *const *text, std::size_t textLines)

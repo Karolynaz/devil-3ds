@@ -989,6 +989,8 @@ void Render(const UiImageClx &uiImage)
 		}
 		if (gb3DSBackgroundIsTitle) {
 			RenderClxSprite(out, sprite, { x, uiImage.m_rect.y });
+			SDL_Rect bottomRect = MakeSdlRect(0, 240, out.w(), 240);
+			SDL_FillSurfaceRect(out.surface, &bottomRect, 0);
 			return;
 		}
 		// Clear to clean black background for hero selection, game selection, etc.

@@ -315,7 +315,7 @@ msgstr "Gerai"
 
 #: Source/DiabloUI/hero/selhero.cpp:168
 msgid "Choose Class"
-msgstr "Pasirinkite klasę"
+msgstr "Pasirinkti klasę"
 
 #: Source/DiabloUI/hero/selhero.cpp:202 Source/DiabloUI/hero/selhero.cpp:228
 #: Source/DiabloUI/hero/selhero.cpp:313 Source/DiabloUI/hero/selhero.cpp:558
@@ -333,15 +333,15 @@ msgstr "Naujas vieno žaidėjo herojus"
 
 #: Source/DiabloUI/hero/selhero.cpp:217
 msgid "Save File Exists"
-msgstr "Išsaugojimo failas jau yra"
+msgstr "Išsaugotas žaidimas"
 
 #: Source/DiabloUI/hero/selhero.cpp:220 Source/gamemenu.cpp:50
 msgid "Load Game"
-msgstr "Įkelti žaidimą"
+msgstr "Įkelti"
 
 #: Source/DiabloUI/hero/selhero.cpp:221 Source/multi.cpp:835
 msgid "New Game"
-msgstr "Naujas žaidimas"
+msgstr "Naujas"
 
 #: Source/DiabloUI/hero/selhero.cpp:231 Source/DiabloUI/hero/selhero.cpp:564
 msgid "Single Player Characters"
@@ -394,11 +394,11 @@ msgstr "Išsaugotas žaidimas:"
 
 #: Source/DiabloUI/hero/selhero.cpp:534
 msgid "Select Hero"
-msgstr "Pasirinkite herojų"
+msgstr "Pasirinkti herojų"
 
 #: Source/DiabloUI/hero/selhero.cpp:542
 msgid "New Hero"
-msgstr "Naujas herojus"
+msgstr "Naujas"
 
 #: Source/DiabloUI/hero/selhero.cpp:553
 msgid "Delete"
@@ -4535,11 +4535,11 @@ msgstr "Auksas"
 
 #: Source/panels/charpanel.cpp:174
 msgid "Armor class"
-msgstr "Šarvų klasė"
+msgstr "Šarvai"
 
 #: Source/panels/charpanel.cpp:176
 msgid "Chance To Hit"
-msgstr "Pataikymo tikimybė"
+msgstr "Pataikymas"
 
 #: Source/panels/charpanel.cpp:178
 msgid "Damage"
@@ -4555,15 +4555,15 @@ msgstr "Mana"
 
 #: Source/panels/charpanel.cpp:193
 msgid "Resist magic"
-msgstr "Atsparumas magijai"
+msgstr "Atsp. magijai"
 
 #: Source/panels/charpanel.cpp:195
 msgid "Resist fire"
-msgstr "Atsparumas ugniai"
+msgstr "Atsp. ugniai"
 
 #: Source/panels/charpanel.cpp:197
 msgid "Resist lightning"
-msgstr "Atsparumas žaibui"
+msgstr "Atsp. žaibui"
 
 #: Source/panels/mainpanel.cpp:91
 msgid "char"
@@ -10756,3 +10756,86 @@ msgstr "Įvairūs"
 msgid "Gold: "
 msgstr "Auksas: "
 
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Controls"
+msgstr "Valdymas"
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "Delete (Y)"
+msgstr "Ištrinti (Y)"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Player Controls:"
+msgstr "Žaidėjo valdymas:"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "A: Action / Attack / Talk"
+msgstr "A: Veiksmas / Ataka / Pokalbis"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "B: Cancel / Back / Run"
+msgstr "B: Atšaukti / Grįžti / Bėgti"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "X: Cast Selected Spell"
+msgstr "X: Pasirinktas burtas"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Y: Drop Item / Speedbook"
+msgstr "Y: Išmesti daiktą / Burtų knygelė"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "L: Drink Health Potion"
+msgstr "L: Gyvybės gėrimas (1-4)"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "R: Drink Mana Potion"
+msgstr "R: Manos gėrimas (5-8)"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Circle Pad / D-Pad: Move"
+msgstr "Circle Pad / D-Pad: Judėjimas"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "START: In-Game Menu"
+msgstr "START: Meniu / Pauzė"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "SELECT: Automap"
+msgstr "SELECT: Žemėlapis"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Touch: Move Cursor / Click"
+msgstr "Lietimas: Pelės žymeklis"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Panels & Menus:"
+msgstr "Langai ir inventorius:"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "L / R: Switch Panels"
+msgstr "L / R: Keisti langus"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "D-Pad: Select / Move in Grid"
+msgstr "D-Pad: Naršyti langą"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "A: Pick up / Place / Use Item"
+msgstr "A: Paimti / Padėti / Naudoti"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Y: Drop Item from Inventory"
+msgstr "Y: Išmesti daiktą iš inventoriaus"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "B: Close Panel"
+msgstr "B: Uždaryti langą"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "SELECT + D-Pad: Quick Panels"
+msgstr "SELECT + D-Pad: Greiti langai"
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "3DS button layout and in-game controls."
+msgstr "3DS mygtukai ir žaidimo valdymas."

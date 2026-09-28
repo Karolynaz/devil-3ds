@@ -297,20 +297,20 @@ void DrawChr3DS(const Surface &out)
 	label(_("Next level"), { { 216, 59 }, { 85, 16 } });
 	value(4, { { 302, 59 }, { 86, 16 } });
 	DrawHorizontalLine(out, { 12, 78 }, 376, PAL16_BEIGE + 8);
-	label(_("Life"), { { 12, 86 }, { 37, 17 } });
+	label(_("Life"), { { 12, 86 }, { 58, 17 } });
 	const StyledText maxLife = (*panelEntries[21].statDisplayFunc)();
-	DrawString(out, maxLife.text, { { 48, 86 }, { 53, 17 } },
+	DrawString(out, maxLife.text, { { 70, 86 }, { 34, 17 } },
 	    { .flags = maxLife.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
-	label(_("Mana"), { { 108, 86 }, { 40, 17 } });
+	label(_("Mana"), { { 108, 86 }, { 56, 17 } });
 	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
-	DrawString(out, maxMana.text, { { 147, 86 }, { 54, 17 } },
+	DrawString(out, maxMana.text, { { 164, 86 }, { 38, 17 } },
 	    { .flags = maxMana.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
 	for (unsigned i = 0; i < 4; ++i) {
 		const unsigned index = 7 + i * 2;
 		const int y = 110 + i * 24;
-		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 94, 18 } });
+		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 120, 18 } });
 		const StyledText base = (*panelEntries[index].statDisplayFunc)();
-		DrawString(out, base.text, { { 111, y - 4 }, { 61, 22 } },
+		DrawString(out, base.text, { { 132, y - 4 }, { 42, 22 } },
 		    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorDialogWhite | UiFlags::AlignRight });
 		const auto attr = static_cast<CharacterAttribute>(i);
 		if (!IsInspectingPlayer() && InspectPlayer->_pStatPts > 0
@@ -328,8 +328,8 @@ void DrawChr3DS(const Surface &out)
 	constexpr unsigned combat[] = { 18, 19, 20, 25, 26, 27 };
 	for (unsigned i = 0; i < 6; ++i) {
 		const int y = 87 + i * 23;
-		label(LanguageTranslate(panelEntries[combat[i]].label), { { 216, y }, { 112, 18 } });
-		value(combat[i], { { 331, y }, { 57, 18 } });
+		label(LanguageTranslate(panelEntries[combat[i]].label), { { 216, y }, { 134, 18 } });
+		value(combat[i], { { 350, y }, { 38, 18 } });
 	}
 }
 #endif
