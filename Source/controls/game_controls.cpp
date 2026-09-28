@@ -308,48 +308,8 @@ struct ButtonAHoldState {
 	Point pressPos = { 0, 0 };
 } ButtonAHold;
 
-void Cancel3DSButtonAHold()
-{
-	ButtonAHold.active = false;
-	ButtonAHold.triggered = false;
-	ButtonAHold.invItem = -1;
-	ButtonAHold.stashItem = StashStruct::EmptyCell;
-}
-
-void Update3DSButtonAHold()
-{
-	if (!ButtonAHold.active || ButtonAHold.triggered)
-		return;
-
-	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag || IsStashOpen || SpellSelectFlag;
-	if (!uiOpen) {
-		Cancel3DSButtonAHold();
-		return;
-	}
-
-	if (ButtonAHold.invItem != -1 && pcursinvitem != ButtonAHold.invItem) {
-		Cancel3DSButtonAHold();
-		return;
-	}
-	if (ButtonAHold.stashItem != StashStruct::EmptyCell && pcursstashitem != ButtonAHold.stashItem) {
-		Cancel3DSButtonAHold();
-		return;
-	}
-
-	constexpr uint32_t HoldThresholdMs = 350;
-	if (static_cast<uint32_t>(SDL_GetTicks() - ButtonAHold.pressedAt) < HoldThresholdMs)
-		return;
-
-	ButtonAHold.triggered = true;
-
-	if (IsVisualStoreOpen && pcursinvitem >= INVITEM_INV_FIRST && pcursinvitem <= INVITEM_INV_LAST) {
-		SellItemToVisualStore(pcursinvitem - INVITEM_INV_FIRST);
-	} else if (IsStashOpen && pcursstashitem != StashStruct::EmptyCell) {
-		CtrlUseStashItem();
-	} else if (pcursinvitem != -1) {
-		CtrlUseInvItem();
-	}
-}
+void Cancel3DSButtonAHold();
+void Update3DSButtonAHold();
 
 void DrinkPotion3DS(int firstSlot, int lastSlot)
 {
@@ -781,6 +741,49 @@ void Update3DSStashItemAction()
 	item.clear();
 	NewCursor(CURSOR_HAND);
 	PlaySFX(SfxID::GrabItem);
+}
+
+void Cancel3DSButtonAHold()
+{
+	ButtonAHold.active = false;
+	ButtonAHold.triggered = false;
+	ButtonAHold.invItem = -1;
+	ButtonAHold.stashItem = StashStruct::EmptyCell;
+}
+
+void Update3DSButtonAHold()
+{
+	if (!ButtonAHold.active || ButtonAHold.triggered)
+		return;
+
+	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag || IsStashOpen || SpellSelectFlag;
+	if (!uiOpen) {
+		Cancel3DSButtonAHold();
+		return;
+	}
+
+	if (ButtonAHold.invItem != -1 && pcursinvitem != ButtonAHold.invItem) {
+		Cancel3DSButtonAHold();
+		return;
+	}
+	if (ButtonAHold.stashItem != StashStruct::EmptyCell && pcursstashitem != ButtonAHold.stashItem) {
+		Cancel3DSButtonAHold();
+		return;
+	}
+
+	constexpr uint32_t HoldThresholdMs = 350;
+	if (static_cast<uint32_t>(SDL_GetTicks() - ButtonAHold.pressedAt) < HoldThresholdMs)
+		return;
+
+	ButtonAHold.triggered = true;
+
+	if (IsVisualStoreOpen && pcursinvitem >= INVITEM_INV_FIRST && pcursinvitem <= INVITEM_INV_LAST) {
+		SellItemToVisualStore(pcursinvitem - INVITEM_INV_FIRST);
+	} else if (IsStashOpen && pcursstashitem != StashStruct::EmptyCell) {
+		CtrlUseStashItem();
+	} else if (pcursinvitem != -1) {
+		CtrlUseInvItem();
+	}
 }
 #endif
 
