@@ -93,11 +93,17 @@ bool IsValidEntry(OptionEntryBase *pOptionEntry)
 	return HasNoneOf(flags, OptionEntryFlags::Invisible | (gbIsHellfire ? OptionEntryFlags::OnlyDiablo : OptionEntryFlags::OnlyHellfire));
 }
 
+#ifdef __3DS__
+constexpr UiFlags SettingsSecondaryTextColor = UiFlags::ColorWhite;
+#else
+constexpr UiFlags SettingsSecondaryTextColor = UiFlags::ColorUiSilver;
+#endif
+
 std::vector<DrawStringFormatArg> CreateDrawStringFormatArgForEntry(OptionEntryBase *pEntry)
 {
 	return std::vector<DrawStringFormatArg> {
 		{ pEntry->GetName(), UiFlags::ColorUiGold },
-		{ pEntry->GetValueDescription(), UiFlags::ColorUiSilver }
+		{ pEntry->GetValueDescription(), SettingsSecondaryTextColor }
 	};
 }
 
@@ -404,7 +410,7 @@ void UiSettingsMenu()
 		}
 #ifdef __3DS__
 		// Keep every settings view inside the 3DS bottom screen (y = 240..479).
-		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, 245, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
+		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, 246, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorWhite | UiFlags::AlignCenter, 8));
 #else
 		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, uiRectangle.position.y + 161, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
 #endif
@@ -437,7 +443,7 @@ void UiSettingsMenu()
 				const int optionId = static_cast<int>(vecOptions.size());
 				if (NeedsTwoLinesToDisplayOption(formatArgs)) {
 					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view("{}:"), formatArgs, optionId, UiFlags::ColorUiGold | UiFlags::NeedsNextElement));
-					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string(pEntry->GetValueDescription()), optionId, UiFlags::ColorUiSilver | UiFlags::ElementDisabled));
+					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string(pEntry->GetValueDescription()), optionId, SettingsSecondaryTextColor | UiFlags::ElementDisabled));
 				} else {
 					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view("{}: {}"), formatArgs, optionId, UiFlags::ColorUiGold));
 				}
@@ -502,7 +508,7 @@ void UiSettingsMenu()
 				vecDialogItems[IndexKeyOrPadInput]->m_text = selectedOption->GetValueDescription();
 				return true;
 			};
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Press any key to change."), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiSilver | UiFlags::ElementDisabled));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Press any key to change."), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor | UiFlags::ElementDisabled));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view {}, static_cast<int>(SpecialMenuEntry::None), UiFlags::ElementDisabled));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Unbind key"), static_cast<int>(SpecialMenuEntry::UnbindKey), UiFlags::ColorUiGold));
 			UpdateDescription(*selectedOption);
@@ -513,7 +519,7 @@ void UiSettingsMenu()
 			assert(IndexKeyOrPadInput == vecDialogItems.size() - 1);
 			itemToSelect = IndexKeyOrPadInput;
 
-			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view(padEntryTimerText), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiSilver | UiFlags::ElementDisabled));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view(padEntryTimerText), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor | UiFlags::ElementDisabled));
 			assert(IndexPadTimerText == vecDialogItems.size() - 1);
 
 			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view {}, static_cast<int>(SpecialMenuEntry::None), UiFlags::ElementDisabled));
@@ -564,11 +570,11 @@ void UiSettingsMenu()
 		vecDialogItems.push_back(std::make_unique<UiListItem>(_("Previous Menu"), static_cast<int>(SpecialMenuEntry::PreviousMenu), UiFlags::ColorUiGold));
 
 #ifdef __3DS__
-		constexpr int ListItemHeight = 25;
-		constexpr int maxListHeight = 125;
+		constexpr int ListItemHeight = 27;
+		constexpr int maxListHeight = 135;
 		rectList = { { uiRectangle.position.x + 50, 283 },
 			Size { uiRectangle.size.width - 100, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, maxListHeight) } };
-		rectDescription = { { uiRectangle.position.x + 24, 416 },
+		rectDescription = { { uiRectangle.position.x + 24, 423 },
 			Size { uiRectangle.size.width - 48, 53 } };
 #else
 		constexpr int ListItemHeight = 26;
@@ -580,7 +586,7 @@ void UiSettingsMenu()
 		vecDialog.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0],
 		    *ArtScrollBarArrow, MakeSdlRect(rectList.position.x + rectList.size.width + 5, rectList.position.y, 25, rectList.size.height)));
 		vecDialog.push_back(std::make_unique<UiArtText>(optionDescription, MakeSdlRect(rectDescription),
-		    UiFlags::FontSize12 | UiFlags::ColorUiSilverDark | UiFlags::AlignCenter, 1, descriptionLineHeight));
+		    UiFlags::FontSize12 | UiFlags::ColorWhite | UiFlags::AlignCenter, 1, descriptionLineHeight));
 		vecDialog.push_back(std::make_unique<UiList>(vecDialogItems, rectList.size.height / ListItemHeight,
 		    rectList.position.x, rectList.position.y, rectList.size.width, ListItemHeight, UiFlags::FontSize24 | UiFlags::AlignCenter));
 

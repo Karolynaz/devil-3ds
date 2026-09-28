@@ -10702,3 +10702,31 @@ msgstr "SELECT: Paskirstyti taškus"
 #: Source/engine/render/scrollrt.cpp
 msgid "L/R: switch\npanels"
 msgstr "L/R: Keisti\nlangus"
+
+#: Source/engine/render/scrollrt.cpp
+msgid "L: Character"
+msgstr "L: Veikėjas"
+
+#: Source/engine/render/scrollrt.cpp
+msgid "R: Spell Book"
+msgstr "R: Burtų knyga"
+
+#: Source/engine/render/scrollrt.cpp
+msgid "Y: Drop"
+msgstr "Y: Drop"
+
+#: Source/panels/spell_book.cpp
+msgid "Spell Book"
+msgstr "Burtų knyga"
+
+#: Source/panels/quest_log.cpp
+msgid "Quest Log"
+msgstr "Užduočių žurnalas"
+
+#: Source/qol/stash.cpp
+msgid "Stash ({:d})"
+msgstr "Saugykla ({:d})"
+
+#: Source/qol/stash.cpp
+msgid "Gold:"
+msgstr "Auksas:"

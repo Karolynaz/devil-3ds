@@ -65,11 +65,11 @@ constexpr Rectangle StashButtonRect[] = {
 
 #ifdef __3DS__
 constexpr Rectangle CtrStashButtonRect[] = {
-	{ { 19, 29 }, { 22, 18 } },
-	{ { 43, 29 }, { 22, 18 } },
-	{ { 67, 29 }, { 22, 18 } },
-	{ { 143, 29 }, { 22, 18 } },
-	{ { 167, 29 }, { 22, 18 } },
+	{},
+	{ { 19, 29 }, { 32, 18 } },
+	{ { 60, 29 }, { 280, 18 } },
+	{ { 349, 29 }, { 32, 18 } },
+	{},
 };
 constexpr int StashHalfCellPixels = CtrItemSlotPixels / 2;
 
@@ -395,7 +395,11 @@ void CheckStashButtonPress(Point mousePosition)
 	mousePosition = CtrStashPointer(mousePosition);
 #endif
 
+#ifdef __3DS__
+	for (int i = 1; i <= 3; i++) {
+#else
 	for (int i = 0; i < 5; i++) {
+#endif
 #ifdef __3DS__
 		stashButton = CtrStashButtonRect[i];
 #else
@@ -472,13 +476,10 @@ void DrawCtrStashItems(const Surface &out)
 		const StashStruct::StashCell itemId = Stash.GetItemIdAtPosition(slot);
 		if (itemId == StashStruct::EmptyCell)
 			continue;
-		const Item &item = Stash.stashList[itemId];
 		const Rectangle cell = CtrStashSlotRect(slot);
-		const bool needsRedBackground = !item._iStatFlag
-		    || (item._iMagical != ITEM_QUALITY_NORMAL && !item._iIdentified);
 		DrawHalfTransparentRectTo(out, cell.position.x + 1, cell.position.y + 1,
 		    cell.size.width - 2, cell.size.height - 2,
-		    needsRedBackground ? PAL16_RED + 6 : PAL16_BLUE + 6);
+		    PAL16_RED + 6);
 	}
 
 	for (const Point slot : StashGridRange) {
@@ -510,15 +511,16 @@ void DrawCtrStashItems(const Surface &out)
 	}
 
 	const UiFlags labelStyle = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing;
-	DrawString(out, FormatRuntime(_("Page {:d}"), Stash.GetPage() + 1),
-	    { { 91, 29 }, { 48, 18 } }, { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | labelStyle });
-
-	static constexpr std::string_view ButtonLabels[] = { "<<", "<", "G", ">", ">>" };
-	for (int i = 0; i < 5; ++i) {
+	DrawString(out, FormatRuntime(_("Stash ({:d})"), Stash.GetPage() + 1),
+	    { { 19, 11 }, { 180, 18 } }, { .flags = labelStyle });
+	for (int i = 1; i <= 3; ++i) {
 		const Rectangle button = CtrStashButtonRect[i];
 		FillRect(out, button.position.x, button.position.y, button.size.width, button.size.height, 0);
 		UnsafeDrawBorder2px(out, button, PAL16_BEIGE + 8);
-		DrawString(out, ButtonLabels[i], button,
+		const std::string label = i == 2
+		    ? StrCat(_("Gold:"), " ", Stash.gold >= 10000 ? StrCat(Stash.gold / 1000, "k") : FormatInteger(Stash.gold))
+		    : (i == 1 ? "<" : ">");
+		DrawString(out, label, button,
 		    { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorWhitegold });
 	}
 }

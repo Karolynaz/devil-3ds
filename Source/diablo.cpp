@@ -891,6 +891,9 @@ void RunGameLoop(interface_mode uMsg)
 	LoadPWaterPalette();
 	PaletteFadeIn(8);
 	InitBackbufferState();
+#ifdef __3DS__
+	Reset3DSGameStartHint();
+#endif
 	RedrawEverything();
 	gbGameLoopStartup = true;
 	nthread_ignore_mutex(false);

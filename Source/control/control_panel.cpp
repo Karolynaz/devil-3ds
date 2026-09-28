@@ -195,7 +195,11 @@ int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 
 	if (pItem.isEmpty())
 		return x;
+#ifdef __3DS__
+	if (pItem._iDurability > durabilityThresholdRed)
+#else
 	if (pItem._iDurability > durabilityThresholdGold)
+#endif
 		return x;
 	if (c == 0) {
 		switch (pItem._itype) {
@@ -302,11 +306,11 @@ void CalculatePanelAreas()
 	};
 	LeftPanel = {
 		{ 0, 0 },
-		{ 218, 240 }
+		{ gnScreenWidth / 2, 240 }
 	};
 	RightPanel = {
-		{ gnScreenWidth - 218, 0 },
-		{ 218, 240 }
+		{ gnScreenWidth / 2, 0 },
+		{ gnScreenWidth - gnScreenWidth / 2, 240 }
 	};
 #else
 	MainPanel = {

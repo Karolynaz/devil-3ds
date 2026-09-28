@@ -947,8 +947,13 @@ void LiftStashItem()
 	ActiveStashSlot = jumpSlot;
 	// Center the Cursor based on the item we just put down or we're holding.
 	cursorSizeInCells = MyPlayer->HoldItem.isEmpty() ? GetItemSizeOnSlot(jumpSlot) : GetInventorySize(MyPlayer->HoldItem);
+#ifdef __3DS__
+	mousePos.x += (cursorSizeInCells.width * CtrItemSlotPitch * gnScreenWidth) / (2 * CtrTopSize.width);
+	mousePos.y += (cursorSizeInCells.height * CtrItemSlotPitch) / 2;
+#else
 	mousePos.x += ((cursorSizeInCells.width) * InventorySlotSizeInPixels.width) / 2;
 	mousePos.y += ((cursorSizeInCells.height) * InventorySlotSizeInPixels.height) / 2;
+#endif
 
 	SetCursorPos(mousePos);
 }
@@ -1703,11 +1708,19 @@ void HotSpellMove(AxisDirection dir)
 		return;
 
 	auto spellListItems = GetSpellListItems();
+	const auto spellCenter = [](const SpellListItem &spellListItem) {
+#ifdef __3DS__
+		const int width = (30 * gnScreenWidth + 200) / 400;
+		return spellListItem.location + Displacement { width / 2, -15 };
+#else
+		return spellListItem.location + Displacement { SPLICONLENGTH / 2, -SPLICONLENGTH / 2 };
+#endif
+	};
 
 	Point position = MousePosition;
 	int shortestDistance = std::numeric_limits<int>::max();
 	for (auto &spellListItem : spellListItems) {
-		const Point center = spellListItem.location + Displacement { SPLICONLENGTH / 2, -SPLICONLENGTH / 2 };
+		const Point center = spellCenter(spellListItem);
 		const int distance = MousePosition.ManhattanDistance(center);
 		if (distance < shortestDistance) {
 			position = center;
@@ -1726,7 +1739,7 @@ void HotSpellMove(AxisDirection dir)
 			if (spellListItem.isSelected)
 				continue;
 
-			const Point center = spellListItem.location + Displacement { SPLICONLENGTH / 2, -SPLICONLENGTH / 2 };
+			const Point center = spellCenter(spellListItem);
 			if (dir.x == AxisDirectionX_LEFT && center.x >= MousePosition.x)
 				continue;
 			if (dir.x == AxisDirectionX_RIGHT && center.x <= MousePosition.x)
@@ -2459,6 +2472,13 @@ void PerformPrimaryAction()
 			CheckInvScrn(false, false);
 			CheckMainPanelButton();
 			CheckMainPanelButtonUp();
+		} else if (IsStashOpen && GetLeftPanel().contains(MousePosition)) {
+			if (pcursstashitem != StashStruct::EmptyCell || !MyPlayer->HoldItem.isEmpty())
+				CheckStashItem(MousePosition);
+			else {
+				CheckStashButtonPress(MousePosition);
+				CheckStashButtonRelease(MousePosition);
+			}
 		} else if (invflag) {
 			if (pcurs > CURSOR_HAND && pcurs < CURSOR_FIRSTITEM) {
 				if (pcurs != CURSOR_HOURGLASS && TryIconCurs())

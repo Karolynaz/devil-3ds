@@ -137,6 +137,9 @@ void FreeControlPan();
  * Sets a string to be drawn in the info box and then draws it.
  */
 void DrawInfoBox(const Surface &out);
+#ifdef __3DS__
+void Reset3DSGameStartHint();
+#endif
 void DrawFloatingInfoBox(const Surface &out);
 void CheckLevelButton();
 void CheckLevelButtonUp();

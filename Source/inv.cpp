@@ -1424,21 +1424,16 @@ Point CtrScreenToInventory(Point p, int screenWidth, bool split)
 
 namespace {
 
-bool CtrItemNeedsRedBackground(const Item &item)
-{
-	return !item._iStatFlag || (item._iMagical != ITEM_QUALITY_NORMAL && !item._iIdentified);
-}
-
 Rectangle CtrItemArea(Point origin, Size size)
 {
 	return { origin, { size.width * CtrItemSlotPitch - 1, size.height * CtrItemSlotPitch - 1 } };
 }
 
-void CtrTintCell(const Surface &out, Rectangle cell, const Item &item)
+void CtrTintCell(const Surface &out, Rectangle cell)
 {
 	DrawHalfTransparentRectTo(out, cell.position.x + 1, cell.position.y + 1,
 	    cell.size.width - 2, cell.size.height - 2,
-	    CtrItemNeedsRedBackground(item) ? PAL16_RED + 6 : PAL16_BLUE + 6);
+	    PAL16_RED + 6);
 }
 
 } // namespace
@@ -1504,7 +1499,7 @@ void DrawCtrInventoryItems(const Surface &out, bool split)
 		if (item.isEmpty())
 			continue;
 		const Rectangle cell = CtrInventorySlotRect(slot, split);
-		CtrTintCell(out, cell, item);
+		CtrTintCell(out, cell);
 		const Size size = GetInventorySize(item);
 		const Size scaled { size.width * CtrItemSlotPitch - 1, size.height * CtrItemSlotPitch - 1 };
 		const Rectangle target { { cell.position.x + (cell.size.width - scaled.width) / 2,
@@ -1516,7 +1511,7 @@ void DrawCtrInventoryItems(const Surface &out, bool split)
 		if (id == 0)
 			continue;
 		const Item &item = player.InvList[std::abs(id) - 1];
-		CtrTintCell(out, CtrInventorySlotRect(SLOTXY_INV_FIRST + index, split), item);
+		CtrTintCell(out, CtrInventorySlotRect(SLOTXY_INV_FIRST + index, split));
 	}
 	for (int index = 0; index < InventoryGridCells; ++index) {
 		const int id = player.InvGrid[index];

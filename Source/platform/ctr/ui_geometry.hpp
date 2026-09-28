@@ -25,7 +25,7 @@ constexpr Rectangle CtrStatButtons[4] = {
 	{ { 179, 156 }, { 22, 20 } },
 	{ { 179, 180 }, { 22, 20 } },
 };
-constexpr int CtrSpellRowsY = 36;
+constexpr int CtrSpellRowsY = 46;
 constexpr int CtrSpellRowHeight = 24;
 constexpr int CtrSpellTabsY = 214;
 constexpr int CtrSpellTabFirstX = 16;

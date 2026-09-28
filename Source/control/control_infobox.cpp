@@ -1,6 +1,11 @@
 #include "control.hpp"
 #include "control_panel.hpp"
 #ifdef __3DS__
+#ifdef USE_SDL3
+#include <SDL3/SDL_timer.h>
+#else
+#include <SDL.h>
+#endif
 #include "platform/ctr/ui_geometry.hpp"
 #endif
 #include "controls/control_mode.hpp"
@@ -25,6 +30,19 @@ namespace devilution {
 
 StringOrView InfoString;
 StringOrView FloatingInfoString;
+
+#ifdef __3DS__
+namespace {
+uint64_t GameStartHintTime;
+bool ShowGameStartHint;
+} // namespace
+
+void Reset3DSGameStartHint()
+{
+	GameStartHintTime = SDL_GetTicks();
+	ShowGameStartHint = true;
+}
+#endif
 
 namespace {
 
@@ -473,7 +491,10 @@ void DrawInfoBox(const Surface &out)
 	if (!InfoString.empty())
 		PrintInfo(out);
 #ifdef __3DS__
-	else
+	if (!InfoString.empty() || IsLeftPanelOpen() || IsRightPanelOpen()
+	    || SDL_GetTicks() - GameStartHintTime >= 10000)
+		ShowGameStartHint = false;
+	if (InfoString.empty() && ShowGameStartHint)
 		DrawString(out, _("SELECT: Open panels\nSTART: Meniu"), CtrBottomInfoBox,
 		    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::KerningFitSpacing,
 		      .spacing = 1, .lineHeight = 18 });

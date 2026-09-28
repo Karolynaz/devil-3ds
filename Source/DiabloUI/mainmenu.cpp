@@ -71,17 +71,19 @@ void MainmenuLoad(const char *name)
 
 	const Point uiPosition = GetUIRectangle().position;
 
-	const int itemHeight = 36;
+	const int itemHeight = 34;
 	const int totalMenuHeight = static_cast<int>(vecMenuItems.size()) * itemHeight;
-	const int menuY = 240 + (240 - totalMenuHeight) / 2;
+	// Reserve a footer row for the version string and keep the complete menu on
+	// the bottom screen.
+	const int menuY = 246 + (174 - totalMenuHeight) / 2;
 	const int menuWidth = 510;
 	const int menuX = uiPosition.x + (GetUIRectangle().size.width - menuWidth) / 2;
 
 	vecMainMenuDialog.push_back(std::make_unique<UiList>(vecMenuItems, vecMenuItems.size(), menuX, menuY, menuWidth, itemHeight, UiFlags::FontSize30 | UiFlags::ColorUiGold | UiFlags::AlignCenter, 4));
 
 	// Keep the product name and version centered in the bottom screen area.
-	const SDL_Rect rect2 = { 0, (Sint16)(gnScreenHeight - 40), 640, 32 };
-	vecMainMenuDialog.push_back(std::make_unique<UiArtText>(name, rect2, UiFlags::FontSize24 | UiFlags::ColorUiSilverDark | UiFlags::AlignCenter));
+	const SDL_Rect rect2 = { 0, 444, 640, 24 };
+	vecMainMenuDialog.push_back(std::make_unique<UiArtText>(name, rect2, UiFlags::FontSize24 | UiFlags::ColorWhite | UiFlags::AlignCenter));
 #else
 	UiAddBackground(&vecMainMenuDialog);
 	UiAddLogo(&vecMainMenuDialog);

@@ -1466,12 +1466,14 @@ void DrawView(const Surface &out, Point startPosition)
 			DrawCtrInventoryItems(*TopPanelBuffer, IsStashOpen);
 			if (IsStashOpen)
 				DrawCtrStashItems(*TopPanelBuffer);
-			DrawString(*TopPanelBuffer, "L: Character", { { 16, 12 }, { 170, 24 } },
-			    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
-			DrawString(*TopPanelBuffer, "R: Spell Book", { { 218, 12 }, { 170, 24 } },
-			    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
-			DrawString(*TopPanelBuffer, "Y: Drop item", { { 16, IsStashOpen ? 219 : 207 }, { 150, 18 } },
-			    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+			if (!IsStashOpen) {
+				DrawString(*TopPanelBuffer, _("L: Character"), { { 16, 22 }, { 170, 24 } },
+				    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+				DrawString(*TopPanelBuffer, _("R: Spell Book"), { { 218, 22 }, { 170, 24 } },
+				    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
+				DrawString(*TopPanelBuffer, _("Y: Drop"), { { 16, 207 }, { 150, 18 } },
+				    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+			}
 			out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
 			// The original gold entry widgets still use the legacy panel canvas.
 			if (DropGoldFlag || IsWithdrawGoldOpen) {
@@ -2049,7 +2051,7 @@ void DrawAndBlit()
 #endif
 	DrawView(out, ViewPosition);
 #ifdef __3DS__
-	if (!invflag && !CharFlag && !QuestLogIsOpen && !SpellbookFlag)
+	if (!invflag && !CharFlag && !QuestLogIsOpen && !SpellbookFlag && !IsPlayerInStore() && !qtextflag)
 		DrawSpell(out);
 	DrawCtrBottomHud(out);
 #else

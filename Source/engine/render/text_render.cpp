@@ -114,6 +114,12 @@ std::array<std::optional<std::array<uint8_t, 256>>, 19> ColorTranslationsData;
 
 text_color GetColorFromFlags(UiFlags flags)
 {
+#ifdef __3DS__
+	// The lower title screen halves the horizontal resolution. Keep its
+	// secondary text bright enough to remain legible at that size.
+	if (!gbRunGame && HasAnyOf(flags, UiFlags::ColorUiSilver | UiFlags::ColorUiSilverDark))
+		return ColorWhite;
+#endif
 	if (HasAnyOf(flags, UiFlags::ColorWhite))
 		return ColorWhite;
 	if (HasAnyOf(flags, UiFlags::ColorBlue))

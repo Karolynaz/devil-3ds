@@ -15,8 +15,10 @@
 #include "player.h"
 #include "spells.h"
 #include "utils/algorithm/container.hpp"
+#include "utils/display.h"
 #include "utils/format.hpp"
 #include "utils/language.h"
+#include "utils/sdl_compat.h"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
 
@@ -79,6 +81,37 @@ std::optional<std::string_view> GetHotkeyName(SpellID spellId, SpellType spellTy
 	return {};
 }
 
+#ifdef __3DS__
+constexpr int SpellListColumns = 8;
+constexpr int SpellListIconSize = 30;
+constexpr int SpellListIconPitch = 32;
+constexpr int SpellListRowWidth = SpellListColumns * SpellListIconSize + (SpellListColumns - 1) * (SpellListIconPitch - SpellListIconSize);
+constexpr int SpellListMargin = 8;
+constexpr int SelectedSpellIconSize = 40;
+
+int To3dsTopScreenX(int x)
+{
+	return (x * gnScreenWidth + 200) / 400;
+}
+
+void Draw3dsSpellHudIcon(const Surface &out, SpellID spell, SpellType type, int surfaceX, int y, int size, bool selected = false)
+{
+	static OwnedSurface iconSurface(SPLICONLENGTH, SPLICONLENGTH);
+	const int width = (size * gnScreenWidth + 200) / 400;
+	iconSurface.ScaleBlitFrom(out, MakeSdlRect(surfaceX, y, width, size),
+	    MakeSdlRect(0, 0, SPLICONLENGTH, SPLICONLENGTH));
+	SetSpellTrans(type);
+	DrawLargeSpellIcon(iconSurface, { 0, SPLICONLENGTH }, spell);
+	if (selected)
+		DrawLargeSpellIconBorder(iconSurface, { 0, SPLICONLENGTH }, PAL16_YELLOW - 46);
+	if (std::optional<std::string_view> hotkeyName = GetHotkeyName(spell, type, true))
+		PrintSBookHotkey(iconSurface, { 0, SPLICONLENGTH }, *hotkeyName);
+
+	out.ScaleBlitFrom(iconSurface, MakeSdlRect(0, 0, SPLICONLENGTH, SPLICONLENGTH),
+	    MakeSdlRect(surfaceX, y, width, size));
+}
+#endif
+
 } // namespace
 
 void DrawSpell(const Surface &out)
@@ -105,23 +138,9 @@ void DrawSpell(const Surface &out)
 
 	SetSpellTrans(st);
 #ifdef __3DS__
-	// The top screen is 400 physical pixels wide while its game surface is
-	// gnScreenWidth pixels wide. Render the 56px icon square first, then widen
-	// only its destination so it stays square on the actual display.
-	static OwnedSurface iconSurface(SPLICONLENGTH, SPLICONLENGTH);
-	const int width = (SPLICONLENGTH * gnScreenWidth + 200) / 400;
-	const int margin = (8 * gnScreenWidth + 200) / 400;
-	const int x = gnScreenWidth - width - margin;
-	const int y = 240 - SPLICONLENGTH - 8;
-	iconSurface.ScaleBlitFrom(out, MakeSdlRect(x, y, width, SPLICONLENGTH),
-	    MakeSdlRect(0, 0, SPLICONLENGTH, SPLICONLENGTH));
-	const Point position { 0, SPLICONLENGTH };
-	DrawLargeSpellIcon(iconSurface, position, spl);
-	std::optional<std::string_view> hotkeyName = GetHotkeyName(spl, myPlayer._pRSplType, true);
-	if (hotkeyName)
-		PrintSBookHotkey(iconSurface, position, *hotkeyName);
-	out.ScaleBlitFrom(iconSurface, MakeSdlRect(0, 0, SPLICONLENGTH, SPLICONLENGTH),
-	    MakeSdlRect(x, y, width, SPLICONLENGTH));
+	const int x = 400 - SpellListMargin - SelectedSpellIconSize;
+	const int y = 240 - SpellListMargin - SelectedSpellIconSize;
+	Draw3dsSpellHudIcon(out, spl, st, To3dsTopScreenX(x), y, SelectedSpellIconSize);
 #else
 	const Point position = GetMainPanel().position + Displacement { 565, 119 };
 	DrawLargeSpellIcon(out, position, spl);
@@ -153,29 +172,41 @@ void DrawSpellList(const Surface &out)
 		}
 
 		SetSpellTrans(transType);
+#ifdef __3DS__
+		Draw3dsSpellHudIcon(out, spellId, transType, spellListItem.location.x,
+		    spellListItem.location.y - SpellListIconSize, SpellListIconSize, spellListItem.isSelected);
+#else
 		DrawLargeSpellIcon(out, spellListItem.location, spellId);
+#endif
 
+#ifndef __3DS__
 		std::optional<std::string_view> shortHotkeyName = GetHotkeyName(spellId, spellListItem.type, true);
-
 		if (shortHotkeyName)
 			PrintSBookHotkey(out, spellListItem.location, *shortHotkeyName);
+#endif
 
 		if (!spellListItem.isSelected)
 			continue;
 
+#ifndef __3DS__
 		uint8_t spellColor = PAL16_GRAY + 5;
+#endif
 
 		switch (spellListItem.type) {
 		case SpellType::Skill:
+#ifndef __3DS__
 			spellColor = PAL16_YELLOW - 46;
 			PrintSBookSpellType(out, spellListItem.location, _("Skill"), spellColor);
+#endif
 			InfoString = FormatRuntime(_("{:s} Skill"), pgettext("spell", spellDataItem.sNameText));
 			break;
 		case SpellType::Spell:
+#ifndef __3DS__
 			if (!myPlayer.isOnLevel(0)) {
 				spellColor = PAL16_BLUE + 5;
 			}
 			PrintSBookSpellType(out, spellListItem.location, _("Spell"), spellColor);
+#endif
 			InfoString = FormatRuntime(_("{:s} Spell"), pgettext("spell", spellDataItem.sNameText));
 			if (spellId == SpellID::HolyBolt) {
 				AddInfoBoxString(_("Damages undead only"));
@@ -186,10 +217,12 @@ void DrawSpellList(const Surface &out)
 				AddInfoBoxString(FormatRuntime(_("Spell Level {:d}"), spellLevel));
 			break;
 		case SpellType::Scroll: {
+#ifndef __3DS__
 			if (!myPlayer.isOnLevel(0)) {
 				spellColor = PAL16_RED - 59;
 			}
 			PrintSBookSpellType(out, spellListItem.location, _("Scroll"), spellColor);
+#endif
 			InfoString = FormatRuntime(_("Scroll of {:s}"), pgettext("spell", spellDataItem.sNameText));
 			const int scrollCount = c_count_if(InventoryAndBeltPlayerItemsRange { myPlayer }, [spellId](const Item &item) {
 				return item.isScrollOf(spellId);
@@ -197,10 +230,12 @@ void DrawSpellList(const Surface &out)
 			AddInfoBoxString(FormatRuntime(ngettext("{:d} Scroll", "{:d} Scrolls", scrollCount), scrollCount));
 		} break;
 		case SpellType::Charges: {
+#ifndef __3DS__
 			if (!myPlayer.isOnLevel(0)) {
 				spellColor = PAL16_ORANGE + 5;
 			}
 			PrintSBookSpellType(out, spellListItem.location, _("Staff"), spellColor);
+#endif
 			InfoString = FormatRuntime(_("Staff of {:s}"), pgettext("spell", spellDataItem.sNameText));
 			int charges = myPlayer.InvBody[INVLOC_HAND_LEFT]._iCharges;
 			AddInfoBoxString(FormatRuntime(ngettext("{:d} Charge", "{:d} Charges", charges), charges));
@@ -215,23 +250,15 @@ void DrawSpellList(const Surface &out)
 	}
 }
 
-#ifdef __3DS__
-constexpr int SpellListStartX = 640 - 12 - SPLICONLENGTH;
-constexpr int SpellListStartY = 230;
-constexpr int SpellListWrapX = 640 - 12 - (SPLICONLENGTH * (SPLROWICONLS + 1));
-#endif
-
 std::vector<SpellListItem> GetSpellListItems()
 {
 	std::vector<SpellListItem> spellListItems;
 
 	uint64_t mask;
-	const Point mainPanelPosition = GetMainPanel().position;
-
 #ifdef __3DS__
-	int x = SpellListStartX;
-	int y = SpellListStartY;
+	size_t itemIndex = 0;
 #else
+	const Point mainPanelPosition = GetMainPanel().position;
 	int x = mainPanelPosition.x + 12 + (SPLICONLENGTH * SPLROWICONLS);
 	int y = mainPanelPosition.y - 17;
 #endif
@@ -258,31 +285,32 @@ std::vector<SpellListItem> GetSpellListItems()
 		for (uint64_t spl = 1; static_cast<size_t>(j) < SpellsData.size(); spl <<= 1, j++) {
 			if ((mask & spl) == 0)
 				continue;
+#ifdef __3DS__
+			const int column = static_cast<int>(itemIndex % SpellListColumns);
+			const int row = static_cast<int>(itemIndex / SpellListColumns);
+			const int physicalX = 400 - SpellListMargin - SpellListRowWidth + column * SpellListIconPitch;
+			const int x = To3dsTopScreenX(physicalX);
+			const int y = 240 - SpellListMargin - SelectedSpellIconSize - 4 - row * SpellListIconPitch;
+			const int hitWidth = (SpellListIconSize * gnScreenWidth + 200) / 400;
+			const bool isSelected = MousePosition.x >= x && MousePosition.x < x + hitWidth
+			    && MousePosition.y >= y - SpellListIconSize && MousePosition.y < y;
+			spellListItems.emplace_back(SpellListItem {
+				{ x, y }, static_cast<SpellType>(i), static_cast<SpellID>(j), isSelected
+			});
+			++itemIndex;
+#else
 			const int lx = x;
 			const int ly = y - SPLICONLENGTH;
 			const bool isSelected = (MousePosition.x >= lx && MousePosition.x < lx + SPLICONLENGTH && MousePosition.y >= ly && MousePosition.y < ly + SPLICONLENGTH);
 			spellListItems.emplace_back(SpellListItem { { x, y }, static_cast<SpellType>(i), static_cast<SpellID>(j), isSelected });
 			x -= SPLICONLENGTH;
-#ifdef __3DS__
-			if (x == SpellListWrapX) {
-				x = SpellListStartX;
-				y -= SPLICONLENGTH;
-			}
-#else
 			if (x == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 				x = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 				y -= SPLICONLENGTH;
 			}
 #endif
 		}
-#ifdef __3DS__
-		if (mask != 0 && x != SpellListStartX)
-			x -= SPLICONLENGTH;
-		if (x == SpellListWrapX) {
-			x = SpellListStartX;
-			y -= SPLICONLENGTH;
-		}
-#else
+#ifndef __3DS__
 		if (mask != 0 && x != mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS)
 			x -= SPLICONLENGTH;
 		if (x == mainPanelPosition.x + 12 - SPLICONLENGTH) {
@@ -380,14 +408,18 @@ void ToggleSpell(size_t slot)
 void DoSpeedBook()
 {
 	SpellSelectFlag = true;
-	const Point mainPanelPosition = GetMainPanel().position;
 #ifdef __3DS__
-	int xo = SpellListStartX;
-	int yo = SpellListStartY;
+	for (const SpellListItem &spellListItem : GetSpellListItems()) {
+		if (spellListItem.id != MyPlayer->_pRSpell || spellListItem.type != MyPlayer->_pRSplType)
+			continue;
+		const int hitWidth = (SpellListIconSize * gnScreenWidth + 200) / 400;
+		SetCursorPos({ spellListItem.location.x + hitWidth / 2, spellListItem.location.y - SpellListIconSize / 2 });
+		break;
+	}
 #else
+	const Point mainPanelPosition = GetMainPanel().position;
 	int xo = mainPanelPosition.x + 12 + (SPLICONLENGTH * 10);
 	int yo = mainPanelPosition.y - 17;
-#endif
 	int x = xo + (SPLICONLENGTH / 2);
 	int y = yo - (SPLICONLENGTH / 2);
 
@@ -420,39 +452,24 @@ void DoSpeedBook()
 						y = yo - SPLICONLENGTH / 2;
 					}
 					xo -= SPLICONLENGTH;
-#ifdef __3DS__
-					if (xo == SpellListWrapX) {
-						xo = SpellListStartX;
-						yo -= SPLICONLENGTH;
-					}
-#else
 					if (xo == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 						xo = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 						yo -= SPLICONLENGTH;
 					}
-#endif
 				}
 				spell <<= 1ULL;
 			}
-#ifdef __3DS__
-			if (spells != 0 && xo != SpellListStartX)
-				xo -= SPLICONLENGTH;
-			if (xo == SpellListWrapX) {
-				xo = SpellListStartX;
-				yo -= SPLICONLENGTH;
-			}
-#else
 			if (spells != 0 && xo != mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS)
 				xo -= SPLICONLENGTH;
 			if (xo == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 				xo = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 				yo -= SPLICONLENGTH;
 			}
-#endif
 		}
 	}
 
 	SetCursorPos({ x, y });
+#endif
 }
 
 } // namespace devilution
