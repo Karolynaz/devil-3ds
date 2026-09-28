@@ -68,7 +68,7 @@ std::optional<int> ctr_vkbdNumberInput(std::string_view hint, int maximum)
 	struct Validation {
 		int maximum;
 		std::string message;
-	} validation { maximum, devilution::FormatRuntime(devilution::_("Enter a number from 1 to {:d}."), maximum) };
+	} validation { maximum, devilution::FormatRuntime(_("Enter a number from 1 to {:d}."), maximum) };
 	SwkbdState keyboard;
 	swkbdInit(&keyboard, SWKBD_TYPE_NUMPAD, 2, 10);
 	swkbdSetValidation(&keyboard, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
