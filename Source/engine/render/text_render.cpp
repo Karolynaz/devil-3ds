@@ -1460,9 +1460,9 @@ void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFo
 		}
 
 #ifdef __3DS__
-		DrawFont(clippedOut, characterPosition, currentFont.glyph(frame), curColor, outline, scale);
+		DrawFont(clippedOut, characterPosition, currentFont.glyph(frame), curColor, outlined, scale);
 #else
-		DrawFont(clippedOut, characterPosition, currentFont.glyph(frame), curColor, outline, doubleWidth);
+		DrawFont(clippedOut, characterPosition, currentFont.glyph(frame), curColor, outlined, doubleWidth);
 #endif
 		characterPosition.x += width + curSpacing;
 	}
