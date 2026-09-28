@@ -111,6 +111,25 @@ bool IsValidEntry(OptionEntryBase *pOptionEntry)
 	return HasNoneOf(flags, OptionEntryFlags::Invisible | (gbIsHellfire ? OptionEntryFlags::OnlyDiablo : OptionEntryFlags::OnlyHellfire));
 }
 
+std::vector<OptionEntryBase *> GetCategoryEntriesForMenu(OptionCategoryBase *pCategory)
+{
+#ifdef __3DS__
+	if (pCategory == &GetOptions().GameMode || pCategory == &GetOptions().Gameplay)
+		return {};
+	if (pCategory == &GetOptions().Mods) {
+		std::vector<OptionEntryBase *> entries;
+		for (OptionEntryBase *pEntry : GetOptions().GameMode.GetEntries())
+			entries.push_back(pEntry);
+		for (OptionEntryBase *pEntry : GetOptions().Gameplay.GetEntries())
+			entries.push_back(pEntry);
+		for (OptionEntryBase *pEntry : GetOptions().Mods.GetEntries())
+			entries.push_back(pEntry);
+		return entries;
+	}
+#endif
+	return pCategory->GetEntries();
+}
+
 constexpr UiFlags SettingsSecondaryTextColor = UiFlags::ColorUiSilver;
 
 std::vector<DrawStringFormatArg> CreateDrawStringFormatArgForEntry(OptionEntryBase *pEntry)
@@ -233,6 +252,13 @@ void ItemFocused(size_t value)
 		}
 #endif
 		auto *pCategory = GetOptions().GetCategories()[vecItem->m_value];
+#ifdef __3DS__
+		if (pCategory == &GetOptions().Mods) {
+			auto paragraphs = WordWrapString(_("Game mode, gameplay tweaks and modifications."), rectDescription.size.width, GameFont12, 1, /*doubleWidth=*/true);
+			CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
+			return;
+		}
+#endif
 		UpdateDescription(*pCategory);
 	} break;
 	case ShownMenuType::Settings: {
@@ -474,8 +500,12 @@ void UiSettingsMenu()
 					catIndex++;
 					continue;
 				}
+				if (pCategory == &GetOptions().GameMode || pCategory == &GetOptions().Gameplay) {
+					catIndex++;
+					continue;
+				}
 #endif
-				for (OptionEntryBase *pEntry : pCategory->GetEntries()) {
+				for (OptionEntryBase *pEntry : GetCategoryEntriesForMenu(pCategory)) {
 					if (!IsValidEntry(pEntry))
 						continue;
 					if (selectedCategory == pCategory)
@@ -491,30 +521,32 @@ void UiSettingsMenu()
 		} break;
 #ifdef __3DS__
 		case ShownMenuType::Controls: {
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Player Controls:"), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiGold | UiFlags::ElementDisabled));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Player Controls"), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiGold | UiFlags::ElementDisabled));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("A: Action / Attack / Talk"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("B: Cancel / Back / Run"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("X: Cast Selected Spell"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Y: Drop Item / Speedbook"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("L: Drink Health Potion"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("R: Drink Mana Potion"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Circle Pad / D-Pad: Move"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("B: Cancel / Back"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("X: Cast Spell / Use Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Y: Spell / Skill Selection"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("L: Drink Potions 1-4"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("R: Drink Potions 5-8"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Circle Pad: Move"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Up: Show Character panel"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Down: Show Map"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Left: Show Quests"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Right: Show Spell Book"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("SELECT: Open Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("START: In-Game Menu"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("SELECT: Automap"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Touch: Move Cursor / Click"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view {}, static_cast<int>(SpecialMenuEntry::None), UiFlags::ElementDisabled));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Panels & Menus:"), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiGold | UiFlags::ElementDisabled));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("L / R: Switch Panels"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad: Select / Move in Grid"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("A: Pick up / Place / Use Item"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Panels & Menus"), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiGold | UiFlags::ElementDisabled));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("L / R: Switch panels / stack tabs"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("A: Pickup / Place"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("A (Hold): Use Item / Sell Item"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Y: Drop Item from Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("B: Close Panel"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("SELECT + D-Pad: Quick Panels"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			itemToSelect = 1;
 		} break;
 #endif
 		case ShownMenuType::Settings: {
-			for (OptionEntryBase *pEntry : selectedCategory->GetEntries()) {
+			for (OptionEntryBase *pEntry : GetCategoryEntriesForMenu(selectedCategory)) {
 				if (!IsValidEntry(pEntry))
 					continue;
 				if (selectedOption == pEntry)
@@ -654,8 +686,8 @@ void UiSettingsMenu()
 #ifdef __3DS__
 		const bool isControlsMenu = (shownMenu == ShownMenuType::Controls);
 		const int ListItemHeight = isControlsMenu ? 19 : 27;
-		const int maxListHeight = isControlsMenu ? 180 : 135;
-		rectList = { { uiRectangle.position.x + 50, isControlsMenu ? 275 : 283 },
+		const int maxListHeight = isControlsMenu ? 171 : 135;
+		rectList = { { uiRectangle.position.x + 50, isControlsMenu ? 292 : 283 },
 			Size { uiRectangle.size.width - 100, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, maxListHeight) } };
 		rectDescription = { { uiRectangle.position.x + 24, 423 },
 			Size { uiRectangle.size.width - 48, 53 } };

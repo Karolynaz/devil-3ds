@@ -510,20 +510,34 @@ void PressControllerButton(ControllerButton button)
 		switch (button) {
 		case ControllerButton_BUTTON_DPAD_UP:
 			if (!IsStashOpen && !IsPlayerInStore() && !qtextflag && !SpellSelectFlag) {
-				OpenCharPanel();
-				FocusOnCharInfo();
+				if (CharFlag) {
+					CloseCharPanel();
+				} else {
+					OpenCharPanel();
+					FocusOnCharInfo();
+				}
 			}
 			return;
 		case ControllerButton_BUTTON_DPAD_LEFT:
-			if (!IsStashOpen && !IsPlayerInStore() && !qtextflag && !SpellSelectFlag)
+			if (!IsStashOpen && !IsPlayerInStore() && !qtextflag && !SpellSelectFlag) {
+				if (QuestLogIsOpen) {
+					QuestLogIsOpen = false;
+				} else {
+					CloseCharPanel();
 				StartQuestlog();
+				}
+			}
 			return;
 		case ControllerButton_BUTTON_DPAD_RIGHT:
 			if (!IsStashOpen && !IsPlayerInStore() && !qtextflag && !SpellSelectFlag) {
-				CloseCharPanel();
-				CloseInventory();
-				QuestLogIsOpen = false;
-				SpellbookFlag = true;
+				if (SpellbookFlag) {
+					SpellbookFlag = false;
+				} else {
+					CloseCharPanel();
+					CloseInventory();
+					QuestLogIsOpen = false;
+					SpellbookFlag = true;
+				}
 			}
 			return;
 		case ControllerButton_BUTTON_DPAD_DOWN:
@@ -603,7 +617,10 @@ void PressControllerButton(ControllerButton button)
 			if (IsStashOpen) {
 				StartGoldWithdraw();
 			} else {
-				PressEscKey();
+				CloseCharPanel();
+				QuestLogIsOpen = false;
+				SpellbookFlag = false;
+				ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
 			}
 			return;
 
@@ -681,10 +698,7 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_BACK:
-			if (MyPlayer->_pStatPts > 0)
-				ProcessGameAction(GameAction { GameActionType_TOGGLE_CHARACTER_INFO });
-			else
-				ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
+			ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
 			return;
 
 		case ControllerButton_BUTTON_START:

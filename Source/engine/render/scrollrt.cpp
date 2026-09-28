@@ -1991,6 +1991,37 @@ void DrawCtrBottomHud(const Surface &out)
 	DrawCtrBottomBackground(hud);
 	DrawCtrInvBelt(hud);
 	DrawInfoBox(hud);
+	auto drawBarValue = [&hud](int currValue, int maxValue, int centerX, int y) {
+		const std::string text = StrCat(currValue, "/", maxValue);
+		const UiFlags color = (currValue > 0 ? (currValue == maxValue ? UiFlags::ColorGold : UiFlags::ColorWhite) : UiFlags::ColorRed);
+		const int textWidth = GetLineWidth(text, GameFont12, 0);
+		const int x = std::max(1, centerX - textWidth / 2);
+		DrawString(hud, text, { { x - 1, y }, { hud.w() - (x - 1), 0 } },
+		    { .flags = UiFlags::ColorBlack | UiFlags::KerningFitSpacing, .spacing = 0 });
+		DrawString(hud, text, { { x + 1, y }, { hud.w() - (x + 1), 0 } },
+		    { .flags = UiFlags::ColorBlack | UiFlags::KerningFitSpacing, .spacing = 0 });
+		DrawString(hud, text, { { x, y - 1 }, { hud.w() - x, 0 } },
+		    { .flags = UiFlags::ColorBlack | UiFlags::KerningFitSpacing, .spacing = 0 });
+		DrawString(hud, text, { { x, y + 1 }, { hud.w() - x, 0 } },
+		    { .flags = UiFlags::ColorBlack | UiFlags::KerningFitSpacing, .spacing = 0 });
+		DrawString(hud, text, { { x, y }, { hud.w() - x, 0 } },
+		    { .flags = color | UiFlags::KerningFitSpacing, .spacing = 0 });
+	};
+
+	if (*GetOptions().Gameplay.showHealthValues) {
+		const int currHP = std::max(0, MyPlayer->_pHitPoints >> 6);
+		const int maxHP = MyPlayer->_pMaxHP >> 6;
+		drawBarValue(currHP, maxHP,
+		    CtrBottomHealthBar.position.x + CtrBottomHealthBar.size.width / 2,
+		    CtrBottomHealthBar.position.y - 15);
+	}
+	if (*GetOptions().Gameplay.showManaValues) {
+		const int currMana = (HasAnyOf(InspectPlayer->_pIFlags, ItemSpecialEffect::NoMana) || MyPlayer->hasNoMana()) ? 0 : std::max(0, MyPlayer->_pMana >> 6);
+		const int maxMana = HasAnyOf(InspectPlayer->_pIFlags, ItemSpecialEffect::NoMana) ? 0 : MyPlayer->_pMaxMana >> 6;
+		drawBarValue(currMana, maxMana,
+		    CtrBottomManaBar.position.x + CtrBottomManaBar.size.width / 2,
+		    CtrBottomManaBar.position.y - 15);
+	}
 	out.ScaleBlitFrom(hud, { 0, 0, 320, 240 }, { 0, 240, gnScreenWidth, 240 });
 }
 #endif

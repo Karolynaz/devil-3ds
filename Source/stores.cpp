@@ -285,7 +285,7 @@ void DrawSTextBack(const Surface &out)
 {
 	const Point uiPosition = GetUIRectangle().position;
 #ifdef __3DS__
-	DrawHalfTransparentRectTo(out, uiPosition.x + 347, 4, 265, 232);
+	DrawHalfTransparentRectTo(out, uiPosition.x + 248, 4, 364, 232);
 #else
 	ClxDraw(out, { uiPosition.x + 320 + 24, 327 + uiPosition.y }, (*pSTextBoxCels)[0]);
 	DrawHalfTransparentRectTo(out, uiPosition.x + 347, uiPosition.y + 28, 265, 297);
@@ -2125,21 +2125,51 @@ int TakeGold(Player &player, int cost, bool skipMaxPiles)
 	return cost;
 }
 
+#ifdef __3DS__
+static void DrawStorePentagram(const Surface &out, Point position)
+{
+	const ClxSprite sprite = (*pSPentSpn2Cels)[PentSpn2Spin()];
+	const int spriteW = (sprite.width() * 8) / 5;
+	static OwnedSurface spriteScratch(32, 32);
+	if (spriteScratch.w() != sprite.width() || spriteScratch.h() != sprite.height()) {
+		spriteScratch = OwnedSurface(sprite.width(), sprite.height());
+	}
+	SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
+	RenderClxSprite(spriteScratch, sprite, { 0, 0 });
+	out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+	    MakeSdlRect(position.x, position.y - sprite.height(), spriteW, sprite.height()));
+}
+#endif
+
 void DrawSelector(const Surface &out, const Rectangle &rect, std::string_view text, UiFlags flags)
 {
+#ifdef __3DS__
+	const int lineWidth = GetLineWidth(text, GameFont12, 1, nullptr, CtrTextScale::TopScreen);
+	const int spinnerMargin = 22;
+#else
 	const int lineWidth = GetLineWidth(text);
+	const int spinnerMargin = 20;
+#endif
 
-	int x1 = rect.position.x - 20;
+	int x1 = rect.position.x - spinnerMargin;
 	if (HasAnyOf(flags, UiFlags::AlignCenter))
 		x1 += (rect.size.width - lineWidth) / 2;
 
+#ifdef __3DS__
+	DrawStorePentagram(out, { x1, rect.position.y + 13 });
+#else
 	ClxDraw(out, { x1, rect.position.y + 13 }, (*pSPentSpn2Cels)[PentSpn2Spin()]);
+#endif
 
 	int x2 = rect.position.x + rect.size.width + 5;
 	if (HasAnyOf(flags, UiFlags::AlignCenter))
 		x2 = rect.position.x + (rect.size.width - lineWidth) / 2 + lineWidth + 5;
 
+#ifdef __3DS__
+	DrawStorePentagram(out, { x2, rect.position.y + 13 });
+#else
 	ClxDraw(out, { x2, rect.position.y + 13 }, (*pSPentSpn2Cels)[PentSpn2Spin()]);
+#endif
 }
 
 } // namespace
@@ -2242,12 +2272,20 @@ void PrintSString(const Surface &out, int margin, int line, std::string_view tex
 	const Point uiPosition = GetUIRectangle().position;
 	int sx = uiPosition.x + 32 + margin;
 	if (!IsTextFullSize) {
+#ifdef __3DS__
+		sx = uiPosition.x + 252 + margin;
+#else
 		sx += 320;
+#endif
 	}
 
 	const int sy = uiPosition.y + PaddingTop + TextLine[line].y + TextLine[line]._syoff;
 
+#ifdef __3DS__
+	int width = IsTextFullSize ? 575 : 356;
+#else
 	int width = IsTextFullSize ? 575 : 255;
+#endif
 	if (HasScrollbar && line >= 4 && line <= 20) {
 		width -= 9; // Space for the selector
 	}
@@ -2295,6 +2333,11 @@ void PrintSString(const Surface &out, int margin, int line, std::string_view tex
 void DrawSLine(const Surface &out, int sy)
 {
 	const Point uiPosition = GetUIRectangle().position;
+#ifdef __3DS__
+	int sx = IsTextFullSize ? 26 : 248;
+	int width = IsTextFullSize ? 587 : 364;
+	DrawHorizontalLine(out, { uiPosition.x + sx, sy }, width, PAL16_GRAY + 10);
+#else
 	int sx = 26;
 	int width = 587;
 
@@ -2303,9 +2346,6 @@ void DrawSLine(const Surface &out, int sy)
 		width -= SidePanelSize.width;
 	}
 
-#ifdef __3DS__
-	DrawHorizontalLine(out, { uiPosition.x + sx, sy }, width, PAL16_GRAY + 10);
-#else
 	uint8_t *src = out.at(uiPosition.x + sx, uiPosition.y + 25);
 	uint8_t *dst = out.at(uiPosition.x + sx, sy);
 
@@ -2825,7 +2865,7 @@ void CheckStoreBtn()
 {
 	const Point uiPosition = GetUIRectangle().position;
 #ifdef __3DS__
-	const Rectangle windowRect { { uiPosition.x + 344, 0 }, { 271, 240 } };
+	const Rectangle windowRect { { uiPosition.x + 248, 0 }, { 364, 240 } };
 	const Rectangle windowRectFull { { uiPosition.x + 24, 0 }, { 591, 240 } };
 #else
 	const Rectangle windowRect { { uiPosition.x + 344, uiPosition.y + PaddingTop - 7 }, { 271, 303 } };

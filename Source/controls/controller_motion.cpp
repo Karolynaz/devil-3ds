@@ -249,10 +249,10 @@ AxisDirection GetLeftStickOrDpadDirection(bool usePadmapper)
 {
 	AxisDirection result = GetAnalogStickDirection(leftStickX, leftStickY);
 #ifdef __3DS__
-	if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag)
-		result = { AxisDirectionX_NONE, AxisDirectionY_NONE };
+	if (Is3DSInventoryPanelOpen())
+		return { AxisDirectionX_NONE, AxisDirectionY_NONE };
 	// The 3DS D-pad is reserved for map/UI shortcuts. Only the Circle Pad
-	// moves the hero; panel navigation below still uses the D-pad.
+	// moves the hero.
 	if (usePadmapper)
 		return result;
 #endif
@@ -268,10 +268,19 @@ AxisDirection GetLeftStickOrDpadDirection(bool usePadmapper)
 		isLeftPressed |= PadmapperIsActionActive("MoveLeft");
 		isRightPressed |= PadmapperIsActionActive("MoveRight");
 	} else if (!SimulatingMouseWithPadmapper) {
+#ifdef __3DS__
+		if (!Is3DSInventoryPanelOpen()) {
+			isUpPressed |= IsPressedForMovement(ControllerButton_BUTTON_DPAD_UP);
+			isDownPressed |= IsPressedForMovement(ControllerButton_BUTTON_DPAD_DOWN);
+			isLeftPressed |= IsPressedForMovement(ControllerButton_BUTTON_DPAD_LEFT);
+			isRightPressed |= IsPressedForMovement(ControllerButton_BUTTON_DPAD_RIGHT);
+		}
+#else
 		isUpPressed |= IsPressedForMovement(ControllerButton_BUTTON_DPAD_UP);
 		isDownPressed |= IsPressedForMovement(ControllerButton_BUTTON_DPAD_DOWN);
 		isLeftPressed |= IsPressedForMovement(ControllerButton_BUTTON_DPAD_LEFT);
 		isRightPressed |= IsPressedForMovement(ControllerButton_BUTTON_DPAD_RIGHT);
+#endif
 	}
 
 #ifndef USE_SDL1
@@ -300,6 +309,9 @@ AxisDirection GetLeftStickOrDpadDirection(bool usePadmapper)
 
 void SimulateRightStickWithPadmapper(ControllerButtonEvent ctrlEvent)
 {
+#ifdef __3DS__
+	return;
+#else
 	if (ctrlEvent.button == ControllerButton_NONE)
 		return;
 	if (!ctrlEvent.up && ctrlEvent.button == SuppressedButton)
@@ -332,6 +344,7 @@ void SimulateRightStickWithPadmapper(ControllerButtonEvent ctrlEvent)
 	if (rightActive)
 		rightStickX += 1.F;
 	SetSimulatingMouseWithPadmapper(true);
+#endif
 }
 
 } // namespace devilution

@@ -42,6 +42,10 @@ void HandleRightStickMotion();
 // Whether we're in a dialog menu that the game handles natively with keyboard controls.
 bool InGameMenu();
 
+#ifdef __3DS__
+bool Is3DSInventoryPanelOpen();
+#endif
+
 void SetPointAndClick(bool value);
 
 bool IsPointAndClick();

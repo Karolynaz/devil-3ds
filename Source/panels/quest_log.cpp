@@ -210,6 +210,7 @@ void StartQuestlog()
 	QuestLogIsOpen = true;
 #ifdef __3DS__
 	invflag = false;
+	CloseCharPanel();
 	SpellbookFlag = false;
 	CloseGoldDrop();
 	QuestScrollOffset = 0;

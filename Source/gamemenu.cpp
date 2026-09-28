@@ -53,7 +53,9 @@ TMenuItem sgSingleMenu[] = {
 	{ GMENU_ENABLED, N_("Save Game"),         &gamemenu_save_game },
 	{ GMENU_ENABLED, N_("Load Game"),         &gamemenu_load_game },
 	{ GMENU_ENABLED, N_("Exit to Main Menu"), &GamemenuNewGame    },
+#ifndef __3DS__
 	{ GMENU_ENABLED, N_("Quit Game"),         &gamemenu_quit_game },
+#endif
 	{ GMENU_ENABLED, nullptr,                 nullptr             },
 	// clang-format on
 };
@@ -63,7 +65,9 @@ TMenuItem sgMultiMenu[] = {
 	// dwFlags,      pszStr,                  fnMenu
 	{ GMENU_ENABLED, N_("Options"),           &GamemenuOptions    },
 	{ GMENU_ENABLED, N_("Exit to Main Menu"), &GamemenuNewGame    },
+#ifndef __3DS__
 	{ GMENU_ENABLED, N_("Quit Game"),         &gamemenu_quit_game },
+#endif
 	{ GMENU_ENABLED, nullptr,                 nullptr             },
 	// clang-format on
 };

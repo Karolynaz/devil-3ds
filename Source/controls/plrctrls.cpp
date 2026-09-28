@@ -1897,18 +1897,6 @@ HandleLeftStickOrDPadFn GetLeftStickOrDPadGameUIHandler()
 }
 
 #ifdef __3DS__
-bool IsCursorOverCarriedInventoryGrid()
-{
-	if (!invflag || IsStashOpen || IsVisualStoreOpen)
-		return false;
-	const Point inventoryPoint = CtrScreenToInventory(MousePosition);
-	for (int slot = SLOTXY_INV_FIRST; slot <= SLOTXY_INV_LAST; ++slot) {
-		if (InvRect[slot].contains(inventoryPoint))
-			return true;
-	}
-	return false;
-}
-
 bool Is3DSInventoryPanelOpen()
 {
 	return invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || IsStashOpen || IsVisualStoreOpen;
@@ -1917,9 +1905,10 @@ bool Is3DSInventoryPanelOpen()
 
 void ProcessLeftStickOrDPadGameUI()
 {
-	// On 3DS, directional grid navigation belongs only to the carried inventory.
 #ifdef __3DS__
-	if (Is3DSInventoryPanelOpen() && !IsCursorOverCarriedInventoryGrid())
+	// On 3DS, D-pad is reserved for opening/showing panels (Char, Map, Quests, Spellbook)
+	// and must not control the cursor or navigate panels.
+	if (Is3DSInventoryPanelOpen())
 		return;
 #endif
 	HandleLeftStickOrDPadFn handler = GetLeftStickOrDPadGameUIHandler();
@@ -2254,6 +2243,10 @@ void ProcessGameAction(const GameAction &action)
 		}
 		break;
 	case GameActionType_TOGGLE_INVENTORY:
+#ifdef __3DS__
+		CloseCharPanel();
+		QuestLogIsOpen = false;
+#endif
 		if (invflag) {
 			BlurInventory();
 		} else {
@@ -2300,11 +2293,6 @@ void HandleRightStickMotion()
 			rightStickX *= scale;
 			rightStickY *= scale;
 		}
-	}
-	if (Is3DSInventoryPanelOpen() && !IsCursorOverCarriedInventoryGrid()) {
-		constexpr float DpadPointerSpeed = 0.35F;
-		rightStickX += DpadPointerSpeed * (static_cast<int>(IsControllerButtonPressed(ControllerButton_BUTTON_DPAD_RIGHT)) - static_cast<int>(IsControllerButtonPressed(ControllerButton_BUTTON_DPAD_LEFT)));
-		rightStickY += DpadPointerSpeed * (static_cast<int>(IsControllerButtonPressed(ControllerButton_BUTTON_DPAD_UP)) - static_cast<int>(IsControllerButtonPressed(ControllerButton_BUTTON_DPAD_DOWN)));
 	}
 	// SDL maps 640 logical columns to 400 physical pixels above and 320 below.
 	// Equalize physical cursor travel for the same horizontal/vertical stick input.

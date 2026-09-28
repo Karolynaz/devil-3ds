@@ -37,6 +37,10 @@
 #include "utils/sdl_compat.h"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
+#ifdef __3DS__
+#include "minitext.h"
+#include "stores.h"
+#endif
 
 namespace devilution {
 
@@ -1212,7 +1216,7 @@ uint32_t DrawString(const Surface &out, std::string_view text, const Rectangle &
 	if (out.surface != nullptr && out.surface->w >= 640) {
 		if ((out.region.y + rect.position.y) >= 240) {
 			scale = CtrTextScale::BottomScreen;
-		} else if (!gbRunGame) {
+		} else if (!gbRunGame || IsPlayerInStore() || qtextflag) {
 			scale = CtrTextScale::TopScreen;
 		}
 	}
@@ -1301,7 +1305,7 @@ void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFo
 	if (out.surface != nullptr && out.surface->w >= 640) {
 		if ((out.region.y + rect.position.y) >= 240) {
 			scale = CtrTextScale::BottomScreen;
-		} else if (!gbRunGame) {
+		} else if (!gbRunGame || IsPlayerInStore() || qtextflag) {
 			scale = CtrTextScale::TopScreen;
 		}
 	}

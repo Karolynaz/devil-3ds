@@ -2464,25 +2464,41 @@ void InitPadmapActions()
 	    "MouseUp",
 	    N_("Move mouse up"),
 	    N_("Simulates upward mouse movement."),
+#ifdef __3DS__
+	    ControllerButton_NONE,
+#else
 	    { ControllerButton_BUTTON_BACK, ControllerButton_BUTTON_DPAD_UP },
+#endif
 	    [] {});
 	options.Padmapper.AddAction(
 	    "MouseDown",
 	    N_("Move mouse down"),
 	    N_("Simulates downward mouse movement."),
+#ifdef __3DS__
+	    ControllerButton_NONE,
+#else
 	    { ControllerButton_BUTTON_BACK, ControllerButton_BUTTON_DPAD_DOWN },
+#endif
 	    [] {});
 	options.Padmapper.AddAction(
 	    "MouseLeft",
 	    N_("Move mouse left"),
 	    N_("Simulates leftward mouse movement."),
+#ifdef __3DS__
+	    ControllerButton_NONE,
+#else
 	    { ControllerButton_BUTTON_BACK, ControllerButton_BUTTON_DPAD_LEFT },
+#endif
 	    [] {});
 	options.Padmapper.AddAction(
 	    "MouseRight",
 	    N_("Move mouse right"),
 	    N_("Simulates rightward mouse movement."),
+#ifdef __3DS__
+	    ControllerButton_NONE,
+#else
 	    { ControllerButton_BUTTON_BACK, ControllerButton_BUTTON_DPAD_RIGHT },
+#endif
 	    [] {});
 	auto leftMouseDown = [] {
 		const ControllerButtonCombo standGroundCombo = GetOptions().Padmapper.ButtonComboForAction("StandGround");
