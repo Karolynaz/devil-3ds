@@ -1896,13 +1896,6 @@ HandleLeftStickOrDPadFn GetLeftStickOrDPadGameUIHandler()
 	return nullptr;
 }
 
-#ifdef __3DS__
-bool Is3DSInventoryPanelOpen()
-{
-	return invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || IsStashOpen || IsVisualStoreOpen;
-}
-#endif
-
 void ProcessLeftStickOrDPadGameUI()
 {
 #ifdef __3DS__
@@ -2122,6 +2115,13 @@ void LogGamepadChange(GamepadLayout newGamepad)
 #endif
 
 } // namespace
+
+#ifdef __3DS__
+bool Is3DSInventoryPanelOpen()
+{
+	return invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || IsStashOpen || IsVisualStoreOpen;
+}
+#endif
 
 void FocusOnVisualStore()
 {
