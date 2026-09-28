@@ -66,9 +66,9 @@ constexpr Rectangle StashButtonRect[] = {
 #ifdef __3DS__
 constexpr Rectangle CtrStashButtonRect[] = {
 	{},
-	{ { 19, 29 }, { 32, 18 } },
-	{ { 60, 29 }, { 280, 18 } },
-	{ { 349, 29 }, { 32, 18 } },
+	{ { 19, 29 }, { 26, 18 } },
+	{ { 50, 29 }, { 110, 18 } },
+	{ { 165, 29 }, { 26, 18 } },
 	{},
 };
 constexpr int StashHalfCellPixels = CtrItemSlotPixels / 2;
