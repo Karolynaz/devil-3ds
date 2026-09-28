@@ -2134,7 +2134,7 @@ static void DrawStorePentagram(const Surface &out, Point position)
 	if (spriteScratch.w() != sprite.width() || spriteScratch.h() != sprite.height()) {
 		spriteScratch = OwnedSurface(sprite.width(), sprite.height());
 	}
-	SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
+	SDL_FillRect(spriteScratch.surface, nullptr, 0);
 	RenderClxSprite(spriteScratch, sprite, { 0, 0 });
 	out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
 	    MakeSdlRect(position.x, position.y - sprite.height(), spriteW, sprite.height()));
