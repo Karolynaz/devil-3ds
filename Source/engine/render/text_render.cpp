@@ -432,8 +432,11 @@ int AdjustSpacingToFitHorizontally(int &lineWidth, int maxSpacing, int character
 
 	const int overhang = lineWidth - availableWidth;
 	const int spacingRedux = (overhang + charactersInLine - 2) / (charactersInLine - 1);
-	lineWidth -= spacingRedux * (charactersInLine - 1);
-	return maxSpacing - spacingRedux;
+	const int minAllowedSpacing = 0;
+	const int allowedRedux = std::max(0, maxSpacing - minAllowedSpacing);
+	const int actualRedux = std::min(spacingRedux, allowedRedux);
+	lineWidth -= actualRedux * (charactersInLine - 1);
+	return maxSpacing - actualRedux;
 }
 
 void MaybeWrap(Point &characterPosition, int characterWidth, int rightMargin, int initialX, int lineHeight)

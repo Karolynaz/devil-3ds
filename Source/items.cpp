@@ -1806,12 +1806,17 @@ void printItemMiscGenericGamepad(const Item &item, const bool isOil, bool isCast
 
 void printItemMiscGamepad(const Item &item, bool isOil, bool isCastOnTarget)
 {
+#ifdef __3DS__
+	const std::string_view activateButton = _("Hold A");
+	const std::string_view castButton = "X";
+#else
 	if (GamepadType == GamepadLayout::Generic) {
 		printItemMiscGenericGamepad(item, isOil, isCastOnTarget);
 		return;
 	}
 	const std::string_view activateButton = GetOptions().Padmapper.InputNameForAction("SecondaryAction");
 	const std::string_view castButton = GetOptions().Padmapper.InputNameForAction("SpellAction");
+#endif
 
 	if (item._iMiscId == IMISC_MAPOFDOOM) {
 		AddItemInfoBoxString(FormatRuntime(_("{} to view"), activateButton));
@@ -1847,6 +1852,9 @@ void PrintItemMisc(const Item &item)
 	    || (item._iMiscId == IMISC_SCROLL && IsAnyOf(item._iSpell, SpellID::TownPortal, SpellID::Identify));
 	const bool gamepadRequiresTarget = item.isScroll() && TargetsMonster(item._iSpell);
 
+#ifdef __3DS__
+	printItemMiscGamepad(item, isOil, gamepadRequiresTarget);
+#else
 	switch (ControlMode) {
 	case ControlTypes::None:
 		break;
@@ -1860,6 +1868,7 @@ void PrintItemMisc(const Item &item)
 		printItemMiscGamepad(item, isOil, gamepadRequiresTarget);
 		break;
 	}
+#endif
 }
 
 void PrintItemInfo(const Item &item)

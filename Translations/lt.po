@@ -2719,6 +2719,10 @@ msgstr ""
 msgid "Activate to read"
 msgstr "Suaktyvinkite, kad perskaitytumėte"
 
+#: Source/items.cpp:1809
+msgid "Hold A"
+msgstr "Palaikykite A"
+
 #: Source/items.cpp:1800
 #, c++-format
 msgid "{} to view"

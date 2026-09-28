@@ -28,4 +28,6 @@ enum class CtrBarArtwork {
 /** Draw CTR bar artwork with a fill fraction clamped to [0, 1]. */
 void DrawCtrBarArtwork(const Surface &out, CtrBarArtwork bar, Point position, float fill);
 
+void Draw3DSLoadingScreen(const Surface &out);
+
 } // namespace devilution

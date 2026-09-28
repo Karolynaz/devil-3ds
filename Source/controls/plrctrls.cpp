@@ -2431,6 +2431,7 @@ void plrctrls_every_frame()
 {
 #ifdef __3DS__
 	Update3DSStashItemAction();
+	Update3DSButtonAHold();
 #endif
 	ProcessLeftStickOrDPadGameUI();
 	HandleRightStickMotion();
@@ -2670,9 +2671,11 @@ void CtrlUseInvItem()
 	Player &myPlayer = *MyPlayer;
 	const Item &item = GetInventoryItem(myPlayer, pcursinvitem);
 	if (item.isScroll()) {
+#ifndef __3DS__
 		if (TargetsMonster(item._iSpell)) {
 			return;
 		}
+#endif
 		if (GetSpellData(item._iSpell).isTargeted()) {
 			UpdateSpellTarget(item._iSpell);
 		}
@@ -2697,9 +2700,11 @@ void CtrlUseStashItem()
 
 	const Item &item = Stash.stashList[pcursstashitem];
 	if (item.isScroll()) {
+#ifndef __3DS__
 		if (TargetsMonster(item._iSpell)) {
 			return;
 		}
+#endif
 		if (GetSpellData(item._iSpell).isTargeted()) {
 			UpdateSpellTarget(item._iSpell);
 		}

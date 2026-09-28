@@ -98,6 +98,11 @@
 #include "qol/xpbar.h"
 #include "quick_messages.hpp"
 #include "restrict.h"
+
+#ifdef __3DS__
+#include "engine/palette.h"
+#include "platform/ctr/ui_background.hpp"
+#endif
 #include "stores.h"
 #include "storm/storm_net.hpp"
 #include "storm/storm_svid.h"
@@ -1266,6 +1271,22 @@ void ApplicationInit()
 
 	init_create_window();
 	was_window_init = true;
+
+#ifdef __3DS__
+	LoadPalette("ui_art\\diablo.pal");
+	UpdateSystemPalette(logical_palette);
+	Draw3DSLoadingScreen(GlobalBackBuffer());
+	if (RenderDirectlyToOutputSurface && PalSurface != nullptr) {
+		const void *initialPixels = PalSurface->pixels;
+		RenderPresent();
+		while (PalSurface->pixels != initialPixels) {
+			Draw3DSLoadingScreen(GlobalBackBuffer());
+			RenderPresent();
+		}
+	} else {
+		RenderPresent();
+	}
+#endif
 
 	InitializeScreenReader();
 	LanguageInitialize();

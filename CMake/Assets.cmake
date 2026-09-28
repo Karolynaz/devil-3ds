@@ -251,7 +251,8 @@ if(NINTENDO_3DS)
     data/ctr_bottom_ui.pal8
     data/ctr_health_bar.pal8
     data/ctr_mana_bar.pal8
-    data/ctr_experience_bar.pal8)
+    data/ctr_experience_bar.pal8
+    data/ctr_loading.pal8)
 endif()
 
 if(APPLE)

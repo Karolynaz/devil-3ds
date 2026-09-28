@@ -69,6 +69,8 @@ bool HandleControllerButtonEvent(const SDL_Event &event, const ControllerButtonE
 
 #ifdef __3DS__
 void Update3DSStashItemAction();
+void Update3DSButtonAHold();
+void Cancel3DSButtonAHold();
 #endif
 
 extern bool PadMenuNavigatorActive;

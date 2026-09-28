@@ -69,6 +69,8 @@ void FocusOnInventory();
 void FocusOnVisualStore();
 void PerformSpellAction();
 void QuickCast(size_t slot);
+void CtrlUseInvItem();
+void CtrlUseStashItem();
 
 extern int speedspellcount;
 

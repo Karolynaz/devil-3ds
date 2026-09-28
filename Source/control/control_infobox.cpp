@@ -1,15 +1,16 @@
 #include "control.hpp"
 #include "control_panel.hpp"
-#ifdef __3DS__
 #ifdef USE_SDL3
 #include <SDL3/SDL_timer.h>
 #else
 #include <SDL.h>
 #endif
+#ifdef __3DS__
 #include "platform/ctr/ui_geometry.hpp"
 #endif
 #include "controls/control_mode.hpp"
 #include "engine/render/primitive_render.hpp"
+#include "engine/render/text_render.hpp"
 #include "inv.h"
 #include "levels/trigs.h"
 #include "options.h"
@@ -48,10 +49,9 @@ namespace {
 
 void PrintInfo(const Surface &out)
 {
-	if (ChatFlag)
+	if (ChatFlag || InfoString.empty())
 		return;
 
-	const int space[] = { 18, 12, 6, 3, 0 };
 #ifdef __3DS__
 	Rectangle infoBox = CtrBottomInfoBox;
 #else
@@ -60,42 +60,129 @@ void PrintInfo(const Surface &out)
 	SetPanelObjectPosition(UiPanels::Main, infoBox);
 #endif
 
-	const auto newLineCount = static_cast<int>(c_count(InfoString.str(), '\n'));
-	const int spaceIndex = std::min(4, newLineCount);
-	const int spacing = space[spaceIndex];
-	const int lineHeight = 12 + spacing;
-
-	// Adjusting the line height to add spacing between lines
-	// will also add additional space beneath the last line
-	// which throws off the vertical centering
-	infoBox.position.y += spacing / 2;
-
 	SpeakText(InfoString);
 
-	DrawString(out, InfoString, infoBox,
-	    {
-	        .flags = InfoColor | UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::KerningFitSpacing,
-	        .spacing = 2,
-	        .lineHeight = lineHeight,
-	    });
+	const int boxWidth = infoBox.size.width;
+	const int boxHeight = infoBox.size.height;
+	const int horizontalPadding = 4;
+	const int verticalPadding = 4;
+	const int maxLineWidth = std::max(20, boxWidth - (horizontalPadding * 2));
+	const int availableHeight = std::max(20, boxHeight - (verticalPadding * 2));
+
+	static std::string LastInfoText;
+	static uint32_t InfoScrollStartTime = 0;
+
+	const uint32_t currentTicks = SDL_GetTicks();
+	if (InfoString.view() != LastInfoText) {
+		LastInfoText = std::string(InfoString.view());
+		InfoScrollStartTime = currentTicks;
+	}
+
+	const std::string wrappedText = WordWrapString(InfoString.view(), maxLineWidth, GameFont12, 1);
+	std::vector<std::string> lines;
+	for (auto lineView : SplitByChar(wrappedText, '\n')) {
+		lines.emplace_back(lineView);
+	}
+	if (lines.empty())
+		return;
+
+	const int numLines = static_cast<int>(lines.size());
+	int lineGap = 4;
+	if (numLines <= 2)
+		lineGap = 8;
+	else if (numLines <= 4)
+		lineGap = 5;
+	else if (numLines <= 6)
+		lineGap = 3;
+	else
+		lineGap = 2;
+
+	const int fontHeight = 12;
+	const int lineHeight = fontHeight + lineGap;
+	const int totalTextHeight = numLines * fontHeight + (numLines - 1) * lineGap;
+
+	int baseY = verticalPadding;
+	if (totalTextHeight <= availableHeight) {
+		baseY = (boxHeight - totalTextHeight) / 2;
+	} else {
+		const int overflowY = totalTextHeight - availableHeight;
+		const uint32_t pauseTop = 1500;
+		const uint32_t scrollSpeed = 22; // pixels per second
+		const uint32_t scrollDuration = std::max<uint32_t>(1000, (overflowY * 1000) / scrollSpeed);
+		const uint32_t pauseBottom = 1800;
+		const uint32_t fadeGap = 500;
+		const uint32_t cycleDuration = pauseTop + scrollDuration + pauseBottom + fadeGap;
+
+		const uint32_t elapsed = currentTicks - InfoScrollStartTime;
+		const uint32_t t = elapsed % cycleDuration;
+
+		int scrollY = 0;
+		if (t < pauseTop) {
+			scrollY = 0;
+		} else if (t < pauseTop + scrollDuration) {
+			const float progress = static_cast<float>(t - pauseTop) / static_cast<float>(scrollDuration);
+			scrollY = static_cast<int>(progress * overflowY);
+		} else {
+			scrollY = overflowY;
+		}
+		baseY = verticalPadding - scrollY;
+	}
+
+	const Surface boxSurface = out.subregion(infoBox.position.x, infoBox.position.y, boxWidth, boxHeight);
+
+	for (int i = 0; i < numLines; ++i) {
+		const std::string &line = lines[i];
+		const int lineY = baseY + i * lineHeight;
+		if (lineY + fontHeight <= 0 || lineY >= boxHeight)
+			continue;
+
+		const int lineWidth = GetLineWidth(line, GameFont12, 1);
+		int lineX = horizontalPadding;
+		if (lineWidth <= maxLineWidth) {
+			lineX = (boxWidth - lineWidth) / 2;
+		} else {
+			const int overflowX = lineWidth - maxLineWidth;
+			const uint32_t pauseStartX = 1200;
+			const uint32_t scrollSpeedX = 26; // pixels per second
+			const uint32_t scrollDurationX = std::max<uint32_t>(1000, (overflowX * 1000) / scrollSpeedX);
+			const uint32_t pauseEndX = 1200;
+			const uint32_t cycleDurationX = pauseStartX + scrollDurationX + pauseEndX + 400;
+
+			const uint32_t elapsedX = currentTicks - InfoScrollStartTime;
+			const uint32_t tX = elapsedX % cycleDurationX;
+
+			int scrollX = 0;
+			if (tX < pauseStartX) {
+				scrollX = 0;
+			} else if (tX < pauseStartX + scrollDurationX) {
+				const float progressX = static_cast<float>(tX - pauseStartX) / static_cast<float>(scrollDurationX);
+				scrollX = static_cast<int>(progressX * overflowX);
+			} else {
+				scrollX = overflowX;
+			}
+			lineX = horizontalPadding - scrollX;
+		}
+
+		const Rectangle lineRect { { lineX, lineY }, { std::max(boxWidth * 2, lineWidth + 20), lineHeight } };
+		DrawString(boxSurface, line, lineRect, { .flags = InfoColor, .spacing = 1, .lineHeight = lineHeight });
+	}
 }
 
-Rectangle GetFloatingInfoRect(const int lineHeight, const int textSpacing)
+Rectangle GetFloatingInfoRect(std::string_view text, const int lineHeight, const int textSpacing)
 {
 	// Calculate the width and height of the floating info box
-	const std::string txt = std::string(FloatingInfoString);
-
-	auto lines = SplitByChar(txt, '\n');
+	auto lines = SplitByChar(text, '\n');
 	const GameFontTables font = GameFont12;
 	int maxW = 0;
+	int lineCount = 0;
 
 	for (const auto &line : lines) {
 		const int w = GetLineWidth(line, font, textSpacing, nullptr);
 		maxW = std::max(maxW, w);
+		++lineCount;
 	}
 
-	const auto lineCount = 1 + static_cast<int>(c_count(FloatingInfoString.str(), '\n'));
-	const int totalH = lineCount * lineHeight;
+	const int totalH = std::max(1, lineCount) * lineHeight;
 
 	const Player &player = *InspectPlayer;
 
@@ -280,7 +367,10 @@ void PrintFloatingInfo(const Surface &out)
 	const int hPadding = 5;
 	const int vPadding = 4;
 
-	Rectangle floatingInfoBox = GetFloatingInfoRect(lineHeight, textSpacing);
+	const int maxFloatingWidth = std::max(100, std::min(260, GetScreenWidth() - 20));
+	const std::string wrappedFloating = WordWrapString(FloatingInfoString.view(), maxFloatingWidth, GameFont12, textSpacing);
+
+	Rectangle floatingInfoBox = GetFloatingInfoRect(wrappedFloating, lineHeight, textSpacing);
 
 	// Prevent the floating info box from going off-screen horizontally
 	floatingInfoBox.position.x = std::clamp(floatingInfoBox.position.x, hPadding, GetScreenWidth() - (floatingInfoBox.size.width + hPadding));
@@ -300,7 +390,7 @@ void PrintFloatingInfo(const Surface &out)
 	DrawHalfTransparentHorizontalLine(out, { floatingInfoBox.position.x - hPadding, floatingInfoBox.position.y - vPadding - 1 }, floatingInfoBox.size.width + (hPadding * 2), PAL16_GRAY + 10);
 	DrawHalfTransparentHorizontalLine(out, { floatingInfoBox.position.x - hPadding, floatingInfoBox.position.y + vPadding + floatingInfoBox.size.height }, floatingInfoBox.size.width + (hPadding * 2), PAL16_GRAY + 10);
 
-	DrawString(out, FloatingInfoString, floatingInfoBox,
+	DrawString(out, wrappedFloating, floatingInfoBox,
 	    {
 	        .flags = InfoColor | UiFlags::AlignCenter | UiFlags::VerticalCenter,
 	        .spacing = textSpacing,

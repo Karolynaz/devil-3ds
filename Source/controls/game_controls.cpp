@@ -299,6 +299,58 @@ void FinishStashItemAction()
 	StashItemButton.finished = true;
 }
 
+struct ButtonAHoldState {
+	bool active = false;
+	bool triggered = false;
+	uint32_t pressedAt = 0;
+	int invItem = -1;
+	uint16_t stashItem = StashStruct::EmptyCell;
+	Point pressPos = { 0, 0 };
+} ButtonAHold;
+
+void Cancel3DSButtonAHold()
+{
+	ButtonAHold.active = false;
+	ButtonAHold.triggered = false;
+	ButtonAHold.invItem = -1;
+	ButtonAHold.stashItem = StashStruct::EmptyCell;
+}
+
+void Update3DSButtonAHold()
+{
+	if (!ButtonAHold.active || ButtonAHold.triggered)
+		return;
+
+	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag || IsStashOpen || SpellSelectFlag;
+	if (!uiOpen) {
+		Cancel3DSButtonAHold();
+		return;
+	}
+
+	if (ButtonAHold.invItem != -1 && pcursinvitem != ButtonAHold.invItem) {
+		Cancel3DSButtonAHold();
+		return;
+	}
+	if (ButtonAHold.stashItem != StashStruct::EmptyCell && pcursstashitem != ButtonAHold.stashItem) {
+		Cancel3DSButtonAHold();
+		return;
+	}
+
+	constexpr uint32_t HoldThresholdMs = 350;
+	if (static_cast<uint32_t>(SDL_GetTicks() - ButtonAHold.pressedAt) < HoldThresholdMs)
+		return;
+
+	ButtonAHold.triggered = true;
+
+	if (IsVisualStoreOpen && pcursinvitem >= INVITEM_INV_FIRST && pcursinvitem <= INVITEM_INV_LAST) {
+		SellItemToVisualStore(pcursinvitem - INVITEM_INV_FIRST);
+	} else if (IsStashOpen && pcursstashitem != StashStruct::EmptyCell) {
+		CtrlUseStashItem();
+	} else if (pcursinvitem != -1) {
+		CtrlUseInvItem();
+	}
+}
+
 void DrinkPotion3DS(int firstSlot, int lastSlot)
 {
 	Player &player = *MyPlayer;
@@ -347,6 +399,8 @@ void SwitchUiTab(bool forward)
 	if (SpellSelectFlag)
 		SpellSelectFlag = false;
 
+	Cancel3DSButtonAHold();
+
 	switch (next) {
 	case 0:
 		StartQuestlog();
@@ -379,6 +433,13 @@ void ReleaseControllerButton(ControllerButton button)
 		button = ControllerButton_BUTTON_A;
 
 	if (button == ControllerButton_BUTTON_A) {
+		if (ButtonAHold.active) {
+			const bool wasTriggered = ButtonAHold.triggered;
+			Cancel3DSButtonAHold();
+			if (!wasTriggered) {
+				PerformPrimaryAction();
+			}
+		}
 		if (ControllerActionHeld == GameActionType_PRIMARY_ACTION) {
 			ControllerActionHeld = GameActionType_NONE;
 			LastPlayerAction = PlayerActionType::None;
@@ -483,6 +544,9 @@ void PressControllerButton(ControllerButton button)
 	else if (button == ControllerButton_BUTTON_B)
 		button = ControllerButton_BUTTON_A;
 
+	if (button != ControllerButton_BUTTON_A)
+		Cancel3DSButtonAHold();
+
 	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag || IsStashOpen || SpellSelectFlag;
 	if (uiOpen) {
 		switch (button) {
@@ -520,11 +584,28 @@ void PressControllerButton(ControllerButton button)
 			} else if (qtextflag) {
 				PressEscKey();
 			} else {
-				PerformPrimaryAction();
+				const bool hoveringItem = pcurs == CURSOR_HAND
+				    && ((invflag && pcursinvitem != -1)
+				        || (IsStashOpen && pcursstashitem != StashStruct::EmptyCell));
+				if (MyPlayer->HoldItem.isEmpty() && hoveringItem) {
+					ButtonAHold.active = true;
+					ButtonAHold.triggered = false;
+					ButtonAHold.pressedAt = SDL_GetTicks();
+					ButtonAHold.invItem = pcursinvitem;
+					ButtonAHold.stashItem = pcursstashitem;
+					ButtonAHold.pressPos = MousePosition;
+				} else {
+					Cancel3DSButtonAHold();
+					PerformPrimaryAction();
+				}
 			}
 			return;
 
 		case ControllerButton_BUTTON_B:
+			if (pcurs > CURSOR_HAND && pcurs < CURSOR_FIRSTITEM) {
+				NewCursor(CURSOR_HAND);
+				return;
+			}
 			PressEscKey();
 			return;
 

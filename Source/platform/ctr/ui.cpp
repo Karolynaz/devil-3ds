@@ -12,6 +12,9 @@
 #include "engine/palette.h"
 #include "engine/render/primitive_render.hpp"
 #include "platform/ctr/ui_geometry.hpp"
+#include "DiabloUI/ui_flags.hpp"
+#include "engine/render/text_render.hpp"
+#include "utils/sdl_geometry.h"
 
 namespace devilution {
 namespace {
@@ -89,6 +92,23 @@ void LoadBottomBackground()
 		std::memcpy(BottomBackground->at(0, y), src + y * 320, 320);
 }
 
+std::optional<OwnedSurface> LoadingBackground;
+bool LoadingBackgroundLoadAttempted = false;
+
+void LoadLoadingBackground()
+{
+	LoadingBackgroundLoadAttempted = true;
+	auto image = LoadAsset("data\\ctr_loading.pal8");
+	if (!image || image->size != BackgroundBytes)
+		return;
+
+	LoadingBackground.emplace(BackgroundWidth, BackgroundHeight);
+	const auto *src = reinterpret_cast<const uint8_t *>(image->data.get());
+	for (int y = 0; y < BackgroundHeight; ++y) {
+		std::memcpy(LoadingBackground->at(0, y), src + y * BackgroundWidth, BackgroundWidth);
+	}
+}
+
 } // namespace
 
 void DrawCtrPanelBackground(const Surface &out, CtrPanelBackground background)
@@ -138,6 +158,24 @@ void DrawCtrBarArtwork(const Surface &out, CtrBarArtwork bar, Point position, fl
 				out.SetPixel({ position.x + x, position.y + (vertical ? height - fillPixels + y : y) }, color);
 		}
 	}
+}
+
+void Draw3DSLoadingScreen(const Surface &out)
+{
+	if (!LoadingBackgroundLoadAttempted)
+		LoadLoadingBackground();
+
+	SDL_FillSurfaceRect(out.surface, nullptr, 0);
+
+	const int topX = (out.w() - BackgroundWidth) / 2;
+	if (LoadingBackground) {
+		out.BlitFrom(*LoadingBackground, { 0, 0, BackgroundWidth, BackgroundHeight }, { topX, 0 });
+	}
+
+	const Rectangle bottomTextRect { { 0, 240 }, { out.w(), 240 } };
+	DrawString(out, "Loading", bottomTextRect,
+	    { .flags = UiFlags::FontSize46 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
+	      .spacing = 2 });
 }
 
 } // namespace devilution
