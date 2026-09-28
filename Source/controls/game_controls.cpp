@@ -308,8 +308,6 @@ struct ButtonAHoldState {
 	Point pressPos = { 0, 0 };
 } ButtonAHold;
 
-void Cancel3DSButtonAHold();
-void Update3DSButtonAHold();
 
 void DrinkPotion3DS(int firstSlot, int lastSlot)
 {
