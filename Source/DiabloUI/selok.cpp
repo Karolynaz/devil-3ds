@@ -75,13 +75,13 @@ void UiSelOkDialog(const char *title, const char *body, bool background)
 #ifdef __3DS__
 	if (title != nullptr) {
 		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), 250, 590, 35 };
-		vecSelOkDialog.push_back(std::make_unique<UiArtText>(title, rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorWhite, 3));
+		vecSelOkDialog.push_back(std::make_unique<UiArtText>(title, rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
 		const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 64), 294, 512, 112 };
-		vecSelOkDialog.push_back(std::make_unique<UiArtText>(dialogText, rect2, UiFlags::FontSize24 | UiFlags::ColorWhite));
+		vecSelOkDialog.push_back(std::make_unique<UiArtText>(dialogText, rect2, UiFlags::FontSize24 | UiFlags::ColorUiSilver));
 	} else {
 		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 64), 270, 512, 136 };
-		vecSelOkDialog.push_back(std::make_unique<UiArtText>(dialogText, rect1, UiFlags::FontSize24 | UiFlags::ColorWhite));
+		vecSelOkDialog.push_back(std::make_unique<UiArtText>(dialogText, rect1, UiFlags::FontSize24 | UiFlags::ColorUiSilver));
 	}
 
 	vecSelOkDialogItems.push_back(std::make_unique<UiListItem>(_("OK"), 0));
@@ -102,7 +102,11 @@ void UiSelOkDialog(const char *title, const char *body, bool background)
 	vecSelOkDialog.push_back(std::make_unique<UiList>(vecSelOkDialogItems, 1, uiPosition.x + 230, (uiPosition.y + 390), 180, 35, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
 #endif
 
+#ifdef __3DS__
+	CopyUtf8(dialogText, WordWrapString(body, 512, GameFont24, 1, /*doubleWidth=*/true), sizeof(dialogText));
+#else
 	CopyUtf8(dialogText, WordWrapString(body, MESSAGE_WIDTH, GameFont24), sizeof(dialogText));
+#endif
 
 	UiInitList(nullptr, selok_Select, selok_Esc, vecSelOkDialog, false);
 

@@ -72,7 +72,7 @@ void UiTitleDialog()
 		    *DiabloTitleLogo, MakeSdlRect(0, 20, 0, 0), UiFlags::AlignCenter));
 
 		const SDL_Rect rect = MakeSdlRect(uiPosition.x, 448, 640, 26);
-		vecTitleScreen.push_back(std::make_unique<UiArtText>(_("Copyright © 1996-2001 Blizzard Entertainment").data(), rect, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorWhite));
+		vecTitleScreen.push_back(std::make_unique<UiArtText>(_("Copyright © 1996-2001 Blizzard Entertainment").data(), rect, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilver));
 #else
 		vecTitleScreen.push_back(std::make_unique<UiImageAnimatedClx>(
 		    *DiabloTitleLogo, MakeSdlRect(0, uiPosition.y + 182, 0, 0), UiFlags::AlignCenter));

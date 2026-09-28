@@ -99,11 +99,7 @@ bool IsValidEntry(OptionEntryBase *pOptionEntry)
 	return HasNoneOf(flags, OptionEntryFlags::Invisible | (gbIsHellfire ? OptionEntryFlags::OnlyDiablo : OptionEntryFlags::OnlyHellfire));
 }
 
-#ifdef __3DS__
-constexpr UiFlags SettingsSecondaryTextColor = UiFlags::ColorWhite;
-#else
 constexpr UiFlags SettingsSecondaryTextColor = UiFlags::ColorUiSilver;
-#endif
 
 std::vector<DrawStringFormatArg> CreateDrawStringFormatArgForEntry(OptionEntryBase *pEntry)
 {
@@ -116,7 +112,11 @@ std::vector<DrawStringFormatArg> CreateDrawStringFormatArgForEntry(OptionEntryBa
 /** @brief Check if the option text can't fit in one list line (list width minus drawn selector) */
 bool NeedsTwoLinesToDisplayOption(std::vector<DrawStringFormatArg> &formatArgs)
 {
+#ifdef __3DS__
+	return GetLineWidth("{}: {}", formatArgs.data(), formatArgs.size(), 0, GameFontTables::GameFont24, 1, nullptr, std::nullopt, /*doubleWidth=*/true) >= (rectList.size.width - 90);
+#else
 	return GetLineWidth("{}: {}", formatArgs.data(), formatArgs.size(), 0, GameFontTables::GameFont24, 1) >= (rectList.size.width - 90);
+#endif
 }
 
 void CleanUpSettingsUI()
@@ -185,13 +185,21 @@ void UpdatePadEntryTimerText()
 
 void UpdateDescription(const OptionEntryBase &option)
 {
+#ifdef __3DS__
+	auto paragraphs = WordWrapString(option.GetDescription(), rectDescription.size.width, GameFont12, 1, /*doubleWidth=*/true);
+#else
 	auto paragraphs = WordWrapString(option.GetDescription(), rectDescription.size.width, GameFont12, 1);
+#endif
 	CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
 }
 
 void UpdateDescription(const OptionCategoryBase &category)
 {
+#ifdef __3DS__
+	auto paragraphs = WordWrapString(category.GetDescription(), rectDescription.size.width, GameFont12, 1, /*doubleWidth=*/true);
+#else
 	auto paragraphs = WordWrapString(category.GetDescription(), rectDescription.size.width, GameFont12, 1);
+#endif
 	CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
 }
 
@@ -416,7 +424,7 @@ void UiSettingsMenu()
 		}
 #ifdef __3DS__
 		// Keep every settings view inside the 3DS bottom screen (y = 240..479).
-		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, 246, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorWhite | UiFlags::AlignCenter, 8));
+		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, 246, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
 #else
 		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, uiRectangle.position.y + 161, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
 #endif
@@ -592,7 +600,7 @@ void UiSettingsMenu()
 		vecDialog.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0],
 		    *ArtScrollBarArrow, MakeSdlRect(rectList.position.x + rectList.size.width + 5, rectList.position.y, 25, rectList.size.height)));
 		vecDialog.push_back(std::make_unique<UiArtText>(optionDescription, MakeSdlRect(rectDescription),
-		    UiFlags::FontSize12 | UiFlags::ColorWhite | UiFlags::AlignCenter, 1, descriptionLineHeight));
+		    UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 1, descriptionLineHeight));
 		vecDialog.push_back(std::make_unique<UiList>(vecDialogItems, rectList.size.height / ListItemHeight,
 		    rectList.position.x, rectList.position.y, rectList.size.width, ListItemHeight, UiFlags::FontSize24 | UiFlags::AlignCenter));
 

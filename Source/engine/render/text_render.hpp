@@ -176,7 +176,7 @@ void LoadSmallSelectionSpinner();
  * @param charactersInLine Receives characters read until newline or terminator
  * @return Line width in pixels
  */
-int GetLineWidth(std::string_view text, GameFontTables size = GameFont12, int spacing = 1, int *charactersInLine = nullptr);
+int GetLineWidth(std::string_view text, GameFontTables size = GameFont12, int spacing = 1, int *charactersInLine = nullptr, bool doubleWidth = false);
 
 /**
  * @brief Calculate pixel width of first line of text, respecting kerning
@@ -188,10 +188,11 @@ int GetLineWidth(std::string_view text, GameFontTables size = GameFont12, int sp
  * @param spacing Extra spacing to add per character
  * @param charactersInLine Receives characters read until newline or terminator
  * @param firstArgOffset If given, starts counting at `args[argsOffset - 1].GetFormatted().substr(*firstArgOffset)`.
+ * @param doubleWidth Render glyphs with 2x horizontal width (used on 3DS bottom screen)
  * @return Line width in pixels
  */
 int GetLineWidth(std::string_view fmt, DrawStringFormatArg *args, size_t argsLen, size_t argsOffset, GameFontTables size, int spacing, int *charactersInLine = nullptr,
-    std::optional<size_t> firstArgOffset = std::nullopt);
+    std::optional<size_t> firstArgOffset = std::nullopt, bool doubleWidth = false);
 
 int GetLineHeight(std::string_view text, GameFontTables fontIndex);
 
@@ -205,9 +206,10 @@ int GetLineHeight(std::string_view text, GameFontTables fontIndex);
  * @param width Width in pixels of the output region
  * @param size Font size to use for the width calculation
  * @param spacing Any adjustment to apply between each character
+ * @param doubleWidth Render glyphs with 2x horizontal width (used on 3DS bottom screen)
  * @return A copy of the source text with newlines inserted where appropriate
  */
-[[nodiscard]] std::string WordWrapString(std::string_view text, unsigned width, GameFontTables size = GameFont12, int spacing = 1);
+[[nodiscard]] std::string WordWrapString(std::string_view text, unsigned width, GameFontTables size = GameFont12, int spacing = 1, bool doubleWidth = false);
 
 /**
  * @brief Draws a line of text within a clipping rectangle (positioned relative to the origin of the output buffer).

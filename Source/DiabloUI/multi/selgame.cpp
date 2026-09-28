@@ -316,7 +316,11 @@ void selgame_GameSelection_Focus(size_t value)
 		CopyUtf8(selgame_Description, infoString, sizeof(selgame_Description));
 		break;
 	}
+#ifdef __3DS__
+	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont12, 1, /*doubleWidth=*/true), sizeof(selgame_Description));
+#else
 	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH), sizeof(selgame_Description));
+#endif
 }
 
 /**
@@ -503,7 +507,11 @@ void selgame_Diff_Focus(size_t value)
 		CopyUtf8(selgame_Description, _("Hell Difficulty\nThe most powerful of the underworld's creatures lurk at the gateway into Hell. Only the most experienced characters should venture in this realm."), sizeof(selgame_Description));
 		break;
 	}
+#ifdef __3DS__
+	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont12, 1, /*doubleWidth=*/true), sizeof(selgame_Description));
+#else
 	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH), sizeof(selgame_Description));
+#endif
 }
 
 bool IsDifficultyAllowed(int value)
@@ -635,7 +643,11 @@ void selgame_Speed_Focus(size_t value)
 		CopyUtf8(selgame_Description, _("Fastest Speed\nThe minions of the underworld will rush to attack without hesitation. Only a true speed demon should enter at this pace."), sizeof(selgame_Description));
 		break;
 	}
+#ifdef __3DS__
+	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont12, 1, /*doubleWidth=*/true), sizeof(selgame_Description));
+#else
 	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH), sizeof(selgame_Description));
+#endif
 }
 
 void selgame_Speed_Esc()

@@ -884,6 +884,21 @@ void DrawSelector(const SDL_Rect &rect)
 	const int y = rect.y + ((rect.h - static_cast<int>(sprite.height())) / 2);
 
 	const Surface &out = Surface(DiabloUiSurface());
+#ifdef __3DS__
+	if (rect.y >= 240 && out.w() >= 640) {
+		static OwnedSurface spriteScratch(64, 64);
+		if (spriteScratch.w() != sprite.width() || spriteScratch.h() != sprite.height()) {
+			spriteScratch = OwnedSurface(sprite.width(), sprite.height());
+		}
+		SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
+		RenderClxSprite(spriteScratch, sprite, { 0, 0 });
+		out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+		    MakeSdlRect(rect.x, y, sprite.width() * 2, sprite.height()));
+		out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+		    MakeSdlRect(rect.x + rect.w - sprite.width() * 2, y, sprite.width() * 2, sprite.height()));
+		return;
+	}
+#endif
 	RenderClxSprite(out, sprite, { rect.x, y });
 	RenderClxSprite(out, sprite, { rect.x + rect.w - sprite.width(), y });
 }
@@ -1022,13 +1037,20 @@ void Render(const UiList &uiList)
 		if (i == SelectedItem)
 			DrawSelector(rect);
 
+		const bool doubleWidth =
+#ifdef __3DS__
+		    (out.w() >= 640 && rect.y >= 240);
+#else
+		    false;
+#endif
+		const int selectorWidth = GetListSelectorSprites(rect.h)[0].width() * (doubleWidth ? 2 : 1);
 		const Rectangle rectangle = MakeRectangle(rect).inset(
-		    Displacement(GetListSelectorSprites(rect.h)[0].width(), 0));
+		    Displacement(selectorWidth, 0));
 
 		const UiFlags uiFlags = uiList.GetFlags() | item.uiFlags;
 		const GameFontTables fontSize = GetFontSizeFromUiFlags(uiFlags);
 		std::string_view text = item.m_text.str();
-		while (GetLineWidth(text, fontSize, 1) > rectangle.size.width) {
+		while (GetLineWidth(text, fontSize, 1, nullptr, doubleWidth) > rectangle.size.width) {
 			text = std::string_view(text.data(), FindLastUtf8Symbols(text));
 		}
 
@@ -1314,6 +1336,21 @@ void DrawMouse()
 {
 	if (ControlDevice != ControlTypes::KeyboardAndMouse || IsHardwareCursor() || !ArtCursor)
 		return;
-	RenderClxSprite(Surface(DiabloUiSurface()), (*ArtCursor)[0], MousePosition);
+	const Surface &out = Surface(DiabloUiSurface());
+#ifdef __3DS__
+	const ClxSprite sprite = (*ArtCursor)[0];
+	if (MousePosition.y >= 240 && out.w() >= 640) {
+		static OwnedSurface spriteScratch(64, 64);
+		if (spriteScratch.w() != sprite.width() || spriteScratch.h() != sprite.height()) {
+			spriteScratch = OwnedSurface(sprite.width(), sprite.height());
+		}
+		SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
+		RenderClxSprite(spriteScratch, sprite, { 0, 0 });
+		out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+		    MakeSdlRect(MousePosition.x, MousePosition.y, sprite.width() * 2, sprite.height()));
+		return;
+	}
+#endif
+	RenderClxSprite(out, (*ArtCursor)[0], MousePosition);
 }
 } // namespace devilution

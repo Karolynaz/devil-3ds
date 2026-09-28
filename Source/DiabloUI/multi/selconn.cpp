@@ -171,7 +171,11 @@ void SelconnFocus(size_t value)
 	}
 
 	CopyUtf8(selconn_MaxPlayers, FormatRuntime(_("Players Supported: {:d}"), players), sizeof(selconn_MaxPlayers));
+#ifdef __3DS__
+	CopyUtf8(selconn_Description, WordWrapString(selconn_Description, DESCRIPTION_WIDTH, GameFont12, 1, /*doubleWidth=*/true), sizeof(selconn_Description));
+#else
 	CopyUtf8(selconn_Description, WordWrapString(selconn_Description, DESCRIPTION_WIDTH), sizeof(selconn_Description));
+#endif
 }
 
 void SelconnSelect(size_t value)
