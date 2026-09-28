@@ -2429,6 +2429,9 @@ void plrctrls_after_check_curs_move()
 
 void plrctrls_every_frame()
 {
+#ifdef __3DS__
+	Update3DSStashItemAction();
+#endif
 	ProcessLeftStickOrDPadGameUI();
 	HandleRightStickMotion();
 	ProcessAutomapMovementGamepad();

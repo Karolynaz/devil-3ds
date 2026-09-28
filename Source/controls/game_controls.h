@@ -67,6 +67,10 @@ AxisDirection GetMoveDirection();
 
 bool HandleControllerButtonEvent(const SDL_Event &event, const ControllerButtonEvent ctrlEvent, GameAction &action);
 
+#ifdef __3DS__
+void Update3DSStashItemAction();
+#endif
+
 extern bool PadMenuNavigatorActive;
 extern bool PadHotspellMenuActive;
 

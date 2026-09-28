@@ -10730,3 +10730,8 @@ msgstr "Saugykla ({:d})"
 #: Source/qol/stash.cpp
 msgid "Gold:"
 msgstr "Auksas:"
+
+#: Source/platform/ctr/keyboard.cpp
+#, c++-format
+msgid "Enter a number from 1 to {:d}."
+msgstr "Įveskite skaičių nuo 1 iki {:d}."

@@ -98,14 +98,18 @@ void Draw3dsSpellHudIcon(const Surface &out, SpellID spell, SpellType type, int 
 {
 	static OwnedSurface iconSurface(SPLICONLENGTH, SPLICONLENGTH);
 	const int width = (size * gnScreenWidth + 200) / 400;
-	iconSurface.ScaleBlitFrom(out, MakeSdlRect(surfaceX, y, width, size),
-	    MakeSdlRect(0, 0, SPLICONLENGTH, SPLICONLENGTH));
+	// A selection row may extend above the viewport. Do not sample its
+	// background: ScaleBlitFrom clips destinations, but not source reads.
+	FillRect(iconSurface, 0, 0, SPLICONLENGTH, SPLICONLENGTH, 0);
+	// CLX coordinates address the inclusive bottom row. Passing the height
+	// here makes the unchecked selection border write past the buffer.
+	const Point iconPosition { 0, SPLICONLENGTH - 1 };
 	SetSpellTrans(type);
-	DrawLargeSpellIcon(iconSurface, { 0, SPLICONLENGTH }, spell);
+	DrawLargeSpellIcon(iconSurface, iconPosition, spell);
 	if (selected)
-		DrawLargeSpellIconBorder(iconSurface, { 0, SPLICONLENGTH }, PAL16_YELLOW - 46);
+		DrawLargeSpellIconBorder(iconSurface, iconPosition, PAL16_YELLOW - 46);
 	if (std::optional<std::string_view> hotkeyName = GetHotkeyName(spell, type, true))
-		PrintSBookHotkey(iconSurface, { 0, SPLICONLENGTH }, *hotkeyName);
+		PrintSBookHotkey(iconSurface, iconPosition, *hotkeyName);
 
 	out.ScaleBlitFrom(iconSurface, MakeSdlRect(0, 0, SPLICONLENGTH, SPLICONLENGTH),
 	    MakeSdlRect(surfaceX, y, width, size));

@@ -114,12 +114,6 @@ std::array<std::optional<std::array<uint8_t, 256>>, 19> ColorTranslationsData;
 
 text_color GetColorFromFlags(UiFlags flags)
 {
-#ifdef __3DS__
-	// The lower title screen halves the horizontal resolution. Keep its
-	// secondary text bright enough to remain legible at that size.
-	if (!gbRunGame && HasAnyOf(flags, UiFlags::ColorUiSilver | UiFlags::ColorUiSilverDark))
-		return ColorWhite;
-#endif
 	if (HasAnyOf(flags, UiFlags::ColorWhite))
 		return ColorWhite;
 	if (HasAnyOf(flags, UiFlags::ColorBlue))
@@ -277,6 +271,24 @@ void DrawFont(const Surface &out, Point position, ClxSprite glyph, text_color co
 	if (outline) {
 		ClxDrawOutlineSkipColorZero(out, 0, { position.x, position.y + glyph.height() - 1 }, glyph);
 	}
+#ifdef __3DS__
+	if (!gbRunGame && (color == ColorWhite || color == ColorUiSilver || color == ColorUiSilverDark)) {
+		// Font ink uses indices 192..207. The menu palette's neutral ramp is
+		// 224..238; white.trn instead targets the in-game palette and produces
+		// colored noise here. Use the bright end of the menu ramp, retaining
+		// shading without changing transparency or the gold menu text.
+		static constexpr auto MenuWhiteTranslation = [] {
+			std::array<uint8_t, 256> translation {};
+			for (size_t i = 0; i < translation.size(); ++i)
+				translation[i] = static_cast<uint8_t>(i);
+			for (int shade = 0; shade < 16; ++shade)
+				translation[192 + shade] = static_cast<uint8_t>(224 + shade / 3);
+			return translation;
+		}();
+		RenderClxSpriteWithTRN(out, glyph, position, MenuWhiteTranslation.data());
+		return;
+	}
+#endif
 	if (ColorTranslationsData[color]) {
 		RenderClxSpriteWithTRN(out, glyph, position, ColorTranslationsData[color]->data());
 	} else {

@@ -1,8 +1,12 @@
 #include <cstdlib>
 #include <cstring>
+#include <charconv>
+#include <string>
 
 #include "platform/ctr/keyboard.h"
 #include "utils/utf8.hpp"
+#include "utils/format.hpp"
+#include "utils/language.h"
 
 constexpr size_t MAX_TEXT_LENGTH = 255;
 
@@ -55,4 +59,38 @@ void ctr_vkbdFlush()
 	}
 
 	eventCount = 0;
+}
+
+std::optional<int> ctr_vkbdNumberInput(std::string_view hint, int maximum)
+{
+	if (maximum <= 0)
+		return std::nullopt;
+	struct Validation {
+		int maximum;
+		std::string message;
+	} validation { maximum, devilution::FormatRuntime(devilution::_("Enter a number from 1 to {:d}."), maximum) };
+	SwkbdState keyboard;
+	swkbdInit(&keyboard, SWKBD_TYPE_NUMPAD, 2, 10);
+	swkbdSetValidation(&keyboard, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+	swkbdSetNumpadKeys(&keyboard, 0, 0);
+	const std::string hintText { hint };
+	swkbdSetHintText(&keyboard, hintText.c_str());
+	swkbdSetFilterCallback(&keyboard, [](void *user, const char **message, const char *text, size_t length) {
+		const auto &validation = *static_cast<const Validation *>(user);
+		int value = 0;
+		const auto result = std::from_chars(text, text + length, value);
+		if (result.ec != std::errc {} || result.ptr != text + length || value < 1 || value > validation.maximum) {
+			*message = validation.message.c_str();
+			return SWKBD_CALLBACK_CONTINUE;
+		}
+		return SWKBD_CALLBACK_OK;
+	}, &validation);
+	char buffer[11] {};
+	if (swkbdInputText(&keyboard, buffer, sizeof(buffer)) != SWKBD_BUTTON_CONFIRM)
+		return std::nullopt;
+	int value = 0;
+	const auto result = std::from_chars(buffer, buffer + std::strlen(buffer), value);
+	if (result.ec != std::errc {} || result.ptr != buffer + std::strlen(buffer) || value < 1 || value > maximum)
+		return std::nullopt;
+	return value;
 }

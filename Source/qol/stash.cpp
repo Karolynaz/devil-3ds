@@ -25,6 +25,8 @@
 #include "inv.h"
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "platform/ctr/keyboard.h"
+#include "engine/backbuffer_state.hpp"
 #endif
 #include "minitext.h"
 #include "stores.h"
@@ -517,10 +519,25 @@ void DrawCtrStashItems(const Surface &out)
 		const Rectangle button = CtrStashButtonRect[i];
 		FillRect(out, button.position.x, button.position.y, button.size.width, button.size.height, 0);
 		UnsafeDrawBorder2px(out, button, PAL16_BEIGE + 8);
-		const std::string label = i == 2
-		    ? StrCat(_("Gold:"), " ", Stash.gold >= 10000 ? StrCat(Stash.gold / 1000, "k") : FormatInteger(Stash.gold))
-		    : (i == 1 ? "<" : ">");
-		DrawString(out, label, button,
+		if (i == 2) {
+			Item goldIcon;
+			goldIcon._itype = ItemType::Gold;
+			goldIcon._iCurs = ICURS_GOLD_LARGE;
+			goldIcon._iStatFlag = true;
+			DrawCtrScaledItem(out, goldIcon, { button.position + Displacement { 3, 2 }, { 14, 14 } }, false);
+			std::string amount = FormatInteger(Stash.gold);
+			if (Stash.gold >= 1000000) {
+				amount = StrCat(Stash.gold / 1000000);
+				const int tenths = Stash.gold % 1000000 / 100000;
+				if (tenths != 0)
+					amount = StrCat(amount, ".", tenths);
+				amount += "M";
+			}
+			DrawString(out, amount, { button.position + Displacement { 20, 2 }, { button.size.width - 24, button.size.height - 4 } },
+			    { .flags = UiFlags::AlignRight | UiFlags::VerticalCenter | labelStyle, .spacing = 0 });
+			continue;
+		}
+		DrawString(out, i == 1 ? "<" : ">", button,
 		    { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorWhitegold });
 	}
 }
@@ -719,6 +736,16 @@ void StartGoldWithdraw()
 	if (ChatFlag)
 		ResetChat();
 
+#ifdef __3DS__
+	// The applet blocks until confirmation/cancellation; no legacy gold
+	// dialog or text-input state is opened behind the native keyboard.
+	const auto amount = ctr_vkbdNumberInput(_("How many gold pieces do you want to withdraw?"), std::min(RoomForGold(), Stash.gold));
+	if (amount && IsStashOpen && !MyPlayer->hasNoLife()) {
+		WithdrawGold(*MyPlayer, std::min(*amount, std::min(RoomForGold(), Stash.gold)));
+		PlaySFX(SfxID::ItemGold);
+	}
+	RedrawEverything();
+#else
 	const Point start = GetPanelPosition(UiPanels::Stash, { 67, 128 });
 	SDL_Rect rect = MakeSdlRect(start.x, start.y, 180, 20);
 	SDL_SetTextInputArea(ghMainWnd, &rect, /*cursor=*/0);
@@ -735,6 +762,7 @@ void StartGoldWithdraw()
 	    .max = std::min(RoomForGold(), Stash.gold),
 	});
 	SDLC_StartTextInput(ghMainWnd);
+#endif
 }
 
 void WithdrawGoldKeyPress(SDL_Keycode vkey)

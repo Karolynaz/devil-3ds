@@ -253,11 +253,16 @@ void UiInitList(void (*fnFocus)(size_t value), void (*fnSelect)(size_t value), v
 	AdjustListOffset(selectedItem);
 
 	if (uiScrollbar != nullptr) {
+#ifdef __3DS__
+		// Controller navigation still scrolls the list without a visible scrollbar.
+		uiScrollbar->Hide();
+#else
 		if (ListViewportSize >= static_cast<std::size_t>(SelectedItemMax + 1)) {
 			uiScrollbar->Hide();
 		} else {
 			uiScrollbar->Show();
 		}
+#endif
 	}
 }
 

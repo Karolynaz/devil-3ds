@@ -22,6 +22,7 @@
 #include "cursor.h"
 #include "diablo.h"
 #include "doom.h"
+#include "effects.h"
 #include "gamemenu.h"
 #include "gmenu.h"
 #include "inv.h"
@@ -246,6 +247,58 @@ bool CanDeferToMovementHandler(const PadmapperOptions::Action &action)
 }
 
 #ifdef __3DS__
+struct StashItemButtonState {
+	bool active = false;
+	bool finished = true;
+	bool toStash = false;
+	uint32_t pressedAt = 0;
+	Player *player = nullptr;
+	uint32_t seed = 0;
+	uint16_t createInfo = 0;
+	_item_indexes itemIndex = IDI_NONE;
+} StashItemButton;
+
+bool CanFinishStashItemAction()
+{
+	return IsStashOpen && !gmenu_is_active() && !IsWithdrawGoldOpen && !DropGoldFlag
+	    && MyPlayer == StashItemButton.player && !MyPlayer->hasNoLife()
+	    && !MyPlayer->HoldItem.isEmpty()
+	    && MyPlayer->HoldItem.keyAttributesMatch(StashItemButton.seed, StashItemButton.itemIndex, StashItemButton.createInfo);
+}
+
+void BeginStashItemAction()
+{
+	if (StashItemButton.active)
+		return;
+	StashItemButton.active = true;
+	StashItemButton.finished = true;
+	const bool toStash = !GetLeftPanel().contains(MousePosition);
+	if (MyPlayer->HoldItem.isEmpty()) {
+		if (pcursinvitem == -1 && pcursstashitem == StashStruct::EmptyCell)
+			return;
+		PerformPrimaryAction();
+	}
+	const Item &item = MyPlayer->HoldItem;
+	if (item.isEmpty())
+		return;
+	StashItemButton.finished = false;
+	StashItemButton.toStash = toStash;
+	StashItemButton.pressedAt = SDL_GetTicks();
+	StashItemButton.player = MyPlayer;
+	StashItemButton.seed = item._iSeed;
+	StashItemButton.createInfo = item._iCreateInfo;
+	StashItemButton.itemIndex = item.IDidx;
+}
+
+void FinishStashItemAction()
+{
+	Update3DSStashItemAction();
+	if (!StashItemButton.finished && CanFinishStashItemAction())
+		TryDropItem();
+	StashItemButton.active = false;
+	StashItemButton.finished = true;
+}
+
 void DrinkPotion3DS(int firstSlot, int lastSlot)
 {
 	Player &player = *MyPlayer;
@@ -621,6 +674,35 @@ void PressControllerButton(ControllerButton button)
 
 } // namespace
 
+#ifdef __3DS__
+void Update3DSStashItemAction()
+{
+	if (!StashItemButton.active || StashItemButton.finished)
+		return;
+	if (!CanFinishStashItemAction()) {
+		StashItemButton.finished = true;
+		return;
+	}
+	if (static_cast<uint32_t>(SDL_GetTicks() - StashItemButton.pressedAt) < 500)
+		return;
+	// Consume the gesture even when the destination is full: releasing Y
+	// after a failed transfer must never turn it into a ground drop.
+	StashItemButton.finished = true;
+	Player &player = *MyPlayer;
+	Item &item = player.HoldItem;
+	const bool placed = StashItemButton.toStash
+	    ? AutoPlaceItemInStash(item, true)
+	    : (item._itype == ItemType::Gold ? GoldAutoPlace(player, item) : AutoPlaceItemInInventory(player, item, true));
+	if (!placed) {
+		player.SaySpecific(HeroSpeech::IHaveNoRoom);
+		return;
+	}
+	item.clear();
+	NewCursor(CURSOR_HAND);
+	PlaySFX(SfxID::GrabItem);
+}
+#endif
+
 ControllerButton TranslateTo(GamepadLayout layout, ControllerButton button)
 {
 	if (layout != GamepadLayout::Nintendo)
@@ -693,6 +775,19 @@ bool HandleControllerButtonEvent(const SDL_Event &event, const ControllerButtonE
 			return true;
 		SuppressedButton = ControllerButton_NONE;
 	}
+
+#ifdef __3DS__
+	if (ctrlEvent.button == ControllerButton_BUTTON_Y
+	    && (StashItemButton.active || (IsStashOpen && !gmenu_is_active() && !IsWithdrawGoldOpen && !DropGoldFlag))) {
+		if (ctrlEvent.up)
+			FinishStashItemAction();
+		else
+			BeginStashItemAction();
+		return true;
+	}
+	if (!ctrlEvent.up && ctrlEvent.button != ControllerButton_NONE)
+		StashItemButton.finished = true;
+#endif
 
 	if (ctrlEvent.up && !PadmapperActionNameTriggeredByButtonEvent(ctrlEvent).empty()) {
 		// Button press may have brought up a menu;

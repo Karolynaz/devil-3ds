@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string_view>
+#include <optional>
 
 #include <3ds.h>
 
@@ -17,3 +18,6 @@ void ctr_vkbdInput(std::string_view title, std::string_view inText, void (*textI
  * @brief Processes pending requests for user input
  */
 void ctr_vkbdFlush();
+
+/** Opens the native numeric keyboard; cancellation returns no value. */
+std::optional<int> ctr_vkbdNumberInput(std::string_view hint, int maximum);

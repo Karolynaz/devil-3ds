@@ -87,6 +87,12 @@ std::string padEntryTimerText;
 
 bool IsValidEntry(OptionEntryBase *pOptionEntry)
 {
+#ifdef __3DS__
+	for (OptionEntryBase *pGraphicsEntry : GetOptions().Graphics.GetEntries()) {
+		if (pOptionEntry == pGraphicsEntry)
+			return false;
+	}
+#endif
 	auto flags = pOptionEntry->GetFlags();
 	if (HasAnyOf(flags, OptionEntryFlags::NeedDiabloMpq) && !HaveIntro())
 		return false;
