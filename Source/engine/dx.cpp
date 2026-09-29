@@ -31,6 +31,9 @@
 #include "utils/log.hpp"
 #include "utils/sdl_wrap.h"
 #include "utils/static_vector.hpp"
+#ifdef __3DS__
+#include "platform/ctr/display.hpp"
+#endif
 
 #ifndef USE_SDL1
 #include "controls/touch/renderers.h"
@@ -338,8 +341,6 @@ void RenderPresent()
 	}
 #else
 #ifdef __3DS__
-	bool CTR_Is3DModeEnabled();
-	void CTR_PresentStereoRightEye(const SDL_Surface *surface, bool panelsOpen);
 	if (CTR_Is3DModeEnabled()) {
 		extern bool gbRunGame;
 		extern bool qtextflag;

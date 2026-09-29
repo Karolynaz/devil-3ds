@@ -5,6 +5,8 @@
 #include <cmath>
 #include <cstdint>
 
+namespace devilution {
+
 namespace {
 struct CTRPaletteEntry {
 	uint8_t r, g, b;
@@ -225,3 +227,5 @@ void CTR_PresentStereoRightEye(const SDL_Surface *surface, bool panelsOpen)
 	}
 	gfxFlushBuffers();
 }
+
+} // namespace devilution

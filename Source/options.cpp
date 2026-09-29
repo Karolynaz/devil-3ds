@@ -43,6 +43,9 @@
 #include "utils/language.h"
 #include "utils/log.hpp"
 #include "utils/logged_fstream.hpp"
+#ifdef __3DS__
+#include "platform/ctr/display.hpp"
+#endif
 #include "utils/paths.h"
 #include "utils/sdl_ptrs.h"
 #include "utils/str_cat.hpp"
@@ -851,7 +854,6 @@ std::vector<OptionEntryBase *> GraphicsOptions::GetEntries()
 }
 
 #ifdef __3DS__
-void CTR_Set3DMode(bool enable);
 namespace {
 void OptionStereo3DChanged()
 {

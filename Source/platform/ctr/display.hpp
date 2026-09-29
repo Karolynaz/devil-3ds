@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <SDL.h>
 
+namespace devilution {
+
 uint32_t Get3DSScalingFlag(bool fitToScreen, int width, int height);
 
 void CTR_UpdateBottomPalette(const SDL_Color *palette);
@@ -14,3 +16,5 @@ void CTR_Set3DMode(bool enable);
 bool CTR_Is3DModeEnabled();
 float CTR_Get3DSlider();
 void CTR_PresentStereoRightEye(const SDL_Surface *surface, bool panelsOpen);
+
+} // namespace devilution
