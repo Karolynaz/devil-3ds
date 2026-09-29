@@ -1520,6 +1520,7 @@ void DrawCtrInventoryItems(const Surface &out, bool split)
 		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
 		CtrTintCell(out, CtrInventorySlotRect(SLOTXY_INV_FIRST + index, split), tint);
 	}
+	for (int index = 0; index < InventoryGridCells; ++index) {
 		const int id = player.InvGrid[index];
 		if (id <= 0)
 			continue;
