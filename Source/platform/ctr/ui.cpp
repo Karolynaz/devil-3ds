@@ -14,6 +14,7 @@
 #include "platform/ctr/ui_geometry.hpp"
 #include "DiabloUI/ui_flags.hpp"
 #include "engine/render/text_render.hpp"
+#include "utils/language.h"
 #include "utils/sdl_geometry.h"
 
 namespace devilution {
@@ -173,8 +174,8 @@ void Draw3DSLoadingScreen(const Surface &out)
 	}
 
 	const Rectangle bottomTextRect { { 0, 240 }, { out.w(), 240 } };
-	DrawString(out, "Loading", bottomTextRect,
-	    { .flags = UiFlags::FontSize46 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
+	DrawString(out, _("Not Even Death Can Save You"), bottomTextRect,
+	    { .flags = UiFlags::FontSize24 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
 	      .spacing = 2 });
 }
 

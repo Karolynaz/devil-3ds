@@ -234,6 +234,17 @@ void FindItemOrObject()
 		ObjectUnderCursor = object;
 		cursPosition = targetPosition;
 	}
+
+	if (ObjectUnderCursor != nullptr && ObjectUnderCursor->canInteractWith()) {
+		if (pcursmonst != -1) {
+			const Monster &monst = Monsters[pcursmonst];
+			const int monstDist = MyPlayer->position.future.WalkingDistance(monst.position.tile);
+			const int monstRot = GetRotaryDistance(monst.position.tile);
+			if (ObjectUnderCursor->_oDoorFlag || monstDist > 1 || monstRot > 1) {
+				pcursmonst = -1;
+			}
+		}
+	}
 }
 
 void CheckTownersNearby()
@@ -541,6 +552,23 @@ void Interact()
 		NetSendCmdLoc(MyPlayerId, true, myPlayer.UsesRangedWeapon() ? CMD_RATTACKXY : CMD_SATTACKXY, position);
 		LastPlayerAction = PlayerActionType::Attack;
 		return;
+	}
+
+	if (ObjectUnderCursor != nullptr && ObjectUnderCursor->canInteractWith()) {
+		bool prioritizeMonster = false;
+		if (pcursmonst != -1) {
+			const Monster &monst = Monsters[pcursmonst];
+			const int monstDist = myPlayer.position.future.WalkingDistance(monst.position.tile);
+			const int monstRot = GetRotaryDistance(monst.position.tile);
+			if (!ObjectUnderCursor->_oDoorFlag && monstDist <= 1 && monstRot <= 1) {
+				prioritizeMonster = true;
+			}
+		}
+		if (!prioritizeMonster) {
+			NetSendCmdLoc(MyPlayerId, true, CMD_OPOBJXY, cursPosition);
+			LastPlayerAction = PlayerActionType::OperateObject;
+			return;
+		}
 	}
 
 	if (pcursmonst != -1) {

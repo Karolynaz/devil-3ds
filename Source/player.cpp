@@ -2696,6 +2696,12 @@ StartPlayerKill(Player &player, DeathReason deathReason)
 	const bool dropEar = dropGold && deathReason == DeathReason::Player;
 
 	player.Say(HeroSpeech::AuughUh);
+#ifdef __3DS__
+	if (&player == MyPlayer) {
+		sfxdelay = 35;
+		sfxdnum = SfxID::DiabloGreeting;
+	}
+#endif
 
 	// Are the current animations item dependent?
 	if (player._pgfxnum != 0) {

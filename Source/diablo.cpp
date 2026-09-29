@@ -530,6 +530,16 @@ void PressKey(SDL_Keycode vkey, uint16_t modState)
 	}
 
 	if (MyPlayerIsDead) {
+#ifdef __3DS__
+		if (vkey == SDLK_ESCAPE || vkey == SDLK_SPACE || vkey == SDLK_RETURN) {
+			if (!gbIsMultiplayer) {
+				gamemenu_exit_game(false);
+			} else {
+				NetSendCmd(true, CMD_RETOWN);
+			}
+			return;
+		}
+#else
 		if (vkey == SDLK_ESCAPE) {
 			if (!gbIsMultiplayer) {
 				if (gbValidSaveFile)
@@ -541,6 +551,7 @@ void PressKey(SDL_Keycode vkey, uint16_t modState)
 			}
 			return;
 		}
+#endif
 		if (sgnTimeoutCurs != CURSOR_NONE) {
 			return;
 		}

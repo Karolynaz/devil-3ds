@@ -2022,6 +2022,17 @@ void DrawCtrBottomHud(const Surface &out)
 		    CtrBottomManaBar.position.x + CtrBottomManaBar.size.width / 2,
 		    CtrBottomManaBar.position.y - 15);
 	}
+	if (MyPlayerIsDead) {
+		uint8_t *dst = hud.begin();
+		uint8_t *tbl = GetPauseTRN();
+		for (int h = hud.h(); h != 0; h--, dst += hud.pitch() - hud.w()) {
+			for (int w = hud.w(); w != 0; w--) {
+				if (leveltype != DTYPE_HELL || *dst >= 32)
+					*dst = tbl[*dst];
+				dst++;
+			}
+		}
+	}
 	out.ScaleBlitFrom(hud, { 0, 0, 320, 240 }, { 0, 240, gnScreenWidth, 240 });
 }
 #endif

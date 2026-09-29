@@ -478,10 +478,14 @@ void DrawCtrStashItems(const Surface &out)
 		const StashStruct::StashCell itemId = Stash.GetItemIdAtPosition(slot);
 		if (itemId == StashStruct::EmptyCell)
 			continue;
+		const Item &item = Stash.stashList[itemId];
+		const bool isHovered = (pcursstashitem == itemId);
+		const bool isUsable = item._iStatFlag && item._iIdentified;
+		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
 		const Rectangle cell = CtrStashSlotRect(slot);
 		DrawHalfTransparentRectTo(out, cell.position.x + 1, cell.position.y + 1,
 		    cell.size.width - 2, cell.size.height - 2,
-		    PAL16_RED + 6);
+		    tint);
 	}
 
 	for (const Point slot : StashGridRange) {

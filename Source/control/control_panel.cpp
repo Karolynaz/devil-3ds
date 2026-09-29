@@ -954,6 +954,16 @@ void RedBack(const Surface &out)
 
 void DrawDeathText(const Surface &out)
 {
+#ifdef __3DS__
+	const Rectangle line1Rect { { 0, (gnViewportHeight / 2) - 40 }, { gnScreenWidth, 32 } };
+	const Rectangle line2Rect { { 0, (gnViewportHeight / 2) + 8 }, { gnScreenWidth, 24 } };
+	DrawString(out, _("You have died"), line1Rect,
+	    { .flags = UiFlags::FontSize30 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
+	      .spacing = 2 });
+	DrawString(out, _("Press A to Return To Main Menu"), line2Rect,
+	    { .flags = UiFlags::FontSize24 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
+	      .spacing = 2 });
+#else
 	const TextRenderOptions largeTextOptions {
 		.flags = UiFlags::FontSize42 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
 		.spacing = 2
@@ -996,6 +1006,7 @@ void DrawDeathText(const Surface &out)
 		text = FormatRuntime(_("Press {} to restart in town."), buttonText);
 	}
 	DrawString(out, text, linePosition, smallTextOptions);
+#endif
 }
 
 void SetPanelObjectPosition(UiPanels panel, Rectangle &button)

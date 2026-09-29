@@ -505,6 +505,17 @@ void PressControllerButton(ControllerButton button)
 	if (button != ControllerButton_BUTTON_A)
 		Cancel3DSButtonAHold();
 
+	if (MyPlayerIsDead) {
+		if (button == ControllerButton_BUTTON_A || button == ControllerButton_BUTTON_B || button == ControllerButton_BUTTON_START) {
+			if (!gbIsMultiplayer) {
+				gamemenu_exit_game(false);
+			} else {
+				NetSendCmd(true, CMD_RETOWN);
+			}
+			return;
+		}
+	}
+
 	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag || IsStashOpen || SpellSelectFlag;
 	if (uiOpen) {
 		switch (button) {

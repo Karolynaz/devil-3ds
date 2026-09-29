@@ -1429,11 +1429,11 @@ Rectangle CtrItemArea(Point origin, Size size)
 	return { origin, { size.width * CtrItemSlotPitch - 1, size.height * CtrItemSlotPitch - 1 } };
 }
 
-void CtrTintCell(const Surface &out, Rectangle cell)
+void CtrTintCell(const Surface &out, Rectangle cell, uint8_t color)
 {
 	DrawHalfTransparentRectTo(out, cell.position.x + 1, cell.position.y + 1,
 	    cell.size.width - 2, cell.size.height - 2,
-	    PAL16_RED + 6);
+	    color);
 }
 
 } // namespace
@@ -1499,21 +1499,27 @@ void DrawCtrInventoryItems(const Surface &out, bool split)
 		if (item.isEmpty())
 			continue;
 		const Rectangle cell = CtrInventorySlotRect(slot, split);
-		CtrTintCell(out, cell);
+		const bool isHovered = (pcursinvitem == slot);
+		const bool isUsable = item._iStatFlag && item._iIdentified;
+		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
+		CtrTintCell(out, cell, tint);
 		const Size size = GetInventorySize(item);
 		const Size scaled { size.width * CtrItemSlotPitch - 1, size.height * CtrItemSlotPitch - 1 };
 		const Rectangle target { { cell.position.x + (cell.size.width - scaled.width) / 2,
 		    cell.position.y + (cell.size.height - scaled.height) / 2 }, scaled };
-		DrawCtrScaledItem(out, item, target, pcursinvitem == slot);
+		DrawCtrScaledItem(out, item, target, isHovered);
 	}
 	for (int index = 0; index < InventoryGridCells; ++index) {
 		const int id = player.InvGrid[index];
 		if (id == 0)
 			continue;
-		const Item &item = player.InvList[std::abs(id) - 1];
-		CtrTintCell(out, CtrInventorySlotRect(SLOTXY_INV_FIRST + index, split));
+		const int itemIndex = std::abs(id) - 1;
+		const Item &item = player.InvList[itemIndex];
+		const bool isHovered = (pcursinvitem == itemIndex + INVITEM_INV_FIRST);
+		const bool isUsable = item._iStatFlag && item._iIdentified;
+		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
+		CtrTintCell(out, CtrInventorySlotRect(SLOTXY_INV_FIRST + index, split), tint);
 	}
-	for (int index = 0; index < InventoryGridCells; ++index) {
 		const int id = player.InvGrid[index];
 		if (id <= 0)
 			continue;

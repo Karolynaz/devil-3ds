@@ -513,7 +513,11 @@ void StartSmithBuy()
 	ScrollPos = 0;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Items for Sale"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have these items for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollSmithBuy(ScrollPos);
 	AddItemListBackButton();
@@ -556,7 +560,11 @@ bool StartSmithPremiumBuy()
 	ScrollPos = 0;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Premium Items"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have these premium items for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	AddItemListBackButton();
 
@@ -635,8 +643,14 @@ void StartSmithSell()
 		HasScrollbar = false;
 
 		RenderGold = true;
+#ifdef __3DS__
+		AddSText(20, 1, _("Sell Item"), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+		AddSText(0, 11, _("You have nothing I want."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
 		AddSText(20, 1, _("You have nothing I want."), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -646,7 +660,11 @@ void StartSmithSell()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Sell Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Which item is for sale?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollSmithSell(ScrollPos);
 	AddItemListBackButton();
@@ -714,8 +732,14 @@ void StartSmithRepair()
 		HasScrollbar = false;
 
 		RenderGold = true;
+#ifdef __3DS__
+		AddSText(20, 1, _("Repair Item"), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+		AddSText(0, 11, _("You have nothing to repair."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
 		AddSText(20, 1, _("You have nothing to repair."), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -725,7 +749,11 @@ void StartSmithRepair()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Repair Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Repair which item?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 
 	ScrollSmithSell(ScrollPos);
@@ -784,7 +812,11 @@ void StartWitchBuy()
 	NumTextLines = 20;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Items for Sale"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have these items for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollWitchBuy(ScrollPos);
 	AddItemListBackButton();
@@ -860,9 +892,14 @@ void StartWitchSell()
 		HasScrollbar = false;
 
 		RenderGold = true;
-		AddSText(20, 1, _("You have nothing I want."), UiFlags::ColorWhitegold, false);
-
+#ifdef __3DS__
+		AddSText(20, 1, _("Sell Item"), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+		AddSText(0, 11, _("You have nothing I want."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
+		AddSText(20, 1, _("You have nothing I want."), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -872,7 +909,11 @@ void StartWitchSell()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Sell Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Which item is for sale?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollSmithSell(ScrollPos);
 	AddItemListBackButton();
@@ -934,8 +975,14 @@ void StartWitchRecharge()
 		HasScrollbar = false;
 
 		RenderGold = true;
+#ifdef __3DS__
+		AddSText(20, 1, _("Recharge Item"), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+		AddSText(0, 11, _("You have nothing to recharge."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
 		AddSText(20, 1, _("You have nothing to recharge."), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -945,7 +992,11 @@ void StartWitchRecharge()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Recharge Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Recharge which item?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollSmithSell(ScrollPos);
 	AddItemListBackButton();
@@ -1038,7 +1089,11 @@ void SStartBoyBuy()
 	HasScrollbar = false;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Item for Sale"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have this item for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 
 	BoyItem._iStatFlag = MyPlayer->CanUseItem(BoyItem);
@@ -1099,7 +1154,11 @@ void StartHealerBuy()
 	ScrollPos = 0;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Items for Sale"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have these items for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 
 	ScrollHealerBuy(ScrollPos);
@@ -1214,8 +1273,14 @@ void StartStorytellerIdentify()
 		HasScrollbar = false;
 
 		RenderGold = true;
+#ifdef __3DS__
+		AddSText(20, 1, _("Identify Item"), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+		AddSText(0, 11, _("You have nothing to identify."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
 		AddSText(20, 1, _("You have nothing to identify."), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -1225,7 +1290,11 @@ void StartStorytellerIdentify()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Identify Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Identify which item?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 
 	ScrollSmithSell(ScrollPos);
@@ -2560,7 +2629,11 @@ void DrawSText(const Surface &out)
 	}
 
 	if (RenderGold) {
+#ifdef __3DS__
+		PrintSString(out, 28, 1, FormatRuntime(_("Gold: {:s}"), FormatInteger(TotalPlayerGold())).c_str(), UiFlags::ColorWhitegold | UiFlags::AlignRight);
+#else
 		PrintSString(out, 28, 1, FormatRuntime(_("Your gold: {:s}"), FormatInteger(TotalPlayerGold())).c_str(), UiFlags::ColorWhitegold | UiFlags::AlignRight);
+#endif
 	}
 
 	if (HasScrollbar)

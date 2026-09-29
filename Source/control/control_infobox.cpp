@@ -431,9 +431,7 @@ void CheckPanelInfo()
 		pcursinvitem = CheckInvHLight();
 		if (pcursinvitem >= INVITEM_BELT_FIRST && pcursinvitem < INVITEM_BELT_FIRST + MaxBeltItems) {
 			const Item &item = MyPlayer->SpdList[pcursinvitem - INVITEM_BELT_FIRST];
-			const bool isPotion = IsAnyOf(item._iMiscId, IMISC_HEAL, IMISC_FULLHEAL, IMISC_MANA, IMISC_FULLMANA,
-			    IMISC_REJUV, IMISC_FULLREJUV, IMISC_ARENAPOT);
-			if (!item.isEmpty() && (isPotion || item.isScroll())) {
+			if (!item.isEmpty()) {
 				InfoString = item.getName();
 				InfoColor = item.getTextColor();
 			}

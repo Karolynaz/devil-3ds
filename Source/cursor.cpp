@@ -824,6 +824,13 @@ bool CheckPlayerState(const Point currentTile, const Player &myPlayer)
 
 bool CheckPanelsAndFlags(Rectangle mainPanel)
 {
+#ifdef __3DS__
+	if (MousePosition.y >= 240) {
+		CheckPanelInfo();
+		pcursinvitem = CheckInvHLight();
+		return true;
+	}
+#endif
 	if (mainPanel.contains(MousePosition)) {
 		CheckPanelInfo();
 		return true;

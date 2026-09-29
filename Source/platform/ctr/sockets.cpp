@@ -63,8 +63,6 @@ void n3ds_socInit()
 		return;
 	}
 
-	if (!initialized)
-		atexit([]() { n3ds_socExit(); });
 	initialized = true;
 }
 

@@ -29,6 +29,7 @@ void aptHookFunc(APT_HookType hookType, void *param)
 		break;
 	case APTHOOK_ONEXIT:
 		ctr_lcd_backlight_on();
+		aptUnhook(&cookie);
 		break;
 	default:
 		break;
@@ -81,6 +82,7 @@ void ctr_sys_init()
 		exit(0);
 
 	aptHook(&cookie, aptHookFunc, NULL);
+	atexit([]() { aptUnhook(&cookie); });
 
 	if (ctr_is_n3ds())
 		osSetSpeedupEnable(true);

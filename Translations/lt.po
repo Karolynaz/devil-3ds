@@ -10868,3 +10868,43 @@ msgstr "Įjungti stereoskopinį 3D režimą viršutiniame ekrane. Gylį reguliuo
 msgid "Stereoscopic 3D display options for Nintendo 3DS."
 msgstr "Stereoskopinio 3D vaizdo nustatymai Nintendo 3DS konsolei."
 
+
+#: Source/platform/ctr/ui.cpp
+msgid "Not Even Death Can Save You"
+msgstr "Net mirtis jūsų neišgelbės"
+
+#: Source/control/control_panel.cpp
+msgid "Press A to Return To Main Menu"
+msgstr "Spauskite A, kad grįžtumėte į pagrindinį meniu"
+
+#: Source/stores.cpp
+msgid "Items for Sale"
+msgstr "Parduodami daiktai"
+
+#: Source/stores.cpp
+msgid "Premium Items"
+msgstr "Ypatingi daiktai"
+
+#: Source/stores.cpp
+msgid "Item for Sale"
+msgstr "Parduodamas daiktas"
+
+#: Source/stores.cpp
+msgid "Sell Item"
+msgstr "Parduoti daiktą"
+
+#: Source/stores.cpp
+msgid "Repair Item"
+msgstr "Taisyti daiktą"
+
+#: Source/stores.cpp
+msgid "Recharge Item"
+msgstr "Įkrauti daiktą"
+
+#: Source/stores.cpp
+msgid "Identify Item"
+msgstr "Atpažinti daiktą"
+
+#: Source/stores.cpp
+msgid "Gold: {:s}"
+msgstr "Auksas: {:s}"
