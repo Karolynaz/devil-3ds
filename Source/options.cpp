@@ -810,6 +810,9 @@ GraphicsOptions::GraphicsOptions()
     , hardwareCursorMaxSize("Hardware Cursor Maximum Size", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | CtrGraphicsFlag | (HardwareCursorSupported() ? OptionEntryFlags::None : OptionEntryFlags::Invisible), N_("Hardware Cursor Maximum Size"), N_("Maximum width / height for the hardware cursor. Larger cursors fall back to software."), 128, { 0, 64, 128, 256, 512 })
 #endif
     , showFPS("Show FPS", OptionEntryFlags::None | CtrGraphicsFlag, N_("Show FPS"), N_("Displays the FPS in the upper left corner of the screen."), false)
+#ifdef __3DS__
+    , stereoscopic3d("Stereoscopic 3D", OptionEntryFlags::None, N_("3D Mode"), N_("Enable stereoscopic 3D mode on the top screen. Use the 3DS slider to adjust depth."), false)
+#endif
 {
 }
 std::vector<OptionEntryBase *> GraphicsOptions::GetEntries()
@@ -840,9 +843,23 @@ std::vector<OptionEntryBase *> GraphicsOptions::GetEntries()
 		&hardwareCursorForItems,
 		&hardwareCursorMaxSize,
 #endif
+#ifdef __3DS__
+		&stereoscopic3d,
+#endif
 	};
 	// clang-format on
 }
+
+#ifdef __3DS__
+void CTR_Set3DMode(bool enable);
+namespace {
+void OptionStereo3DChanged()
+{
+	CTR_Set3DMode(*GetOptions().Graphics.stereoscopic3d);
+}
+const auto OptionChangeHandlerStereo3D = (GetOptions().Graphics.stereoscopic3d.SetValueChangedCallback(OptionStereo3DChanged), true);
+} // namespace
+#endif
 
 GameplayOptions::GameplayOptions()
     : OptionCategoryBase("Game", N_("Gameplay"), N_("Gameplay Settings"))

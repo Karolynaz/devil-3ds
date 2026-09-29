@@ -494,6 +494,8 @@ void SetVideoModeToPrimary(bool fullscreen, int width, int height)
 	flags &= ~SDL_FULLSCREEN;
 	flags |= SDL_DUALSCR;
 	flags |= Get3DSScalingFlag(*GetOptions().Graphics.fitToScreen, width, height);
+	void CTR_Set3DMode(bool enable);
+	CTR_Set3DMode(*GetOptions().Graphics.stereoscopic3d);
 #endif
 	SetVideoMode(width, height, SDL1_VIDEO_MODE_BPP, flags);
 	if (OutputRequiresScaling())

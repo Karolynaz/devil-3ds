@@ -10855,3 +10855,16 @@ msgstr "3DS mygtukai ir žaidimo valdymas."
 #: Source/DiabloUI/settingsmenu.cpp
 msgid "Game mode, gameplay tweaks and modifications."
 msgstr "Žaidimo režimas, eigos patobulinimai ir modifikacijos."
+
+#: Source/options.cpp
+msgid "3D Mode"
+msgstr "3D režimas"
+
+#: Source/options.cpp
+msgid "Enable stereoscopic 3D mode on the top screen. Use the 3DS slider to adjust depth."
+msgstr "Įjungti stereoskopinį 3D režimą viršutiniame ekrane. Gylį reguliuokite 3DS slankikliu."
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Stereoscopic 3D display options for Nintendo 3DS."
+msgstr "Stereoskopinio 3D vaizdo nustatymai Nintendo 3DS konsolei."
+

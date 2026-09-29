@@ -9,3 +9,8 @@ void CTR_UpdateBottomPalette(const SDL_Color *palette);
 void CTR_BlitBottomScreen(const uint8_t *srcPixels, int srcPitch, int srcX, int srcY, int width, int height);
 void CTR_PresentBottomScreen();
 void CTR_ClearBottomScreen();
+
+void CTR_Set3DMode(bool enable);
+bool CTR_Is3DModeEnabled();
+float CTR_Get3DSlider();
+void CTR_PresentStereoRightEye(const SDL_Surface *surface, bool panelsOpen);

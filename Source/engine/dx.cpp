@@ -337,6 +337,18 @@ void RenderPresent()
 		LimitFrameRate();
 	}
 #else
+#ifdef __3DS__
+	bool CTR_Is3DModeEnabled();
+	void CTR_PresentStereoRightEye(const SDL_Surface *surface, bool panelsOpen);
+	if (CTR_Is3DModeEnabled()) {
+		extern bool gbRunGame;
+		extern bool qtextflag;
+		bool Is3DSInventoryPanelOpen();
+		bool IsPlayerInStore();
+		const bool panelsOpen = !gbRunGame || Is3DSInventoryPanelOpen() || IsPlayerInStore() || qtextflag;
+		CTR_PresentStereoRightEye(surface, panelsOpen);
+	}
+#endif
 	if (SDL_Flip(surface) <= -1) {
 		ErrSdl();
 	}

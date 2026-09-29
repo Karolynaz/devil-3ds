@@ -95,7 +95,7 @@ bool IsValidEntry(OptionEntryBase *pOptionEntry)
 {
 #ifdef __3DS__
 	for (OptionEntryBase *pGraphicsEntry : GetOptions().Graphics.GetEntries()) {
-		if (pOptionEntry == pGraphicsEntry)
+		if (pOptionEntry == pGraphicsEntry && pOptionEntry != &GetOptions().Graphics.stereoscopic3d)
 			return false;
 	}
 	if (pOptionEntry == &GetOptions().Gameplay.grabInput
@@ -255,6 +255,11 @@ void ItemFocused(size_t value)
 #ifdef __3DS__
 		if (pCategory == &GetOptions().Mods) {
 			auto paragraphs = WordWrapString(_("Game mode, gameplay tweaks and modifications."), rectDescription.size.width, GameFont12, 1, /*doubleWidth=*/true);
+			CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
+			return;
+		}
+		if (pCategory == &GetOptions().Graphics) {
+			auto paragraphs = WordWrapString(_("Stereoscopic 3D display options for Nintendo 3DS."), rectDescription.size.width, GameFont12, 1, /*doubleWidth=*/true);
 			CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
 			return;
 		}

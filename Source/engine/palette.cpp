@@ -165,6 +165,10 @@ void SystemPaletteUpdated(int first, int ncolor)
 	if (!SDLC_SetSurfaceAndPaletteColors(PalSurface, Palette.get(), system_palette.data() + first, first, ncolor)) {
 		ErrSdl();
 	}
+#ifdef __3DS__
+	void CTR_UpdateBottomPalette(const SDL_Color *palette);
+	CTR_UpdateBottomPalette(system_palette.data());
+#endif
 }
 
 void palette_init()
