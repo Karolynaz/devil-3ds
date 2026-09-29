@@ -1288,7 +1288,7 @@ uint32_t DrawString(const Surface &out, std::string_view text, const Rectangle &
 			}
 			SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
 			RenderClxSprite(spriteScratch, sprite, { 0, 0 });
-			clippedOut.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+			clippedOut.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
 			    MakeSdlRect(characterPosition.x, characterPosition.y + opts.lineHeight - BaseLineOffset[size], spriteW, sprite.height()));
 		} else
 #endif
@@ -1489,7 +1489,7 @@ void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFo
 			}
 			SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
 			RenderClxSprite(spriteScratch, sprite, { 0, 0 });
-			clippedOut.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+			clippedOut.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
 			    MakeSdlRect(characterPosition.x, characterPosition.y + opts.lineHeight - BaseLineOffset[size], spriteW, sprite.height()));
 		} else
 #endif

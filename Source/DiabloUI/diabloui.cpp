@@ -892,9 +892,9 @@ void DrawSelector(const SDL_Rect &rect)
 		}
 		SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
 		RenderClxSprite(spriteScratch, sprite, { 0, 0 });
-		out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+		out.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
 		    MakeSdlRect(rect.x, y, sprite.width() * 2, sprite.height()));
-		out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+		out.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
 		    MakeSdlRect(rect.x + rect.w - sprite.width() * 2, y, sprite.width() * 2, sprite.height()));
 		return;
 	}
@@ -1006,7 +1006,7 @@ void Render(const UiImageClx &uiImage)
 		}
 		SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
 		RenderClxSprite(spriteScratch, sprite, { 0, 0 });
-		out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()), uiImage.m_rect);
+		out.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()), uiImage.m_rect);
 		return;
 	}
 #endif
@@ -1348,7 +1348,7 @@ void DrawMouse()
 		}
 		SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
 		RenderClxSprite(spriteScratch, sprite, { 0, 0 });
-		out.ScaleBlitFrom(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+		out.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
 		    MakeSdlRect(MousePosition.x, MousePosition.y, sprite.width() * 2, sprite.height()));
 		return;
 	}

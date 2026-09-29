@@ -2016,8 +2016,8 @@ void DrawCtrBottomHud(const Surface &out)
 		    CtrBottomHealthBar.position.y - 15);
 	}
 	if (*GetOptions().Gameplay.showManaValues) {
-		const int currMana = (HasAnyOf(InspectPlayer->_pIFlags, ItemSpecialEffect::NoMana) || MyPlayer->hasNoMana()) ? 0 : std::max(0, MyPlayer->_pMana >> 6);
-		const int maxMana = HasAnyOf(InspectPlayer->_pIFlags, ItemSpecialEffect::NoMana) ? 0 : MyPlayer->_pMaxMana >> 6;
+		const int currMana = (HasAnyOf(MyPlayer->_pIFlags, ItemSpecialEffect::NoMana) || MyPlayer->hasNoMana()) ? 0 : std::max(0, MyPlayer->_pMana >> 6);
+		const int maxMana = HasAnyOf(MyPlayer->_pIFlags, ItemSpecialEffect::NoMana) ? 0 : MyPlayer->_pMaxMana >> 6;
 		drawBarValue(currMana, maxMana,
 		    CtrBottomManaBar.position.x + CtrBottomManaBar.size.width / 2,
 		    CtrBottomManaBar.position.y - 15);
