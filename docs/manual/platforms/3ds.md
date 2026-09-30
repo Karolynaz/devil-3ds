@@ -14,7 +14,8 @@ Copy `DIABDAT.MPQ` from a legally obtained Diablo installation to `/3ds/deviluti
 - The lower screen displays the belt, life, mana, experience, and information area.
 - Select opens the panels. When a panel is open, L and R switch between quests, character, inventory, and spells.
 - Start opens the game menu.
-- X casts the selected spell; Y opens spell selection. B cancels an open panel or prompt. D-pad Up toggles the automap during gameplay.
+- In inventory, Y drops an item. In the stash, tap Y to drop or hold Y to transfer an item between the two grids; L/R change stash pages.
+- X casts the selected spell; Y opens spell selection. B cancels an open panel or prompt. D-pad Up opens Character, Left opens Quests, Right opens Spell Book, and Down toggles the map.
 - Tap a belt item on the lower screen to use it. The stylus can also move the pointer and select items.
 
 For controls and settings that may change during development, follow the prompts shown in the game.
@@ -23,7 +24,7 @@ For controls and settings that may change during development, follow the prompts
 
 Lithuanian text can be selected in the game language settings. Voices and cinematics remain in their original language. The game uses the original 3DS data path `/3ds/devilutionx/`, including `diablo.ini`.
 
-Original 3DS and New 3DS hardware have different performance characteristics. The upper screen game view is rendered at 400 × 240, while the lower screen is 320 × 240. Build files have not been verified here on physical hardware; report any visual or control issues in [Issues](https://github.com/Karolynaz/devil-3ds/issues).
+Original 3DS and New 3DS hardware have different performance characteristics. The upper screen game view is rendered at 400 × 240, while the lower screen is 320 × 240. The current build runs in 2D; stereoscopic rendering has been removed. Performance improvements have not been benchmarked on physical hardware; report any visual or control issues in [Issues](https://github.com/Karolynaz/devil-3ds/issues).
 
 ## Acknowledgment
 
