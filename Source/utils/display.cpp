@@ -500,11 +500,6 @@ void SetVideoModeToPrimary(bool fullscreen, int width, int height)
 	flags |= Get3DSScalingFlag(*GetOptions().Graphics.fitToScreen, width, height);
 #endif
 	SetVideoMode(width, height, SDL1_VIDEO_MODE_BPP, flags);
-#ifdef __3DS__
-	// SDL video initialization may reset libctru's top-screen mode to 2D.
-	// Set it after creating the video mode so the right-eye framebuffer exists.
-	CTR_Set3DMode(*GetOptions().Graphics.stereoscopic3d);
-#endif
 	if (OutputRequiresScaling())
 		Log("Using software scaling");
 }

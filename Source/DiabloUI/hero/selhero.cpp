@@ -195,7 +195,9 @@ void SelheroListSelect(size_t value)
 			const PlayerData &playerData = GetPlayerDataForClass(heroClass);
 			vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_(playerData.className), static_cast<int>(heroClass)));
 		}
-		const int itemY = 280;
+		// Center the visible class list in the 240-pixel bottom screen.
+		const int visibleClasses = static_cast<int>(std::min<size_t>(vecSelHeroDlgItems.size(), 6));
+		const int itemY = 240 + (240 - visibleClasses * itemH) / 2;
 		vecSelDlgItems.push_back(std::make_unique<UiList>(vecSelHeroDlgItems, std::min<size_t>(vecSelHeroDlgItems.size(), 6), uiPosition.x + 150, itemY, 340, itemH, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 
 		const SDL_Rect rectScrollBar = { (Sint16)(uiPosition.x + 500), 280, 25, 144 };

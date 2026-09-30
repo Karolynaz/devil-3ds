@@ -2698,8 +2698,7 @@ StartPlayerKill(Player &player, DeathReason deathReason)
 	player.Say(HeroSpeech::AuughUh);
 #ifdef __3DS__
 	if (&player == MyPlayer) {
-		sfxdelay = 35;
-		sfxdnum = SfxID::DiabloGreeting;
+		PlayCtrDeathSound();
 	}
 #endif
 

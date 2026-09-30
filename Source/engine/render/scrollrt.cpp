@@ -1993,7 +1993,7 @@ void DrawCtrBottomHud(const Surface &out)
 	DrawInfoBox(hud);
 	auto drawBarValue = [&hud](int currValue, int maxValue, int centerX, int y) {
 		const std::string text = StrCat(currValue, "/", maxValue);
-		const UiFlags color = (currValue > 0 ? (currValue == maxValue ? UiFlags::ColorGold : UiFlags::ColorWhite) : UiFlags::ColorRed);
+		const UiFlags color = UiFlags::ColorGold;
 		const int textWidth = GetLineWidth(text, GameFont12, 0);
 		const int x = std::max(1, centerX - textWidth / 2);
 		DrawString(hud, text, { { x - 1, y }, { hud.w() - (x - 1), 0 } },

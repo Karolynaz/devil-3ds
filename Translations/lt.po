@@ -10908,3 +10908,9 @@ msgstr "Atpažinti daiktą"
 #: Source/stores.cpp
 msgid "Gold: {:s}"
 msgstr "Auksas: {:s}"
+
+
+#: Source/appfat.cpp
+#, c++-format
+msgid "Copy to this SD card folder:\n{:s}\n\nRequired files:\n{:s}"
+msgstr "Nukopijuokite į SD kortelės aplanką:\n{:s}\n\nReikalingi failai:\n{:s}"

@@ -585,8 +585,13 @@ void LoadHellfireArchives()
 	const bool hasVoice = LoadMPQ(paths, "hfvoice", 8500);
 #endif
 
-	if (!hasMonk || !hasMusic || !hasVoice)
+	if (!hasMonk || !hasMusic || !hasVoice) {
+#ifdef __3DS__
+		InsertCDDlg("hellfire.mpq\nhfmonk.mpq\nhfmusic.mpq\nhfvoice.mpq");
+#else
 		DisplayFatalErrorAndExit(_("Some Hellfire MPQs are missing"), _("Not all Hellfire MPQs were found.\nPlease copy all the hf*.mpq files."));
+#endif
+	}
 }
 
 void UnloadModArchives()

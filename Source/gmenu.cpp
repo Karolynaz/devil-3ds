@@ -146,13 +146,26 @@ void GmenuLeftRight(bool isRight)
 	sgpCurrItem->fnMenu(false);
 }
 
+#ifdef __3DS__
+GameFontTables GmenuGetFont(TMenuItem *pItem)
+{
+	// Reserve two 48-column spinners, their gaps, and an outer margin.
+	const int availableWidth = gnScreenWidth - 2 * 56 - 16;
+	for (const GameFontTables font : { GameFont30, GameFont24 }) {
+		if (GetLineWidth(_(pItem->pszStr), font, 2, nullptr, CtrTextScale::TopScreen) <= availableWidth)
+			return font;
+	}
+	return GameFont12;
+}
+#endif
+
 int GmenuGetLineWidth(TMenuItem *pItem)
 {
 	if (pItem->isSlider())
 		return SliderItemWidth;
 
 #ifdef __3DS__
-	return GetLineWidth(_(pItem->pszStr), GameFont30, 2);
+	return GetLineWidth(_(pItem->pszStr), GmenuGetFont(pItem), 2, nullptr, CtrTextScale::TopScreen);
 #else
 	return GetLineWidth(_(pItem->pszStr), GameFont46, 2);
 #endif
@@ -185,8 +198,11 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 	const int x = (gnScreenWidth - w) / 2;
 	const UiFlags style = pItem->enabled() ? UiFlags::ColorGold : UiFlags::ColorBlack;
 #ifdef __3DS__
+	const GameFontTables font = GmenuGetFont(pItem);
+	const UiFlags fontFlags = font == GameFont30 ? UiFlags::FontSize30
+	    : font == GameFont24 ? UiFlags::FontSize24 : UiFlags::FontSize12;
 	DrawString(out, _(pItem->pszStr), Point { x, y },
-	    { .flags = style | UiFlags::FontSize30, .spacing = 2 });
+	    { .flags = style | fontFlags, .spacing = 2 });
 	if (pItem == sgpCurrItem) {
 		if (PentSpin_cel) {
 			const ClxSprite sprite = (*PentSpin_cel)[PentSpn2Spin()];

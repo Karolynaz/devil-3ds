@@ -95,7 +95,7 @@ bool IsValidEntry(OptionEntryBase *pOptionEntry)
 {
 #ifdef __3DS__
 	for (OptionEntryBase *pGraphicsEntry : GetOptions().Graphics.GetEntries()) {
-		if (pOptionEntry == pGraphicsEntry && pOptionEntry != &GetOptions().Graphics.stereoscopic3d)
+		if (pOptionEntry == pGraphicsEntry)
 			return false;
 	}
 	if (pOptionEntry == &GetOptions().Gameplay.grabInput
@@ -258,11 +258,7 @@ void ItemFocused(size_t value)
 			CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
 			return;
 		}
-		if (pCategory == &GetOptions().Graphics) {
-			auto paragraphs = WordWrapString(_("Stereoscopic 3D display options for Nintendo 3DS."), rectDescription.size.width, GameFont12, 1, /*doubleWidth=*/true);
-			CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
-			return;
-		}
+
 #endif
 		UpdateDescription(*pCategory);
 	} break;
@@ -501,7 +497,7 @@ void UiSettingsMenu()
 			size_t catIndex = 0;
 			for (OptionCategoryBase *pCategory : GetOptions().GetCategories()) {
 #ifdef __3DS__
-				if (pCategory == &GetOptions().Keymapper || pCategory == &GetOptions().Padmapper) {
+				if (pCategory == &GetOptions().Keymapper || pCategory == &GetOptions().Padmapper || pCategory == &GetOptions().Graphics) {
 					catIndex++;
 					continue;
 				}

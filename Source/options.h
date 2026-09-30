@@ -563,10 +563,6 @@ struct GraphicsOptions : OptionCategoryBase {
 #endif
 	/** @brief Show FPS, even without the -f command line flag. */
 	OptionEntryBoolean showFPS;
-#ifdef __3DS__
-	/** @brief Enable stereoscopic 3D mode on the top screen. */
-	OptionEntryBoolean stereoscopic3d;
-#endif
 };
 
 struct GameplayOptions : OptionCategoryBase {

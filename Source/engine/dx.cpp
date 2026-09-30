@@ -346,11 +346,7 @@ void RenderPresent()
 	}
 #else
 #ifdef __3DS__
-	extern bool gbRunGame;
-	extern bool qtextflag;
-	const bool panelsOpen = !gbRunGame || PauseMode != 0 || gmenu_is_active()
-	    || MyPlayerIsDead || Is3DSInventoryPanelOpen() || IsPlayerInStore() || qtextflag || SpellSelectFlag;
-	if (CTR_PresentFrame(surface, panelsOpen)) {
+	if (CTR_PresentFrame(surface)) {
 		if (RenderDirectlyToOutputSurface)
 			PalSurface = GetOutputSurface();
 		LimitFrameRate();

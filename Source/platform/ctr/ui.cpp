@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
+#include <string>
 
 #include "engine/assets.hpp"
 #include "engine/palette.h"
@@ -148,13 +149,29 @@ void DrawCtrBarArtwork(const Surface &out, CtrBarArtwork bar, Point position, fl
 	const int fillPixels = static_cast<int>(std::lround(std::clamp(fill, 0.0f, 1.0f) * (vertical ? height : width)));
 	if (fillPixels == 0)
 		return;
+	// Two slow counter-moving bands shade the liquid interior. Palette ramps
+	// preserve red/blue hues; borders and the fill height remain unchanged.
+	const unsigned phase = SDL_GetTicks() / 90 + (bar == CtrBarArtwork::Mana ? 16 : 0);
 	for (int y = 0; y < (vertical ? fillPixels : height); ++y) {
+		const int sourceY = vertical ? y * height / fillPixels : y;
+		const uint8_t *srcRow = Bars[index]->at(0, sourceY);
 		for (int x = 0; x < (vertical ? width : fillPixels); ++x) {
 			// Scale the whole motif into the filled region so its jeweled cap
 			// follows the liquid edge as health/mana/experience changes.
 			const int sourceX = vertical ? x : x * width / fillPixels;
-			const int sourceY = vertical ? y * height / fillPixels : y;
-			const uint8_t color = (*Bars[index])[Point { sourceX, sourceY }];
+			uint8_t color = srcRow[sourceX];
+			if (vertical && x >= 3 && x < width - 3 && y >= 3 && y < fillPixels - 3) {
+				const unsigned wave = (x * 2 + y + phase) & 31;
+				const unsigned counterWave = (y * 2 - x + phase / 2) & 31;
+				const int shade = wave < 5 ? 1 : 0;
+				const int highlight = counterWave < 3 ? 1 : 0;
+				const int rampStart = bar == CtrBarArtwork::Health ? PAL8_RED : PAL8_BLUE;
+				const int longRampStart = bar == CtrBarArtwork::Health ? PAL16_RED : PAL16_BLUE;
+				if (color >= rampStart && color < rampStart + 8)
+					color = std::clamp<int>(color + shade - highlight, rampStart, rampStart + 7);
+				else if (color >= longRampStart && color < longRampStart + 16)
+					color = std::clamp<int>(color + shade - highlight, longRampStart, longRampStart + 15);
+			}
 			if (color != 0)
 				out.SetPixel({ position.x + x, position.y + (vertical ? height - fillPixels + y : y) }, color);
 		}
@@ -173,10 +190,15 @@ void Draw3DSLoadingScreen(const Surface &out)
 		out.BlitFrom(*LoadingBackground, { 0, 0, BackgroundWidth, BackgroundHeight }, { topX, 0 });
 	}
 
-	const Rectangle bottomTextRect { { 0, 240 }, { out.w(), 240 } };
-	DrawString(out, _("Not Even Death Can Save You"), bottomTextRect,
+	// Keep the existing translation, splitting at a word near its midpoint.
+	std::string loadingText { _("Not Even Death Can Save You") };
+	const auto lineBreak = loadingText.find(' ', loadingText.size() / 2);
+	if (lineBreak != std::string::npos)
+		loadingText[lineBreak] = '\n';
+	const Rectangle bottomTextRect { { 20, 240 }, { out.w() - 40, 240 } };
+	DrawString(out, loadingText, bottomTextRect,
 	    { .flags = UiFlags::FontSize24 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
-	      .spacing = 2 });
+	      .spacing = 2, .lineHeight = 30 });
 }
 
 } // namespace devilution

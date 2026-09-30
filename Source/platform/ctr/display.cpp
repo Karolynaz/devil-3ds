@@ -3,7 +3,6 @@
 #include <3ds.h>
 #include <citro3d.h>
 #include <algorithm>
-#include <cmath>
 #include <cstdint>
 #include <cstring>
 
@@ -13,6 +12,7 @@ namespace {
 struct CTRPaletteEntry {
 	uint8_t r, g, b;
 	uint16_t rgb565;
+	uint32_t rgba8;
 };
 
 CTRPaletteEntry bottomPalette[256];
@@ -46,6 +46,8 @@ void CTR_UpdateBottomPalette(const SDL_Color *palette)
 		const uint16_t g = c.g >> 2;
 		const uint16_t b = c.b >> 3;
 		bottomPalette[i].rgb565 = (r << 11) | (g << 5) | b;
+		bottomPalette[i].rgba8 = (static_cast<uint32_t>(c.r) << 24) | (static_cast<uint32_t>(c.g) << 16)
+		    | (static_cast<uint32_t>(c.b) << 8) | 0xFF;
 	}
 	paletteInitialized = true;
 }
@@ -124,45 +126,47 @@ void CTR_ClearBottomScreen()
 }
 
 namespace {
-bool stereo3dEnabled = false;
 bool nativePresenterSynchronized = false;
 bool nativeDualScreenMode = false;
 
-void WriteFramebufferPixel(uint8_t *framebuffer, GSPGPU_FramebufferFormat format, int x, int y, const CTRPaletteEntry &color)
+template <int Width, GSPGPU_FramebufferFormat Format>
+void BlitFramebuffer(uint8_t *framebuffer, const uint8_t *source, int pitch)
 {
-	// 3DS framebuffers are stored sideways: logical X selects the 240-pixel
-	// memory row and logical Y is reversed within it.
-	const size_t pixel = static_cast<size_t>(x) * 240 + (239 - y);
-	if (format == GSP_BGR8_OES) {
-		const size_t offset = pixel * 3;
-		framebuffer[offset + 0] = color.b;
-		framebuffer[offset + 1] = color.g;
-		framebuffer[offset + 2] = color.r;
-	} else if (format == GSP_RGB565_OES) {
-		reinterpret_cast<u16 *>(framebuffer)[pixel] = color.rgb565;
-	} else {
-		reinterpret_cast<u32 *>(framebuffer)[pixel] = (static_cast<uint32_t>(color.r) << 24)
-		    | (static_cast<uint32_t>(color.g) << 16) | (static_cast<uint32_t>(color.b) << 8) | 0xFF;
+	// A hardware framebuffer column is contiguous. Choose the format once,
+	// then write sequentially without per-pixel division or format branches.
+	constexpr int BytesPerPixel = Format == GSP_BGR8_OES ? 3 : Format == GSP_RGB565_OES ? 2 : 4;
+	for (int x = 0; x < Width; ++x) {
+		const uint8_t *src = source + x * 640 / Width + 239 * pitch;
+		uint8_t *dst = framebuffer + x * 240 * BytesPerPixel;
+		for (int y = 0; y < 240; ++y, dst += BytesPerPixel) {
+			const CTRPaletteEntry &color = bottomPalette[*src];
+			if constexpr (Format == GSP_BGR8_OES) {
+				dst[0] = color.b;
+				dst[1] = color.g;
+				dst[2] = color.r;
+			} else if constexpr (Format == GSP_RGB565_OES) {
+				*reinterpret_cast<uint16_t *>(dst) = color.rgb565;
+			} else {
+				*reinterpret_cast<uint32_t *>(dst) = color.rgba8;
+			}
+			if (y != 239)
+				src -= pitch;
+		}
+	}
+}
+
+template <int Width>
+void BlitFramebuffer(uint8_t *framebuffer, GSPGPU_FramebufferFormat format, const uint8_t *source, int pitch)
+{
+	switch (format) {
+	case GSP_BGR8_OES: BlitFramebuffer<Width, GSP_BGR8_OES>(framebuffer, source, pitch); break;
+	case GSP_RGB565_OES: BlitFramebuffer<Width, GSP_RGB565_OES>(framebuffer, source, pitch); break;
+	case GSP_RGBA8_OES: BlitFramebuffer<Width, GSP_RGBA8_OES>(framebuffer, source, pitch); break;
+	default: break;
 	}
 }
 
 } // namespace
-
-void CTR_Set3DMode(bool enable)
-{
-	stereo3dEnabled = enable;
-	gfxSet3D(nativeDualScreenMode && enable);
-}
-
-bool CTR_Is3DModeEnabled()
-{
-	return stereo3dEnabled;
-}
-
-float CTR_Get3DSlider()
-{
-	return osGet3DSliderState();
-}
 
 void CTR_ConfigureFramePresenter(bool dualScreen)
 {
@@ -177,7 +181,7 @@ void CTR_ConfigureFramePresenter(bool dualScreen)
 	}
 }
 
-bool CTR_PresentFrame(const SDL_Surface *surface, bool panelsOpen)
+bool CTR_PresentFrame(const SDL_Surface *surface)
 {
 	if (!gspHasGpuRight())
 		return true;
@@ -195,13 +199,12 @@ bool CTR_PresentFrame(const SDL_Surface *surface, bool panelsOpen)
 	}
 	if (!nativePresenterSynchronized)
 		return false;
-	gfxSet3D(stereo3dEnabled);
+	gfxSet3D(false);
 
 	u16 fbW = 0, fbH = 0;
 	u8 *fbLeft = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &fbW, &fbH);
-	u8 *fbRight = stereo3dEnabled ? gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, nullptr, nullptr) : nullptr;
 	u8 *fbBottom = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, nullptr, nullptr);
-	if (fbLeft == nullptr || fbBottom == nullptr || (stereo3dEnabled && fbRight == nullptr))
+	if (fbLeft == nullptr || fbBottom == nullptr)
 		return false;
 
 	const GSPGPU_FramebufferFormat topFormat = gfxGetScreenFormat(GFX_TOP);
@@ -211,35 +214,11 @@ bool CTR_PresentFrame(const SDL_Surface *surface, bool panelsOpen)
 		return false;
 	const uint8_t *srcPixels = static_cast<const uint8_t *>(surface->pixels);
 	const int srcPitch = surface->pitch;
-	const float slider = stereo3dEnabled ? osGet3DSliderState() : 0.0f;
-	const float maxSeparation = panelsOpen ? 0.0f : 5.0f * slider;
-	for (int y = 0; y < 240; ++y) {
-		const uint8_t *srcRow = srcPixels + y * srcPitch;
-		const int shift = static_cast<int>(std::lround((120.0f - y) / 120.0f * maxSeparation));
-		for (int x = 0; x < 400; ++x) {
-			const int srcX = (x * surface->w) / 400;
-			const CTRPaletteEntry &leftColor = bottomPalette[srcRow[srcX]];
-			WriteFramebufferPixel(fbLeft, topFormat, x, y, leftColor);
-			if (fbRight != nullptr) {
-				int rightShift = (y >= 180 || (y < 22 && x >= 80 && x <= 320)) ? 0 : shift;
-				if (panelsOpen)
-					rightShift = 0;
-				const int shiftedX = std::clamp(x - rightShift, 0, 399);
-				const CTRPaletteEntry &rightColor = bottomPalette[srcRow[(shiftedX * surface->w) / 400]];
-				WriteFramebufferPixel(fbRight, topFormat, x, y, rightColor);
-			}
-		}
-	}
-	for (int y = 0; y < 240; ++y) {
-		const uint8_t *srcRow = srcPixels + (240 + y) * srcPitch;
-		for (int x = 0; x < 320; ++x) {
-			const int srcX = (x * surface->w) / 320;
-			WriteFramebufferPixel(fbBottom, bottomFormat, x, y, bottomPalette[srcRow[srcX]]);
-		}
-	}
+	BlitFramebuffer<400>(fbLeft, topFormat, srcPixels, srcPitch);
+	BlitFramebuffer<320>(fbBottom, bottomFormat, srcPixels + 240 * srcPitch, srcPitch);
 	gfxFlushBuffers();
 	gspWaitForVBlank();
-	gfxScreenSwapBuffers(GFX_TOP, stereo3dEnabled);
+	gfxScreenSwapBuffers(GFX_TOP, false);
 	gfxScreenSwapBuffers(GFX_BOTTOM, false);
 	return true;
 }

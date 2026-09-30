@@ -1,5 +1,6 @@
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #ifdef USE_SDL3
@@ -58,6 +59,13 @@ void TitleFree()
 void UiTitleDialog()
 {
 	TitleLoad();
+#ifdef __3DS__
+	// UiArtText borrows its text; keep this buffer alive for the whole dialog.
+	std::string copyrightText { _("Copyright © 1996-2001 Blizzard Entertainment") };
+	const auto companyStart = copyrightText.find("Blizzard");
+	if (companyStart != std::string::npos && companyStart > 0 && copyrightText[companyStart - 1] == ' ')
+		copyrightText[companyStart - 1] = '\n';
+#endif
 	const Point uiPosition = GetUIRectangle().position;
 	if (ArtBackgroundWidescreen.has_value()) {
 		const SDL_Rect rect = MakeSdlRect(0, uiPosition.y, 0, 0);
@@ -71,8 +79,8 @@ void UiTitleDialog()
 		vecTitleScreen.push_back(std::make_unique<UiImageAnimatedClx>(
 		    *DiabloTitleLogo, MakeSdlRect(0, 20, 0, 0), UiFlags::AlignCenter));
 
-		const SDL_Rect rect = MakeSdlRect(uiPosition.x, 448, 640, 26);
-		vecTitleScreen.push_back(std::make_unique<UiArtText>(_("Copyright © 1996-2001 Blizzard Entertainment").data(), rect, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilver));
+		const SDL_Rect rect = MakeSdlRect(uiPosition.x + 20, 428, 600, 44);
+		vecTitleScreen.push_back(std::make_unique<UiArtText>(copyrightText.c_str(), rect, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilver, 1, 20));
 #else
 		vecTitleScreen.push_back(std::make_unique<UiImageAnimatedClx>(
 		    *DiabloTitleLogo, MakeSdlRect(0, uiPosition.y + 182, 0, 0), UiFlags::AlignCenter));

@@ -41,6 +41,9 @@ TSFX *sgpStreamSFX = nullptr;
 
 /** List of all sounds, except monsters and music */
 std::vector<TSFX> sgSFX;
+#ifdef __3DS__
+std::unique_ptr<TSnd> ctrDeathSound;
+#endif
 
 void StreamPlay(TSFX *pSFX, int lVolume, int lPan)
 {
@@ -205,6 +208,15 @@ void stream_stop()
 	}
 }
 
+#ifdef __3DS__
+void PlayCtrDeathSound()
+{
+	if (!gbSndInited || !gbSoundOn || ctrDeathSound == nullptr)
+		return;
+	snd_play_snd(ctrDeathSound.get(), 0, 0, *GetOptions().Audio.soundVolume);
+}
+#endif
+
 void PlaySFX(SfxID psfx)
 {
 	psfx = RndSFX(psfx);
@@ -236,6 +248,10 @@ void sound_stop()
 	if (!gbSndInited)
 		return;
 	ClearDuplicateSounds();
+#ifdef __3DS__
+	if (ctrDeathSound != nullptr)
+		ctrDeathSound->DSB.Stop();
+#endif
 	for (auto &sfx : sgSFX) {
 		if (sfx.pSnd != nullptr && sfx.pSnd->DSB.IsLoaded()) {
 			sfx.pSnd->DSB.Stop();
@@ -255,6 +271,9 @@ void sound_update()
 void effects_cleanup_sfx(bool fullUnload)
 {
 	sound_stop();
+#ifdef __3DS__
+	ctrDeathSound.reset();
+#endif
 
 	if (fullUnload) {
 		sgSFX.clear();
@@ -301,6 +320,10 @@ void sound_init()
 	}
 
 	PrivSoundInit(mask);
+#ifdef __3DS__
+	if (gbSndInited)
+		ctrDeathSound = sound_file_load("sfx\\ctr\\banner.wav");
+#endif
 }
 
 void ui_sound_init()

@@ -239,6 +239,7 @@ endif()
 
 if(NINTENDO_3DS)
   list(APPEND devilutionx_assets
+    sfx/ctr/banner.wav
     data/ctr_character_background.pal8
     data/ctr_quest_background.pal8
     data/ctr_spells_background.pal8

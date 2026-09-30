@@ -238,6 +238,11 @@ void LoadOptions()
 		}
 	}
 
+#ifdef __3DS__
+	// The custom bottom HUD always includes experience, including old INI files.
+	options.Gameplay.experienceBar.SetValue(true);
+#endif
+
 	ini->getUtf8Buf("Hellfire", "SItem", options.Hellfire.szItem, sizeof(options.Hellfire.szItem));
 	ini->getUtf8Buf("Network", "Bind Address", "0.0.0.0", options.Network.szBindAddress, sizeof(options.Network.szBindAddress));
 	ini->getUtf8Buf("Network", "Previous Game ID", options.Network.szPreviousZTGame, sizeof(options.Network.szPreviousZTGame));
@@ -813,9 +818,6 @@ GraphicsOptions::GraphicsOptions()
     , hardwareCursorMaxSize("Hardware Cursor Maximum Size", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | CtrGraphicsFlag | (HardwareCursorSupported() ? OptionEntryFlags::None : OptionEntryFlags::Invisible), N_("Hardware Cursor Maximum Size"), N_("Maximum width / height for the hardware cursor. Larger cursors fall back to software."), 128, { 0, 64, 128, 256, 512 })
 #endif
     , showFPS("Show FPS", OptionEntryFlags::None | CtrGraphicsFlag, N_("Show FPS"), N_("Displays the FPS in the upper left corner of the screen."), false)
-#ifdef __3DS__
-    , stereoscopic3d("Stereoscopic 3D", OptionEntryFlags::None, N_("3D Mode"), N_("Enable stereoscopic 3D mode on the top screen. Use the 3DS slider to adjust depth."), false)
-#endif
 {
 }
 std::vector<OptionEntryBase *> GraphicsOptions::GetEntries()
@@ -846,22 +848,9 @@ std::vector<OptionEntryBase *> GraphicsOptions::GetEntries()
 		&hardwareCursorForItems,
 		&hardwareCursorMaxSize,
 #endif
-#ifdef __3DS__
-		&stereoscopic3d,
-#endif
 	};
 	// clang-format on
 }
-
-#ifdef __3DS__
-namespace {
-void OptionStereo3DChanged()
-{
-	CTR_Set3DMode(*GetOptions().Graphics.stereoscopic3d);
-}
-const auto OptionChangeHandlerStereo3D = (GetOptions().Graphics.stereoscopic3d.SetValueChangedCallback(OptionStereo3DChanged), true);
-} // namespace
-#endif
 
 GameplayOptions::GameplayOptions()
     : OptionCategoryBase("Game", N_("Gameplay"), N_("Gameplay Settings"))
@@ -875,7 +864,7 @@ GameplayOptions::GameplayOptions()
     , multiplayerFullQuests("MultiplayerFullQuests", OptionEntryFlags::CantChangeInMultiPlayer, N_("Full quests in Multiplayer"), N_("Enables the full/uncut singleplayer version of quests."), false)
     , testBard("Test Bard", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Test Bard"), N_("Force the Bard character type to appear in the hero selection menu."), false)
     , testBarbarian("Test Barbarian", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Test Barbarian"), N_("Force the Barbarian character type to appear in the hero selection menu."), false)
-    , experienceBar("Experience Bar", OptionEntryFlags::None, N_("Experience Bar"), N_("Experience Bar is added to the UI at the bottom of the screen."), true)
+    , experienceBar("Experience Bar", CtrGraphicsFlag, N_("Experience Bar"), N_("Experience Bar is added to the UI at the bottom of the screen."), true)
     , showHealthValues("Show health values", OptionEntryFlags::None, N_("Show health values"), N_("Displays current / max health value on health globe."), false)
     , showManaValues("Show mana values", OptionEntryFlags::None, N_("Show mana values"), N_("Displays current / max mana value on mana globe."), false)
     , showMultiplayerPartyInfo("Show Multiplayer Party Information", OptionEntryFlags::CantChangeInMultiPlayer, N_("Show Party Information"), N_("Displays the health and mana of all connected multiplayer party members."), false)

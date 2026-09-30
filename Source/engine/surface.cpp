@@ -1,6 +1,9 @@
 #include "engine/surface.hpp"
 
 #include <cstdint>
+#ifdef __3DS__
+#include <array>
+#endif
 #include <cstring>
 
 namespace devilution {
@@ -64,12 +67,25 @@ static void ScaleBlit(const Surface &dst, const Surface &src, SDL_Rect srcRect, 
 	if (x0 >= x1 || y0 >= y1)
 		return;
 
+#ifdef __3DS__
+	std::array<int, 640> sourceColumns;
+	const bool cachedColumns = x1 - x0 <= static_cast<int>(sourceColumns.size());
+	if (cachedColumns) {
+		for (int x = x0; x < x1; ++x)
+			sourceColumns[x - x0] = srcRect.x + ((x - dstRect.x) * srcRect.w) / dstRect.w;
+	}
+#endif
+
 	for (int y = y0; y < y1; ++y) {
 		int sy = srcRect.y + ((y - dstRect.y) * srcRect.h) / dstRect.h;
 		const uint8_t *srcRow = src.at(0, sy);
 		uint8_t *dstRow = dst.at(0, y);
 		for (int x = x0; x < x1; ++x) {
-			int sx = srcRect.x + ((x - dstRect.x) * srcRect.w) / dstRect.w;
+#ifdef __3DS__
+			const int sx = cachedColumns ? sourceColumns[x - x0] : srcRect.x + ((x - dstRect.x) * srcRect.w) / dstRect.w;
+#else
+			const int sx = srcRect.x + ((x - dstRect.x) * srcRect.w) / dstRect.w;
+#endif
 			const uint8_t pixel = srcRow[sx];
 			if (!SkipColorIndexZero || pixel != 0)
 				dstRow[x] = pixel;
@@ -103,6 +119,15 @@ void Surface::ScaleBlitFromPreservingDownscale(const Surface &src, SDL_Rect srcR
 	// ceil((destinationIndex + 1) * sourceSize / destinationSize) - 1.
 	// Thus a later sample at floor(sourceIndex * destinationSize / sourceSize)
 	// maps back to that same source index.
+#ifdef __3DS__
+	std::array<int, 640> sourceColumns;
+	const bool cachedColumns = x1 - x0 <= static_cast<int>(sourceColumns.size());
+	if (cachedColumns) {
+		for (int x = x0; x < x1; ++x)
+			sourceColumns[x - x0] = srcRect.x + ((x - dstRect.x + 1) * srcRect.w + dstRect.w - 1) / dstRect.w - 1;
+	}
+#endif
+
 	for (int y = y0; y < y1; ++y) {
 		const int relativeY = y - dstRect.y;
 		const int sy = srcRect.y + ((relativeY + 1) * srcRect.h + dstRect.h - 1) / dstRect.h - 1;
@@ -110,7 +135,7 @@ void Surface::ScaleBlitFromPreservingDownscale(const Surface &src, SDL_Rect srcR
 		uint8_t *dstRow = &(*this)[{ 0, y }];
 		for (int x = x0; x < x1; ++x) {
 			const int relativeX = x - dstRect.x;
-			const int sx = srcRect.x + ((relativeX + 1) * srcRect.w + dstRect.w - 1) / dstRect.w - 1;
+			const int sx = cachedColumns ? sourceColumns[x - x0] : srcRect.x + ((relativeX + 1) * srcRect.w + dstRect.w - 1) / dstRect.w - 1;
 			dstRow[x] = srcRow[sx];
 		}
 	}
