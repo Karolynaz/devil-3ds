@@ -3,6 +3,7 @@
  *
  * Implementation of scrolling dialog text.
  */
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -38,6 +39,7 @@ OptionalOwnedClxSpriteList pTextBoxCels;
 
 /** Pixels for a line of text and the empty space under it. */
 const int LineHeight = 38;
+constexpr int TextWidth = 543;
 
 std::vector<std::string> TextLines;
 
@@ -45,7 +47,12 @@ void LoadText(std::string_view text)
 {
 	TextLines.clear();
 
-	const std::string paragraphs = WordWrapString(text, 543, GameFont30);
+#ifdef __3DS__
+	// Match DrawString's top-screen glyph widths when splitting scrolling lines.
+	const std::string paragraphs = WordWrapString(text, TextWidth, GameFont30, 1, CtrTextScale::TopScreen);
+#else
+	const std::string paragraphs = WordWrapString(text, TextWidth, GameFont30);
+#endif
 
 	size_t previous = 0;
 	while (true) {
@@ -78,7 +85,8 @@ uint32_t CalculateTextSpeed(SfxID nSFX)
 	textHeight += LineHeight * 5; // adjust so when speaker is done two line are left
 	assert(textHeight != 0);
 
-	return sfxFrames / textHeight;
+	// Long translations must never produce a zero scroll interval.
+	return std::max<uint32_t>(1, sfxFrames / textHeight);
 }
 
 int CalculateTextPosition()
@@ -121,7 +129,7 @@ void DrawQTextContent(const Surface &out)
 			continue;
 		}
 
-		DrawString(out, line, { { sx, sy + (i * LineHeight) }, { 543, LineHeight } },
+		DrawString(out, line, { { sx, sy + (i * LineHeight) }, { TextWidth, LineHeight } },
 		    { .flags = UiFlags::FontSize30 | UiFlags::ColorGold });
 	}
 }
