@@ -37,13 +37,6 @@
 #include "utils/sdl_compat.h"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
-#ifdef __3DS__
-namespace devilution {
-bool IsPlayerInStore();
-extern bool qtextflag;
-} // namespace devilution
-#endif
-
 namespace devilution {
 
 OptionalOwnedClxSpriteList pSPentSpn2Cels;
@@ -297,6 +290,20 @@ inline int ScaleSpacing(int sp, CtrTextScale scale)
 		return sp;
 	}
 }
+
+inline int ScaleBoundary(int x, CtrTextScale scale)
+{
+	switch (scale) {
+	case CtrTextScale::TopScreen: {
+		const int scaled = x * 8;
+		return scaled >= 0 ? scaled / 5 : (scaled - 4) / 5;
+	}
+	case CtrTextScale::BottomScreen:
+		return x * 2;
+	default:
+		return x;
+	}
+}
 #endif
 
 void DrawFont(const Surface &out, Point position, ClxSprite glyph, text_color color, bool outline,
@@ -312,11 +319,52 @@ void DrawFont(const Surface &out, Point position, ClxSprite glyph, text_color co
 		const int w = glyph.width();
 		const int h = glyph.height();
 		if (w > 0 && h > 0) {
+			// Align the glyph to the physical sampling grid, including subregion
+			// offsets. Relative 8:5 expansion can otherwise lose narrow strokes.
+			const int globalX = out.region.x + position.x;
+			const int nativeNumerator = globalX * 5;
+			const int nativeOrigin = nativeNumerator >= 0 ? (nativeNumerator + 7) / 8 : nativeNumerator / 8;
+			const auto boundary = [&](int x) {
+				return scale == CtrTextScale::TopScreen
+				    ? ScaleBoundary(nativeOrigin + x, scale) - out.region.x
+				    : position.x + ScaleBoundary(x, scale);
+			};
+			if (outline) {
+				static OwnedSurface outlineSurface(66, 66);
+				if (outlineSurface.w() < w + 2 || outlineSurface.h() < h + 2) {
+					outlineSurface = OwnedSurface(std::max(66, w + 2), std::max(66, h + 2));
+				}
+				// Index 1 is a sentinel. The outline renderer writes index 0, which
+				// is opaque black for the outline but transparent for the glyph.
+				SDL_Rect outlineRect { 0, 0, w + 2, h + 2 };
+				SDL_FillSurfaceRect(outlineSurface.surface, &outlineRect, 1);
+				ClxDrawOutlineSkipColorZero(outlineSurface, 0, { 1, h }, glyph);
+				const int outW = out.w();
+				const int outH = out.h();
+				for (int y = 0; y < h + 2; ++y) {
+					const uint8_t *srcRow = outlineSurface.at(0, y);
+					const int dstY = position.y + y - 1;
+					if (dstY < 0 || dstY >= outH)
+						continue;
+					for (int x = 0; x < w + 2; ++x) {
+						if (srcRow[x] != 0)
+							continue;
+						const int outlineX = x - 1;
+						const int dstX0 = boundary(outlineX);
+						const int dstX1 = boundary(outlineX + 1);
+						for (int dstX = dstX0; dstX < dstX1; ++dstX) {
+							if (dstX >= 0 && dstX < outW)
+								out[{ dstX, dstY }] = 0;
+						}
+					}
+				}
+			}
 			static OwnedSurface glyphSurface(64, 64);
 			if (glyphSurface.w() < w || glyphSurface.h() < h) {
 				glyphSurface = OwnedSurface(std::max(64, w), std::max(64, h));
 			}
-			SDL_FillSurfaceRect(glyphSurface.surface, nullptr, 0);
+			SDL_Rect glyphRect { 0, 0, w, h };
+			SDL_FillSurfaceRect(glyphSurface.surface, &glyphRect, 0);
 
 			if (!gbRunGame && color == ColorWhite) {
 				static constexpr auto MenuWhiteTranslation = [] {
@@ -350,8 +398,8 @@ void DrawFont(const Surface &out, Point position, ClxSprite glyph, text_color co
 							if (dstX0 >= 0 && dstX0 < outW) dstRow[dstX0] = c;
 							if (dstX1 >= 0 && dstX1 < outW) dstRow[dstX1] = c;
 						} else {
-							const int dstX0 = position.x + (x * 8) / 5;
-							const int dstX1 = position.x + ((x + 1) * 8) / 5;
+							const int dstX0 = boundary(x);
+							const int dstX1 = boundary(x + 1);
 							for (int dx = dstX0; dx < dstX1; ++dx) {
 								if (dx >= 0 && dx < outW) dstRow[dx] = c;
 							}
@@ -1218,7 +1266,7 @@ uint32_t DrawString(const Surface &out, std::string_view text, const Rectangle &
 	if (out.surface != nullptr && out.surface->w >= 640) {
 		if ((out.region.y + rect.position.y) >= 240) {
 			scale = CtrTextScale::BottomScreen;
-		} else if (!gbRunGame || IsPlayerInStore() || qtextflag) {
+		} else {
 			scale = CtrTextScale::TopScreen;
 		}
 	}
@@ -1307,7 +1355,7 @@ void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFo
 	if (out.surface != nullptr && out.surface->w >= 640) {
 		if ((out.region.y + rect.position.y) >= 240) {
 			scale = CtrTextScale::BottomScreen;
-		} else if (!gbRunGame || IsPlayerInStore() || qtextflag) {
+		} else {
 			scale = CtrTextScale::TopScreen;
 		}
 	}

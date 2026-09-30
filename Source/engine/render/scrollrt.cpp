@@ -1474,7 +1474,7 @@ void DrawView(const Surface &out, Point startPosition)
 				DrawString(*TopPanelBuffer, _("Y: Drop"), { { 16, 207 }, { 150, 18 } },
 				    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
 			}
-			out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
+			out.ScaleBlitFromPreservingDownscale(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
 			// The original gold entry widgets still use the legacy panel canvas.
 			if (DropGoldFlag || IsWithdrawGoldOpen) {
 				FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
@@ -1492,7 +1492,7 @@ void DrawView(const Surface &out, Point startPosition)
 		}
 	} else if (SpellbookFlag) {
 		DrawSpellBook(*TopPanelBuffer);
-		out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
+		out.ScaleBlitFromPreservingDownscale(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
 	}
 #else
 	if (invflag) {
@@ -1518,7 +1518,7 @@ void DrawView(const Surface &out, Point startPosition)
 			DrawChr(*TopPanelBuffer);
 		else
 			DrawQuestLog(*TopPanelBuffer);
-		out.ScaleBlitFrom(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
+		out.ScaleBlitFromPreservingDownscale(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
 	} else if (IsVisualStoreOpen || (IsStashOpen && !invflag)) {
 		FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
 		if (IsStashOpen) {

@@ -82,6 +82,41 @@ void Surface::ScaleBlitFrom(const Surface &src, SDL_Rect srcRect, SDL_Rect dstRe
 	ScaleBlit</*SkipColorIndexZero=*/false>(*this, src, srcRect, dstRect);
 }
 
+#ifdef __3DS__
+void Surface::ScaleBlitFromPreservingDownscale(const Surface &src, SDL_Rect srcRect, SDL_Rect dstRect) const
+{
+	if (srcRect.w <= 0 || srcRect.h <= 0 || dstRect.w <= 0 || dstRect.h <= 0)
+		return;
+	if (dstRect.w < srcRect.w || dstRect.h < srcRect.h) {
+		ScaleBlit</*SkipColorIndexZero=*/false>(*this, src, srcRect, dstRect);
+		return;
+	}
+
+	const int x0 = std::max<int>(dstRect.x, 0);
+	const int y0 = std::max<int>(dstRect.y, 0);
+	const int x1 = std::min<int>(dstRect.x + dstRect.w, region.w);
+	const int y1 = std::min<int>(dstRect.y + dstRect.h, region.h);
+	if (x0 >= x1 || y0 >= y1)
+		return;
+
+	// Use the inverse of floor-based downsampling: source index is
+	// ceil((destinationIndex + 1) * sourceSize / destinationSize) - 1.
+	// Thus a later sample at floor(sourceIndex * destinationSize / sourceSize)
+	// maps back to that same source index.
+	for (int y = y0; y < y1; ++y) {
+		const int relativeY = y - dstRect.y;
+		const int sy = srcRect.y + ((relativeY + 1) * srcRect.h + dstRect.h - 1) / dstRect.h - 1;
+		const uint8_t *srcRow = src.at(0, sy);
+		uint8_t *dstRow = &(*this)[{ 0, y }];
+		for (int x = x0; x < x1; ++x) {
+			const int relativeX = x - dstRect.x;
+			const int sx = srcRect.x + ((relativeX + 1) * srcRect.w + dstRect.w - 1) / dstRect.w - 1;
+			dstRow[x] = srcRow[sx];
+		}
+	}
+}
+#endif
+
 void Surface::ScaleBlitFromSkipColorIndexZero(const Surface &src, SDL_Rect srcRect, SDL_Rect dstRect) const
 {
 	ScaleBlit</*SkipColorIndexZero=*/true>(*this, src, srcRect, dstRect);

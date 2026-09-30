@@ -33,6 +33,11 @@
 #include "utils/static_vector.hpp"
 #ifdef __3DS__
 #include "platform/ctr/display.hpp"
+#include "diablo.h"
+#include "gmenu.h"
+#include "player.h"
+#include "stores.h"
+#include "control/control.hpp"
 #endif
 
 #ifndef USE_SDL1
@@ -341,13 +346,15 @@ void RenderPresent()
 	}
 #else
 #ifdef __3DS__
-	if (CTR_Is3DModeEnabled()) {
-		extern bool gbRunGame;
-		extern bool qtextflag;
-		bool Is3DSInventoryPanelOpen();
-		bool IsPlayerInStore();
-		const bool panelsOpen = !gbRunGame || Is3DSInventoryPanelOpen() || IsPlayerInStore() || qtextflag;
-		CTR_PresentStereoRightEye(surface, panelsOpen);
+	extern bool gbRunGame;
+	extern bool qtextflag;
+	const bool panelsOpen = !gbRunGame || PauseMode != 0 || gmenu_is_active()
+	    || MyPlayerIsDead || Is3DSInventoryPanelOpen() || IsPlayerInStore() || qtextflag || SpellSelectFlag;
+	if (CTR_PresentFrame(surface, panelsOpen)) {
+		if (RenderDirectlyToOutputSurface)
+			PalSurface = GetOutputSurface();
+		LimitFrameRate();
+		return;
 	}
 #endif
 	if (SDL_Flip(surface) <= -1) {

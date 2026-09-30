@@ -15,6 +15,7 @@ void CTR_ClearBottomScreen();
 void CTR_Set3DMode(bool enable);
 bool CTR_Is3DModeEnabled();
 float CTR_Get3DSlider();
-void CTR_PresentStereoRightEye(const SDL_Surface *surface, bool panelsOpen);
+void CTR_ConfigureFramePresenter(bool dualScreen);
+bool CTR_PresentFrame(const SDL_Surface *surface, bool panelsOpen);
 
 } // namespace devilution

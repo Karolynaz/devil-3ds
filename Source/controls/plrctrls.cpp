@@ -192,6 +192,11 @@ void FindItemOrObject()
 		}
 
 		const int newRotations = GetRotaryDistance(targetPosition);
+#ifdef __3DS__
+		// Controller focus follows the facing direction, not nearby objects behind us.
+		if (newRotations > 1)
+			continue;
+#endif
 		if (rotations < newRotations) {
 			continue;
 		}
@@ -219,6 +224,11 @@ void FindItemOrObject()
 		}
 
 		const int newRotations = GetRotaryDistance(targetPosition);
+#ifdef __3DS__
+		// Controller focus follows the facing direction, not nearby objects behind us.
+		if (newRotations > 1)
+			continue;
+#endif
 		if (rotations < newRotations) {
 			continue;
 		}
@@ -272,6 +282,12 @@ bool HasRangedSpell()
 
 bool CanTargetMonster(const Monster &monster)
 {
+#ifdef __3DS__
+	// Only acquire enemies in the forward 90-degree cone. Held attacks retain
+	// their existing target through InvalidateTargets instead of reacquiring.
+	if (GetRotaryDistance(monster.position.future) > 1)
+		return false;
+#endif
 	if ((monster.flags & MFLAG_HIDDEN) != 0)
 		return false;
 	if (monster.isPlayerMinion())
@@ -2439,6 +2455,14 @@ void plrctrls_after_check_curs_move()
 		InfoString = StringOrView {};
 		FindActor();
 		FindItemOrObject();
+#ifdef __3DS__
+		// One highlighted target drives both the next action and its description.
+		// A nearby item/object must not coexist with a hidden combat target.
+		if (pcursitem != -1 || ObjectUnderCursor != nullptr) {
+			pcursmonst = -1;
+			PlayerUnderCursor = nullptr;
+		}
+#endif
 		FindTrigger();
 	}
 }

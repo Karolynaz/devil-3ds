@@ -1500,7 +1500,7 @@ void DrawCtrInventoryItems(const Surface &out, bool split)
 			continue;
 		const Rectangle cell = CtrInventorySlotRect(slot, split);
 		const bool isHovered = (pcursinvitem == slot);
-		const bool isUsable = item._iStatFlag && item._iIdentified;
+		const bool isUsable = item._iStatFlag && (item._iMagical == ITEM_QUALITY_NORMAL || item._iIdentified);
 		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
 		CtrTintCell(out, cell, tint);
 		const Size size = GetInventorySize(item);
@@ -1516,7 +1516,7 @@ void DrawCtrInventoryItems(const Surface &out, bool split)
 		const int itemIndex = std::abs(id) - 1;
 		const Item &item = player.InvList[itemIndex];
 		const bool isHovered = (pcursinvitem == itemIndex + INVITEM_INV_FIRST);
-		const bool isUsable = item._iStatFlag && item._iIdentified;
+		const bool isUsable = item._iStatFlag && (item._iMagical == ITEM_QUALITY_NORMAL || item._iIdentified);
 		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
 		CtrTintCell(out, CtrInventorySlotRect(SLOTXY_INV_FIRST + index, split), tint);
 	}

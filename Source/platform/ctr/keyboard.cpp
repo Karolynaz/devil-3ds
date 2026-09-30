@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <iterator>
 #include <cstring>
 #include <charconv>
 #include <string>
@@ -21,7 +22,7 @@ static int eventCount = 0;
 
 void ctr_vkbdInput(std::string_view hintText, std::string_view inText, void (*textInputFn)(std::string_view))
 {
-	if (eventCount >= sizeof(events))
+	if (eventCount >= static_cast<int>(std::size(events)))
 		return;
 
 	vkbdEvent &event = events[eventCount];

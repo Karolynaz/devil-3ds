@@ -480,7 +480,7 @@ void DrawCtrStashItems(const Surface &out)
 			continue;
 		const Item &item = Stash.stashList[itemId];
 		const bool isHovered = (pcursstashitem == itemId);
-		const bool isUsable = item._iStatFlag && item._iIdentified;
+		const bool isUsable = item._iStatFlag && (item._iMagical == ITEM_QUALITY_NORMAL || item._iIdentified);
 		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
 		const Rectangle cell = CtrStashSlotRect(slot);
 		DrawHalfTransparentRectTo(out, cell.position.x + 1, cell.position.y + 1,

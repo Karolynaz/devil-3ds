@@ -174,6 +174,14 @@ struct Surface {
 	 */
 	void ScaleBlitFrom(const Surface &src, SDL_Rect srcRect, SDL_Rect dstRect) const;
 
+#ifdef __3DS__
+	/**
+	 * @brief Scales a panel up with right-biased nearest-neighbor sampling so a later
+	 * floor-based reduction to the source size preserves every source pixel.
+	 */
+	void ScaleBlitFromPreservingDownscale(const Surface &src, SDL_Rect srcRect, SDL_Rect dstRect) const;
+#endif
+
 	/**
 	 * @brief Scales and copies `srcRect` portion of `src` buffer to this buffer at `dstRect`.
 	 * Source pixels with index 0 are not copied.

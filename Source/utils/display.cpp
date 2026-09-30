@@ -478,6 +478,10 @@ void SetVideoMode(int width, int height, int bpp, uint32_t flags)
 	if (surface == nullptr) {
 		ErrSdl();
 	}
+#ifdef __3DS__
+	CTR_ConfigureFramePresenter((flags & 0x00300000U) == 0x00300000U
+	    && surface->w == 640 && surface->h == 480 && surface->format->BitsPerPixel == 8);
+#endif
 	Log("Video surface is now {}x{} bpp={} flags=0x{:08X}",
 	    surface->w, surface->h, surface->format->BitsPerPixel, surface->flags);
 }
@@ -494,9 +498,13 @@ void SetVideoModeToPrimary(bool fullscreen, int width, int height)
 	flags &= ~SDL_FULLSCREEN;
 	flags |= SDL_DUALSCR;
 	flags |= Get3DSScalingFlag(*GetOptions().Graphics.fitToScreen, width, height);
-	CTR_Set3DMode(*GetOptions().Graphics.stereoscopic3d);
 #endif
 	SetVideoMode(width, height, SDL1_VIDEO_MODE_BPP, flags);
+#ifdef __3DS__
+	// SDL video initialization may reset libctru's top-screen mode to 2D.
+	// Set it after creating the video mode so the right-eye framebuffer exists.
+	CTR_Set3DMode(*GetOptions().Graphics.stereoscopic3d);
+#endif
 	if (OutputRequiresScaling())
 		Log("Using software scaling");
 }
