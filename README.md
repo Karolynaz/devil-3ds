@@ -1,29 +1,75 @@
 # Devil-3Ds
 
-**Diablo on Nintendo 3DS, designed for its two screens.**
+**Diablo, rebuilt around Nintendo 3DS's two screens.**
 
-Devil-3Ds is a work-in-progress 3DS port with a redesigned game interface, readable panels, touch controls, handheld shortcuts, and Lithuanian text. It gives the 3DS a more comfortable way to play Diablo. This project is **based on [DevilutionX](https://github.com/diasurgical/devilutionX)**; the upstream 3DS interface and controls were difficult to use comfortably on the console, so this fork adapts them for handheld play.
+Nintendo 3DS already had a Diablo port, but its desktop-style interface made it difficult to play comfortably on the handheld. Devil-3Ds makes that port fit the console. **Based on [DevilutionX](https://github.com/diasurgical/devilutionX)**, it brings the controls and interface into a layout designed for 3DS.
 
-## Install
+- **Redesigned lower-screen UI:** the belt, health, mana, experience and item information share a dedicated 320 × 240 display, with touch support and animated health/mana bars.
+- **Panels drawn for the upper screen:** inventory, stash, character, quest and spell screens have redesigned backgrounds and layouts for 400 × 240, with readable text and appropriately sized items.
+- **Reviewed and optimized code:** screen copying and scaling do less repeated work; controls, spell selection and interaction targeting have been revised. This version runs in 2D.
 
-Get the latest 3DS `.cia` or `.3dsx` from this repository's [Releases](https://github.com/Karolynaz/devil-3ds/releases) or [3DS build artifacts](https://github.com/Karolynaz/devil-3ds/actions/workflows/3ds.yml). The `.cia` installs to the 3DS HOME Menu; the `.3dsx` runs from the Homebrew Launcher. Development artifacts require a GitHub sign-in.
+Maintained by **Karolynaz**. [Download the latest build](https://github.com/Karolynaz/devil-3ds/releases/latest) · [Report an issue](https://github.com/Karolynaz/devil-3ds/issues)
 
-The game data is **not included**. Copy `DIABDAT.MPQ` from your own Diablo installation to `/3ds/devilutionx/` on the SD card. The original data folder name is retained for compatibility with existing installations and saves. For Hellfire, also copy `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq`, and `hfvoice.mpq`. See the [3DS guide](docs/manual/platforms/3ds.md) for more details.
+## Installation
 
-## 3DS interface
+You need a Nintendo 3DS set up to run homebrew and your own Diablo game data. The original game data is **not included**.
 
-The upper screen shows the game or a full-size character, quest, inventory, or spell panel. The lower screen shows the belt, life, mana, experience, and contextual information. Select opens panels; L and R cycle between them while a panel is open. Start opens the game menu. Tapping a belt item uses it.
+1. Download `devil-3ds.cia` or `devil-3ds.3dsx` from [Releases](https://github.com/Karolynaz/devil-3ds/releases/latest).
+2. Choose how to launch:
+   - **HOME Menu:** copy the `.cia` to the SD card and install it with FBI.
+   - **Homebrew Launcher:** put the `.3dsx` in `/3ds/devil-3ds/` on the SD card.
+3. Create `/3ds/devilutionx/` on the SD card and copy `DIABDAT.MPQ` from your Diablo installation into it. For the shareware edition, use `spawn.mpq` instead.
+4. For **Hellfire**, also copy `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq` and `hfvoice.mpq` into the same data folder.
+5. Launch **Devil-3Ds**. When updating, install the new CIA or replace the 3DSX; keep the data folder and saves.
 
-The 3DS can display a 400 × 240 game image on its upper screen. The interface uses both displays. Availability and performance of features may vary between original and New 3DS models.
+The `/3ds/devilutionx/` data folder name is retained for compatibility with existing installations and saves. Both download formats include the custom interface assets and Lithuanian translation. Performance varies between original and New 3DS hardware.
 
-## Development
+## Controls
 
-The [3DS workflow](.github/workflows/3ds.yml) builds installable files. The source remains compatible with the upstream asset and data format. The new 3DS emblem and its conversion script are in [`art/3ds`](art/3ds) and [`tools/build_3ds_brand_art.py`](tools/build_3ds_brand_art.py).
+### Playing
 
-Issues and feedback: [github.com/Karolynaz/devil-3ds/issues](https://github.com/Karolynaz/devil-3ds/issues).
+| Action | Button |
+| --- | --- |
+| Move | Circle Pad |
+| Attack / interact / talk / pick up a ground item | A |
+| Cast the selected spell or use a skill | X |
+| Open spell / skill selection | Y |
+| Cancel / go back | B |
+| Use a potion from belt slots 1–4 | L |
+| Use a potion from belt slots 5–8 | R |
+| Open inventory panels | SELECT |
+| Pause and open the game menu | START |
+| Open character panel | D-pad Up |
+| Open quest log | D-pad Left |
+| Open spell book | D-pad Right |
+| Toggle map | D-pad Down |
+| Use an item in the belt | Tap its lower-screen slot |
 
-## Credits and legal
+### Inventory, stash and menus
 
-Devil-3Ds is builds on the work of the [DevilutionX contributors](https://github.com/diasurgical/devilutionX/graphs/contributors), the [original Devilution project](https://github.com/diasurgical/devilution#credits), and the original Diablo creators. 
+| Action | Button |
+| --- | --- |
+| Move the pointer / navigate choices | Circle Pad |
+| Confirm / pick up or place an item | A |
+| Use an inventory item | Hold A |
+| Close a panel / cancel | B |
+| Switch panels | L / R |
+| Drop an inventory item | Y |
+| Drop an item while the stash is open | Tap Y |
+| Transfer an item between inventory and stash | Hold Y |
+| Change stash page | L / R while the stash is open |
+| Open the stash gold withdrawal prompt | SELECT while the stash is open |
 
-The source is provided under the [Sustainable Use License](LICENSE.md) and is for non-commercial use. Diablo and Blizzard Entertainment are trademarks of Blizzard Entertainment. This fan project is not affiliated with or endorsed by Blizzard Entertainment, GOG.com, or the DevilutionX maintainers. Obtain the original game data legally.
+Panels cycle in this order: **Quests → Character → Inventory → Spell Book**, wrapping at either end. Use the Circle Pad to navigate spell selection and A to confirm. The lower screen displays information about the highlighted enemy, NPC or item. The title-screen settings also include a **Controls** reference.
+
+## Credits
+
+This project builds on the work of the [DevilutionX contributors](https://github.com/diasurgical/devilutionX/graphs/contributors), [Devilution](https://github.com/diasurgical/devilution#credits) and the original Diablo creators. See [LICENSE.md](LICENSE.md) for the Sustainable Use License; upstream credits and third-party notices remain in the repository.
+
+Diablo and Blizzard Entertainment are trademarks of Blizzard Entertainment. Devil-3Ds is an independent fan project, not affiliated with or endorsed by Blizzard Entertainment, GOG.com or the DevilutionX maintainers.
+
+## Lietuvių kalba
+
+Žaidimo tekstai išversti į lietuvių kalbą: meniu, sąsaja, daiktų ir burtų pavadinimai, užduotys bei istorijos dialogai. Vertimas įtrauktas į abu diegimo failus – papildomai nieko atsisiųsti nereikia.
+
+Kalbą pasirinkite: **Settings → Language → Lietuvių**. Balsai ir filmukai lieka angliški. Pastebėję vertimo klaidą ar likusį anglišką tekstą, praneškite [Issues skiltyje](https://github.com/Karolynaz/devil-3ds/issues).
