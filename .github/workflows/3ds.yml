@@ -13,9 +13,10 @@ on:  # yamllint disable-line rule:truthy
     paths-ignore:
       - '*.md'
       - 'docs/**'
-  release:
-    types: [published]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -69,19 +70,3 @@ jobs:
         with:
           name: devil-3ds.cia
           path: ./build/devil-3ds.cia
-
-      - name: Update Release 3dsx
-        if: ${{ github.event_name == 'release' && !env.ACT }}
-        uses: svenstaro/upload-release-action@v2
-        with:
-          asset_name: devil-3ds.3dsx
-          file: ./build/devil-3ds.3dsx
-          overwrite: true
-
-      - name: Update Release cia
-        if: ${{ github.event_name == 'release' && !env.ACT }}
-        uses: svenstaro/upload-release-action@v2
-        with:
-          asset_name: devil-3ds.cia
-          file: ./build/devil-3ds.cia
-          overwrite: true

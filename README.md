@@ -1,3 +1,5 @@
+![Devil-3Ds](docs/images/title.png)
+
 # Devil-3Ds
 
 **Diablo, rebuilt around Nintendo 3DS's two screens.**
@@ -73,3 +75,30 @@ Diablo and Blizzard Entertainment are trademarks of Blizzard Entertainment. Devi
 Žaidimo tekstai išversti į lietuvių kalbą: meniu, sąsaja, daiktų ir burtų pavadinimai, užduotys bei istorijos dialogai. Vertimas įtrauktas į abu diegimo failus – papildomai nieko atsisiųsti nereikia.
 
 Kalbą pasirinkite: **Settings → Language → Lietuvių**. Balsai ir filmukai lieka angliški. Pastebėję vertimo klaidą ar likusį anglišką tekstą, praneškite [Issues skiltyje](https://github.com/Karolynaz/devil-3ds/issues).
+
+## Pictures
+
+![Devil-3Ds on Nintendo 3DS — picture 1](docs/images/1.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 2](docs/images/2.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 3](docs/images/3.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 4](docs/images/4.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 5](docs/images/5.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 6](docs/images/6.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 7](docs/images/7.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 8](docs/images/8.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 9](docs/images/9.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 10](docs/images/10.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 11](docs/images/11.jpg)
+
+![Devil-3Ds on Nintendo 3DS — picture 12](docs/images/12.jpg)
+
