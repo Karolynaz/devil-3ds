@@ -10,21 +10,20 @@ Nintendo 3DS already had a Diablo port, but its desktop-style interface made it 
 - **Panels drawn for the upper screen:** inventory, stash, character, quest and spell screens have redesigned backgrounds and layouts for 400 × 240, with readable text and appropriately sized items.
 - **Reviewed and optimized code:** screen copying and scaling do less repeated work; controls, spell selection and interaction targeting have been revised. This version runs in 2D.
 
-Maintained by **Karolynaz**. [Download the latest build](https://github.com/Karolynaz/devil-3ds/releases/latest) · [Report an issue](https://github.com/Karolynaz/devil-3ds/issues)
+P. S. This is not „hey chatgpt. make me diablo 3ds. no mistakes“ release. Spend a lot of hours not only with code, but also doing UI screens in Figma, etc. So if you play Diablo 2 and like this port - you can send me some Jah ( https://forums.d2jsp.org/user.php?i=1483218 );)
+
+[Download the latest build](https://github.com/Karolynaz/devil-3ds/releases/latest) · [Report an issue](https://github.com/Karolynaz/devil-3ds/issues)
 
 ## Installation
 
-You need a Nintendo 3DS set up to run homebrew and your own Diablo game data. The original game data is **not included**.
+You need a Nintendo 3DS set up to run homebrew + FBI and your own Diablo game data. The original game data is **not included**.
 
 1. Download `devil-3ds.cia` or `devil-3ds.3dsx` from [Releases](https://github.com/Karolynaz/devil-3ds/releases/latest).
-2. Choose how to launch:
-   - **HOME Menu:** copy the `.cia` to the SD card and install it with FBI.
-   - **Homebrew Launcher:** put the `.3dsx` in `/3ds/devil-3ds/` on the SD card.
 3. Create `/3ds/devilutionx/` on the SD card and copy `DIABDAT.MPQ` from your Diablo installation into it. For the shareware edition, use `spawn.mpq` instead.
-4. For **Hellfire**, also copy `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq` and `hfvoice.mpq` into the same data folder.
-5. Launch **Devil-3Ds**. When updating, install the new CIA or replace the 3DSX; keep the data folder and saves.
-
-The `/3ds/devilutionx/` data folder name is retained for compatibility with existing installations and saves. Both download formats include the custom interface assets and Lithuanian translation. Performance varies between original and New 3DS hardware.
+2. Put `Devil-3Ds.cia` to the SD card and install it with FBI. When updating, install the new CIA or replace the 3DSX; keep the data folder and saves.
+3. For **Hellfire**, also copy `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq` and `hfvoice.mpq` into the same data folder. But I don't own Hellfire, so didn't tested.
+4. Launch **Devil-3Ds**. 
+5. The `/3ds/devilutionx/` data folder name is retained for compatibility with existing installations and saves. Both download formats include the custom interface assets and Lithuanian translation. Performance varies between original and New 3DS hardware.
 
 ## Controls
 
@@ -70,11 +69,10 @@ This project builds on the work of the [DevilutionX contributors](https://github
 
 Diablo and Blizzard Entertainment are trademarks of Blizzard Entertainment. Devil-3Ds is an independent fan project, not affiliated with or endorsed by Blizzard Entertainment, GOG.com or the DevilutionX maintainers.
 
-## Lietuvių kalba
+## Bonus: Lietuvių kalba
 
-Žaidimo tekstai išversti į lietuvių kalbą: meniu, sąsaja, daiktų ir burtų pavadinimai, užduotys bei istorijos dialogai. Vertimas įtrauktas į abu diegimo failus – papildomai nieko atsisiųsti nereikia.
-
-Kalbą pasirinkite: **Settings → Language → Lietuvių**. Balsai ir filmukai lieka angliški. Pastebėję vertimo klaidą ar likusį anglišką tekstą, praneškite [Issues skiltyje](https://github.com/Karolynaz/devil-3ds/issues).
+Kadangi mano trečiokas dar ne super duper anglų kalbos žinovas, tai žaidimo tekstai išversti į lietuvių kalbą: meniu, sąsaja, daiktų ir burtų pavadinimai, užduotys bei istorijos dialogai. Vertimas įtrauktas į abu diegimo failus – papildomai nieko atsisiųsti nereikia, bet jei žaidžiate Diablo 1 ant mac, PC - galite atsisiųsti tik vertimo failą.
+P. S. Balsai ir filmukai lieka angliški.
 
 ## Pictures
 
