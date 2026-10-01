@@ -7,6 +7,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "platform/ctr/world_surface.hpp"
 #endif
 
 #include <algorithm>
@@ -1050,7 +1051,7 @@ void DrawTileContent(const Surface &out, const Lightmap &lightmap, Point tilePos
 #ifdef _DEBUG
 				DebugCoordsMap[tilePosition.x + (tilePosition.y * MAXDUNX)] = targetBufferPosition;
 #endif
-				if (tilePosition.x + 1 < MAXDUNX && tilePosition.y - 1 >= 0 && targetBufferPosition.x + TILE_WIDTH <= gnScreenWidth) {
+				if (tilePosition.x + 1 < MAXDUNX && tilePosition.y - 1 >= 0 && targetBufferPosition.x + TILE_WIDTH <= GetViewportWidth()) {
 					// Render objects behind walls first to prevent sprites, that are moving
 					// between tiles, from poking through the walls as they exceed the tile bounds.
 					// A proper fix for this would probably be to layout the scene and render by
@@ -1274,8 +1275,8 @@ void DrawGame(const Surface &fullOut, Point position, Displacement offset)
 {
 	// Limit rendering to the view area
 	const Surface &out = !*GetOptions().Graphics.zoom
-	    ? fullOut.subregionY(0, gnViewportHeight)
-	    : fullOut.subregionY(0, (gnViewportHeight + 1) / 2);
+	    ? fullOut.subregion(0, 0, GetViewportWidth(), GetViewportHeight())
+	    : fullOut.subregion(0, 0, GetViewportWidth(), (GetViewportHeight() + 1) / 2);
 
 	int columns = tileColumns;
 	int rows = tileRows;
@@ -1318,7 +1319,7 @@ void DrawGame(const Surface &fullOut, Point position, Displacement offset)
 #endif
 
 	Lightmap lightmap = Lightmap::build(*GetOptions().Graphics.perPixelLighting, position, Point {} + offset,
-	    gnScreenWidth, gnViewportHeight, rows, columns,
+	    GetViewportWidth(), GetViewportHeight(), rows, columns,
 	    out.at(0, 0), out.pitch(), LightTables, FullyLitLightTable, FullyDarkLightTable,
 	    dLight, MicroTileLen);
 
@@ -1327,7 +1328,7 @@ void DrawGame(const Surface &fullOut, Point position, Displacement offset)
 	DrawOOB(out, lightmap, position, Point {} + offset, rows, columns);
 
 	if (*GetOptions().Graphics.zoom) {
-		Zoom(fullOut.subregionY(0, gnViewportHeight));
+		Zoom(fullOut.subregion(0, 0, GetViewportWidth(), GetViewportHeight()));
 	}
 
 #ifdef DUN_RENDER_STATS
@@ -1359,11 +1360,20 @@ void DrawView(const Surface &out, Point startPosition)
 #ifdef _DEBUG
 	DebugCoordsMap.clear();
 #endif
+#ifdef __3DS__
+	// The world is drawn into its own buffer (400 / s x 240 / s). The top of
+	// `out` is cleared to the key index, so the presenter shows the world in
+	// every pixel that the UI below does not draw.
+	CtrWorldBeginFrame(out);
+	const Surface &worldOut = CtrWorldSurface();
+#else
+	const Surface &worldOut = out;
+#endif
 	Displacement offset = {};
 	CalcFirstTilePosition(startPosition, offset);
-	DrawGame(out, startPosition, offset);
+	DrawGame(worldOut, startPosition, offset);
 	if (AutomapActive) {
-		DrawAutomap(out.subregionY(0, gnViewportHeight));
+		DrawAutomap(worldOut.subregion(0, 0, GetViewportWidth(), GetViewportHeight()));
 	}
 #ifdef _DEBUG
 	bool debugGridTextNeeded = IsDebugGridTextNeeded();
@@ -1385,7 +1395,7 @@ void DrawView(const Surface &out, Point startPosition)
 				Size tileSize = { TILE_WIDTH, TILE_HEIGHT };
 				if (*GetOptions().Graphics.zoom)
 					tileSize *= 2;
-				DrawString(out, debugGridText, { pixelCoords - Displacement { 0, tileSize.height }, tileSize },
+				DrawString(worldOut, debugGridText, { pixelCoords - Displacement { 0, tileSize.height }, tileSize },
 				    { .flags = UiFlags::ColorRed | UiFlags::AlignCenter | UiFlags::VerticalCenter });
 			}
 			if (DebugGrid) {
@@ -1409,9 +1419,9 @@ void DrawView(const Surface &out, Point startPosition)
 					const int dy = 1;
 					Point from { originX, center.y };
 					int height = halfTileHeight;
-					if (out.InBounds(from) && out.InBounds(from + Displacement { 2 * dx * height, dy * height })) {
-						uint8_t *dst = out.at(from.x, from.y);
-						const int pitch = out.pitch();
+					if (worldOut.InBounds(from) && worldOut.InBounds(from + Displacement { 2 * dx * height, dy * height })) {
+						uint8_t *dst = worldOut.at(from.x, from.y);
+						const int pitch = worldOut.pitch();
 						while (height-- > 0) {
 							*dst = col;
 							dst += dx;
@@ -1421,9 +1431,9 @@ void DrawView(const Surface &out, Point startPosition)
 						}
 					} else {
 						while (height-- > 0) {
-							out.SetPixel(from, col);
+							worldOut.SetPixel(from, col);
 							from.x += dx;
-							out.SetPixel(from, col);
+							worldOut.SetPixel(from, col);
 							from.x += dx;
 							from.y += dy;
 						}
@@ -1433,9 +1443,9 @@ void DrawView(const Surface &out, Point startPosition)
 		}
 	}
 #endif
-	DrawItemNameLabels(out);
-	DrawMonsterHealthBar(out);
-	DrawFloatingNumbers(out, startPosition, offset);
+	DrawItemNameLabels(worldOut);
+	DrawMonsterHealthBar(worldOut);
+	DrawFloatingNumbers(worldOut, startPosition, offset);
 
 	if (IsPlayerInStore() && !qtextflag)
 		DrawSText(out);
@@ -1702,6 +1712,17 @@ void OptionShowFPSChanged()
 }
 const auto OptionChangeHandlerShowFPS = (GetOptions().Graphics.showFPS.SetValueChangedCallback(OptionShowFPSChanged), true);
 
+#ifdef __3DS__
+/** @brief "World zoom" changed: the world size follows at once. The buffer is reallocated in the next frame. */
+void OptionWorldZoomChanged()
+{
+	UpdateMinimapRect();
+	CalcViewportGeometry();
+	RedrawEverything();
+}
+const auto OptionChangeHandlerWorldZoom = (GetOptions().Graphics.worldZoom.SetValueChangedCallback(OptionWorldZoomChanged), true);
+#endif
+
 } // namespace
 
 Displacement GetOffsetForWalking(const AnimationInfo &animationInfo, const Direction dir, bool cameraMode /*= false*/)
@@ -1751,7 +1772,7 @@ int RowsCoveredByPanel()
 
 void CalcTileOffset(int *offsetX, int *offsetY)
 {
-	const uint16_t screenWidth = GetScreenWidth();
+	const uint16_t screenWidth = GetViewportWidth();
 	const uint16_t viewportHeight = GetViewportHeight();
 
 	int x;
@@ -1776,7 +1797,7 @@ void CalcTileOffset(int *offsetX, int *offsetY)
 
 void TilesInView(int *rcolumns, int *rrows)
 {
-	const uint16_t screenWidth = GetScreenWidth();
+	const uint16_t screenWidth = GetViewportWidth();
 	const uint16_t viewportHeight = GetViewportHeight();
 
 	int columns = screenWidth / TILE_WIDTH;
@@ -1807,10 +1828,15 @@ void TilesInView(int *rcolumns, int *rrows)
 void CalcViewportGeometry()
 {
 	const int zoomFactor = *GetOptions().Graphics.zoom ? 2 : 1;
-	const int screenWidth = GetScreenWidth() / zoomFactor;
-	const int screenHeight = GetScreenHeight() / zoomFactor;
-	const int panelHeight = GetMainPanel().size.height / zoomFactor;
+	const int screenWidth = GetViewportWidth() / zoomFactor;
+	[[maybe_unused]] const int screenHeight = GetScreenHeight() / zoomFactor;
+	[[maybe_unused]] const int panelHeight = GetMainPanel().size.height / zoomFactor;
+#ifdef __3DS__
+	// The world fills the top screen. The main panel is on the bottom screen.
+	const int pixelsToPanel = GetViewportHeight() / zoomFactor;
+#else
 	const int pixelsToPanel = screenHeight - panelHeight;
+#endif
 	Point playerPosition { screenWidth / 2, pixelsToPanel / 2 };
 
 	if (*GetOptions().Graphics.zoom)
@@ -1959,6 +1985,10 @@ void scrollrt_draw_game_screen()
 	UndrawCursor(out);
 	DrawCursor(out);
 	DrawMain(hgt, false, false, false, false, false);
+#ifdef __3DS__
+	// The UI layer still has the key pixels of the last full frame.
+	CtrWorldRepeatFrame();
+#endif
 	RenderPresent();
 }
 

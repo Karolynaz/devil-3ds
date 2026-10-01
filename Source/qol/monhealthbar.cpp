@@ -83,7 +83,7 @@ void DrawMonsterHealthBar(const Surface &out)
 	const int width = (*healthBox)[0].width();
 	const int barWidth = (*health)[0].width();
 	const int height = (*healthBox)[0].height();
-	Point position = { (gnScreenWidth - width) / 2, 18 };
+	Point position = { (GetViewportWidth() - width) / 2, 18 };
 
 	if (CanPanelsCoverView()) {
 		if (IsRightPanelOpen())

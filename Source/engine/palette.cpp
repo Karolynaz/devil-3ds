@@ -201,7 +201,13 @@ void LoadPaletteAndInitBlending(const char *path)
 	} else if (leveltype == DTYPE_NEST) {
 		GenerateBlendedLookupTable(logical_palette.data(), /*skipFrom=*/1, /*skipTo=*/15);
 	} else {
+#ifdef __3DS__
+		// The 3DS top-screen UI layer uses this index as its "world" key. A blend
+		// must never return it, or a translucent UI pixel could show the world.
+		GenerateBlendedLookupTable(logical_palette.data(), CtrWorldDimKeyIndex, CtrWorldKeyIndex);
+#else
 		GenerateBlendedLookupTable(logical_palette.data());
+#endif
 	}
 }
 

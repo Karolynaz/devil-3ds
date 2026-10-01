@@ -25,6 +25,9 @@ extern Object *ObjectUnderCursor;
 struct Player; // Defined in player.h
 extern const Player *PlayerUnderCursor;
 extern Point cursPosition;
+
+/** @brief MousePosition in world pixels. Same as MousePosition except on 3DS (400 px wide world). */
+Point GetWorldMousePosition();
 extern DVL_API_FOR_TEST int pcurs;
 
 void InitCursor();

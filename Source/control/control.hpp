@@ -88,8 +88,14 @@ void ToggleCharPanel();
  */
 [[nodiscard]] inline bool CanPanelsCoverView()
 {
+#ifdef __3DS__
+	// The 3DS world is 400 px wide and the 3DS panels replace the whole top screen
+	// or sit in their own area. The world never shifts aside for a side panel.
+	return false;
+#else
 	const Rectangle &mainPanel = GetMainPanel();
 	return GetScreenWidth() <= mainPanel.size.width && GetScreenHeight() <= SidePanelSize.height + mainPanel.size.height;
+#endif
 }
 
 void AddInfoBoxString(std::string_view str, bool floatingBox = false);

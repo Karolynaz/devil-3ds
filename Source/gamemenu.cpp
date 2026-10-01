@@ -26,6 +26,11 @@
 #include "qol/floatingnumbers.h"
 #include "utils/language.h"
 
+#ifdef __3DS__
+#include "platform/ctr/world_view.hpp"
+#include "platform/ctr/zoom_slider.hpp"
+#endif
+
 #ifndef USE_SDL1
 #include "controls/touch/renderers.h"
 #endif
@@ -44,6 +49,11 @@ void GamemenuMusicVolume(bool bActivate);
 void GamemenuSoundVolume(bool bActivate);
 void GamemenuBrightness(bool bActivate);
 void GamemenuSpeed(bool bActivate);
+#ifdef __3DS__
+void GamemenuWorldZoom(bool bActivate);
+void GamemenuZoomControl(bool bActivate);
+void GamemenuRefreshZoom();
+#endif
 
 /** Contains the game menu items of the single player menu. */
 TMenuItem sgSingleMenu[] = {
@@ -78,10 +88,18 @@ TMenuItem sgOptionsMenu[] = {
 	{ GMENU_ENABLED | GMENU_SLIDER, nullptr,             &GamemenuSoundVolume  },
 	{ GMENU_ENABLED | GMENU_SLIDER, N_("Gamma"),         &GamemenuBrightness   },
 	{ GMENU_ENABLED | GMENU_SLIDER, N_("Speed"),         &GamemenuSpeed        },
+#ifdef __3DS__
+	{ GMENU_ENABLED | GMENU_SLIDER, N_("World zoom"),    &GamemenuWorldZoom    },
+	{ GMENU_ENABLED               , N_("Zoom: Menu"),    &GamemenuZoomControl  },
+#endif
 	{ GMENU_ENABLED               , N_("Previous Menu"), &GamemenuPrevious     },
 	{ GMENU_ENABLED               , nullptr,             nullptr               },
 	// clang-format on
 };
+#ifdef __3DS__
+constexpr int OptionsWorldZoomIndex = 4;
+constexpr int OptionsZoomControlIndex = 5;
+#endif
 /** Specifies the menu names for music enabled and disabled. */
 const char *const MusicToggleNames[] = {
 	N_("Music"),
@@ -186,13 +204,73 @@ int GamemenuSliderBrightness()
 	return gmenu_slider_get(&sgOptionsMenu[2], 0, 100);
 }
 
+#ifdef __3DS__
+/** @brief Sets the labels and the slider of the two zoom items from the options. */
+void GamemenuRefreshZoom()
+{
+	static const char *const ZoomNames[CtrZoomLevelCount] = {
+		N_("World zoom: 100%"),
+		N_("World zoom: 80%"),
+		N_("World zoom: 67%"),
+		N_("World zoom: 62.5%"),
+	};
+	TMenuItem &zoomItem = sgOptionsMenu[OptionsWorldZoomIndex];
+	const int level = CtrWorldZoomLevel();
+	zoomItem.pszStr = _(ZoomNames[level]).data();
+	if (CtrZoomSliderActive()) {
+		// The 3D slider sets the level: show it, but do not let the menu change it.
+		zoomItem.removeFlags(GMENU_ENABLED | GMENU_SLIDER);
+	} else {
+		zoomItem.addFlags(GMENU_ENABLED | GMENU_SLIDER);
+		gmenu_slider_steps(&zoomItem, CtrZoomLevelCount - 1);
+		gmenu_slider_set(&zoomItem, 0, CtrZoomLevelCount - 1, level);
+	}
+	if (CtrHasZoomSlider()) {
+		sgOptionsMenu[OptionsZoomControlIndex].pszStr = CtrZoomSliderActive() ? _("Zoom: 3D slider").data() : _("Zoom: Menu").data();
+	}
+}
+
+void GamemenuWorldZoom(bool bActivate)
+{
+	if (CtrZoomSliderActive())
+		return;
+	int level;
+	if (bActivate)
+		level = (CtrWorldZoomLevel() + 1) % CtrZoomLevelCount;
+	else
+		level = gmenu_slider_get(&sgOptionsMenu[OptionsWorldZoomIndex], 0, CtrZoomLevelCount - 1);
+	GetOptions().Graphics.worldZoom.SetValue(static_cast<CtrWorldZoom>(level));
+	GamemenuRefreshZoom();
+}
+
+void GamemenuZoomControl(bool /*bActivate*/)
+{
+	auto &control = GetOptions().Graphics.zoomControl;
+	control.SetValue(*control == CtrZoomControl::Menu ? CtrZoomControl::Slider3D : CtrZoomControl::Menu);
+	GamemenuRefreshZoom();
+}
+#endif
+
 void GamemenuOptions(bool /*bActivate*/)
 {
 	GamemenuGetMusic();
 	GamemenuGetSound();
 	GamemenuGetBrightness();
 	GamemenuGetSpeed();
+#ifdef __3DS__
+	static bool zoomControlHidden = false;
+	if (!CtrHasZoomSlider() && !zoomControlHidden) {
+		// No 3D slider on this model: remove the "Zoom control" item. "Previous Menu" and the end marker move up.
+		const int count = static_cast<int>(sizeof(sgOptionsMenu) / sizeof(sgOptionsMenu[0]));
+		for (int i = OptionsZoomControlIndex; i + 1 < count; ++i)
+			sgOptionsMenu[i] = sgOptionsMenu[i + 1];
+		zoomControlHidden = true;
+	}
+	GamemenuRefreshZoom();
+	gmenu_set_items(sgOptionsMenu, GamemenuRefreshZoom);
+#else
 	gmenu_set_items(sgOptionsMenu, nullptr);
+#endif
 }
 
 void GamemenuMusicVolume(bool bActivate)
