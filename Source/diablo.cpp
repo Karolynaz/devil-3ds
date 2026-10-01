@@ -102,6 +102,7 @@
 #ifdef __3DS__
 #include "engine/palette.h"
 #include "platform/ctr/ui_background.hpp"
+#include "platform/ctr/zoom_slider.hpp"
 #endif
 #include "stores.h"
 #include "storm/storm_net.hpp"
@@ -948,6 +949,9 @@ void RunGameLoop(interface_mode uMsg)
 		}
 		if (!gbRunGame)
 			break;
+#ifdef __3DS__
+		CtrPollZoomSlider();
+#endif
 
 		bool drawGame = true;
 		bool processInput = true;

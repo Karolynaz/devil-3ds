@@ -1263,8 +1263,12 @@ Displacement GetAutomapScreen()
 		};
 	} else {
 		screen = {
-			gnScreenWidth / 2,
+			GetViewportWidth() / 2,
+#ifdef __3DS__
+			GetViewportHeight() / 2
+#else
 			(gnScreenHeight - GetMainPanel().size.height) / 2
+#endif
 		};
 	}
 	screen += AmOffset(AmWidthOffset::None, AmHeightOffset::HalfTileDown);
@@ -1553,16 +1557,21 @@ int MinimapScale;
 Displacement AutomapOffset;
 Rectangle MinimapRect {};
 
+void UpdateMinimapRect()
+{
+	// Set the dimensions and screen position of the minimap relative to the screen dimensions
+	const int minimapWidth = GetViewportWidth() / 4;
+	const Size minimapSize { minimapWidth, minimapWidth / 2 };
+	const int minimapPadding = GetViewportWidth() / 128;
+	MinimapRect = Rectangle { { GetViewportWidth() - minimapPadding - minimapSize.width, minimapPadding }, minimapSize };
+}
+
 void InitAutomapOnce()
 {
 	AutomapActive = false;
 	AutoMapScale = 50;
 
-	// Set the dimensions and screen position of the minimap relative to the screen dimensions
-	const int minimapWidth = gnScreenWidth / 4;
-	const Size minimapSize { minimapWidth, minimapWidth / 2 };
-	const int minimapPadding = gnScreenWidth / 128;
-	MinimapRect = Rectangle { { gnScreenWidth - minimapPadding - minimapSize.width, minimapPadding }, minimapSize };
+	UpdateMinimapRect();
 
 	// Set minimap scale
 	const int height = 480;
@@ -1774,10 +1783,10 @@ void DrawAutomap(const Surface &out)
 
 	const int scale = (GetAutomapType() == AutomapType::Minimap) ? MinimapScale : AutoMapScale;
 	const int d = (scale * 64) / 100;
-	int cells = (2 * (gnScreenWidth / 2 / d)) + 1;
-	if (((gnScreenWidth / 2) % d) != 0)
+	int cells = (2 * (GetViewportWidth() / 2 / d)) + 1;
+	if (((GetViewportWidth() / 2) % d) != 0)
 		cells++;
-	if (((gnScreenWidth / 2) % d) >= (scale * 32) / 100)
+	if (((GetViewportWidth() / 2) % d) >= (scale * 32) / 100)
 		cells++;
 	if ((myPlayerOffset.deltaX + myPlayerOffset.deltaY) != 0)
 		cells++;

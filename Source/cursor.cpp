@@ -50,6 +50,10 @@
 #include "utils/surface_to_clx.hpp"
 #include "utils/utf8.hpp"
 
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#endif
+
 #ifdef UNPACKED_MPQS
 #include "engine/load_clx.hpp"
 #else
@@ -59,6 +63,19 @@
 #endif
 
 namespace devilution {
+
+/**
+ * @brief Mouse position in world pixels. On 3DS the world is 400 px wide while the mouse uses the 640 wide space.
+ */
+Point GetWorldMousePosition()
+{
+#ifdef __3DS__
+	return CtrScreenToWorld(MousePosition);
+#else
+	return MousePosition;
+#endif
+}
+
 namespace {
 /** Cursor images CEL */
 OptionalOwnedClxSpriteList pCursCels;
@@ -270,9 +287,10 @@ bool TrySelectPixelBased(Point tile)
 			spriteTopLeft *= 2;
 		}
 		const Rectangle spriteCoords = Rectangle(spriteTopLeft, spriteSize);
-		if (!spriteCoords.contains(MousePosition))
+		const Point worldMouse = GetWorldMousePosition();
+		if (!spriteCoords.contains(worldMouse))
 			return false;
-		Point pointInSprite = Point { 0, 0 } + (MousePosition - spriteCoords.position);
+		Point pointInSprite = Point { 0, 0 } + (worldMouse - spriteCoords.position);
 		if (*GetOptions().Graphics.zoom)
 			pointInSprite /= 2;
 		return IsPointWithinClx(pointInSprite, sprite);
@@ -908,7 +926,7 @@ void CheckCursMove()
 	if (IsItemLabelHighlighted())
 		return;
 
-	Point screenPosition = MousePosition;
+	Point screenPosition = GetWorldMousePosition();
 	const Rectangle &mainPanel = GetMainPanel();
 
 	AlterMousePositionViaPanels(screenPosition);

@@ -27,6 +27,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/display.hpp"
+#include "platform/ctr/zoom_slider.hpp"
 #endif
 
 #ifdef NXDK
@@ -86,7 +87,46 @@ uint16_t GetScreenHeight()
 
 uint16_t GetViewportHeight()
 {
+#ifdef __3DS__
+	// The world buffer height (240 / s), not the 240 rows of the top screen UI.
+	return static_cast<uint16_t>(CtrWorldHeight());
+#else
 	return gnViewportHeight;
+#endif
+}
+
+#ifdef __3DS__
+int CtrWorldZoomLevel()
+{
+	const int level = static_cast<int>(*GetOptions().Graphics.worldZoom);
+	return std::clamp(level, 0, CtrZoomLevelCount - 1);
+}
+
+bool CtrZoomSliderActive()
+{
+	return *GetOptions().Graphics.zoomControl == CtrZoomControl::Slider3D && CtrHasZoomSlider();
+}
+
+void CtrPollZoomSlider()
+{
+	if (!CtrZoomSliderActive())
+		return;
+	auto &worldZoom = GetOptions().Graphics.worldZoom;
+	const int current = static_cast<int>(*worldZoom);
+	const int level = CtrSliderZoomLevel(CtrReadZoomSlider(), current);
+	if (level != current)
+		worldZoom.SetValue(static_cast<CtrWorldZoom>(level));
+}
+#endif
+
+uint16_t GetViewportWidth()
+{
+#ifdef __3DS__
+	// The world buffer width (400 / s).
+	return static_cast<uint16_t>(CtrWorldWidth());
+#else
+	return gnScreenWidth;
+#endif
 }
 
 Rectangle UIRectangle;

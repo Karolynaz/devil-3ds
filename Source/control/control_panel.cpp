@@ -2,6 +2,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "platform/ctr/world_surface.hpp"
 #endif
 
 #include "control.hpp"
@@ -939,10 +940,38 @@ void DrawDurIcon(const Surface &out)
 #endif
 }
 
+#ifdef __3DS__
+namespace {
+/** @brief Applies the pause table to a world area. */
+void RedBackWorld(const Surface &world, const uint8_t *tbl)
+{
+	for (int y = 0; y < world.h(); y++) {
+		uint8_t *dst = world.at(0, y);
+		for (int x = 0; x < world.w(); x++, dst++) {
+			if (leveltype != DTYPE_HELL || *dst >= 32)
+				*dst = tbl[*dst];
+		}
+	}
+}
+} // namespace
+#endif
+
 void RedBack(const Surface &out)
 {
 	uint8_t *dst = out.begin();
 	uint8_t *tbl = GetPauseTRN();
+#ifdef __3DS__
+	// The world is in its own buffer. The UI layer shows it through the key
+	// pixels, so those stay as they are and the world gets the table itself.
+	RedBackWorld(CtrWorldSurface(), tbl);
+	for (int h = gnViewportHeight; h != 0; h--, dst += out.pitch() - gnScreenWidth) {
+		for (int w = gnScreenWidth; w != 0; w--) {
+			if (*dst != CtrWorldKeyIndex && (leveltype != DTYPE_HELL || *dst >= 32))
+				*dst = tbl[*dst];
+			dst++;
+		}
+	}
+#else
 	for (int h = gnViewportHeight; h != 0; h--, dst += out.pitch() - gnScreenWidth) {
 		for (int w = gnScreenWidth; w != 0; w--) {
 			if (leveltype != DTYPE_HELL || *dst >= 32)
@@ -950,6 +979,7 @@ void RedBack(const Surface &out)
 			dst++;
 		}
 	}
+#endif
 }
 
 void DrawDeathText(const Surface &out)

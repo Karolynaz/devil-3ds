@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/rectangle.hpp"
+#include "platform/ctr/world_view.hpp"
 
 namespace devilution {
 
@@ -40,6 +41,33 @@ constexpr Rectangle CtrSpellTabRect(int page, bool hellfire)
 	return hellfire
 	    ? Rectangle { { CtrSpellTabFirstX + page * 74, CtrSpellTabsY }, { 66, CtrSpellTabHeight } }
 	    : Rectangle { { CtrSpellTabFirstX + page * (CtrSpellTabWidth + CtrSpellTabGap), CtrSpellTabsY }, { CtrSpellTabWidth, CtrSpellTabHeight } };
+}
+
+/**
+ * @brief Surface column that the 3DS presenter reads for output column x.
+ *
+ * CTR_PresentFrame reads UI column `x * 640 / outputWidth` for each of the
+ * outputWidth screen columns (the UI layer is 640 wide and is squeezed).
+ */
+constexpr int CtrPresenterSourceColumn(int x, int outputWidth)
+{
+	return x * 640 / outputWidth;
+}
+
+static_assert(CtrPresenterSourceColumn(0, CtrTopSize.width) == 0);
+static_assert(CtrPresenterSourceColumn(CtrTopSize.width - 1, CtrTopSize.width) == 638);
+static_assert(CtrPresenterSourceColumn(399, 400) < 640);
+
+/**
+ * @brief Converts a position in the 640 wide mouse space to world pixels.
+ *
+ * x_world = x * 400 / 640 / s and y_world = y / s, where s is the scale of the
+ * zoom level (CtrZoomScales). Unlike CtrScreenToTop this does not reject
+ * positions, because world hit tests run for any cursor position.
+ */
+constexpr Point CtrScreenToWorld(Point p, int screenWidth, int zoomLevel)
+{
+	return { CtrUiToWorldX(p.x, screenWidth, zoomLevel), CtrUiToWorldY(p.y, zoomLevel) };
 }
 
 constexpr Point CtrTopToScreen(Point p, int screenWidth)

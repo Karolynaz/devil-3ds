@@ -146,7 +146,7 @@ bool IsMouseOverGameArea()
 
 void DrawItemNameLabels(const Surface &out)
 {
-	const Surface clippedOut = out.subregionY(0, gnViewportHeight);
+	const Surface clippedOut = out.subregionY(0, GetViewportHeight());
 	isLabelHighlighted = false;
 	if (labelQueue.empty())
 		return;
@@ -185,11 +185,12 @@ void DrawItemNameLabels(const Surface &out)
 		} while (!canShow);
 	}
 
+	const Point worldMouse = GetWorldMousePosition();
 	for (const ItemLabel &label : labelQueue) {
 		const Item &item = Items[label.id];
 
-		if (MousePosition.x >= label.pos.x && MousePosition.x < label.pos.x + label.width
-		    && MousePosition.y >= label.pos.y && MousePosition.y < label.pos.y + labelHeight) {
+		if (worldMouse.x >= label.pos.x && worldMouse.x < label.pos.x + label.width
+		    && worldMouse.y >= label.pos.y && worldMouse.y < label.pos.y + labelHeight) {
 			if (!gmenu_is_active()
 			    && PauseMode == 0
 			    && !MyPlayerIsDead
