@@ -809,20 +809,6 @@ GraphicsOptions::GraphicsOptions()
           })
     , brightness("Brightness Correction", OptionEntryFlags::Invisible | CtrGraphicsFlag, "Brightness Correction", "Brightness correction level.", 0)
     , zoom("Zoom", OptionEntryFlags::None | CtrGraphicsFlag, N_("Zoom"), N_("Zoom on when enabled."), false)
-#ifdef __3DS__
-    , worldZoom("World Zoom", OptionEntryFlags::None, N_("World zoom"), N_("How much of the world the top screen shows. A lower value shows more, but smaller, and can be slower."), CtrWorldZoom::Percent100,
-          {
-              { CtrWorldZoom::Percent100, N_("100%") },
-              { CtrWorldZoom::Percent80, N_("80%") },
-              { CtrWorldZoom::Percent67, N_("67%") },
-              { CtrWorldZoom::Percent62_5, N_("62.5%") },
-          })
-    , zoomControl("Zoom Control", OptionEntryFlags::None, N_("Zoom control"), N_("Who sets the world zoom: the menu, or the 3D slider (live, while you play)."), CtrZoomControl::Slider3D,
-          {
-              { CtrZoomControl::Menu, N_("Menu") },
-              { CtrZoomControl::Slider3D, N_("3D slider") },
-          })
-#endif
     , perPixelLighting("Per-pixel Lighting", OptionEntryFlags::None | CtrGraphicsFlag, N_("Per-pixel Lighting"), N_("Subtile lighting for smoother light gradients."), DEFAULT_PER_PIXEL_LIGHTING)
     , colorCycling("Color Cycling", OptionEntryFlags::None | CtrGraphicsFlag, N_("Color Cycling"), N_("Color cycling effect used for water, lava, and acid animation."), true)
     , alternateNestArt("Alternate nest art", OptionEntryFlags::OnlyHellfire | OptionEntryFlags::CantChangeInGame | CtrGraphicsFlag, N_("Alternate nest art"), N_("The game will use an alternative palette for Hellfire’s nest tileset."), false)
@@ -853,10 +839,6 @@ std::vector<OptionEntryBase *> GraphicsOptions::GetEntries()
 		&frameRateControl,
 		&brightness,
 		&zoom,
-#ifdef __3DS__
-		&worldZoom,
-		&zoomControl,
-#endif
 		&showFPS,
 		&perPixelLighting,
 		&colorCycling,

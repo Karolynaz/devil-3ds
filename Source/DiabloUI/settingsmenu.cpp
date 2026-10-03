@@ -43,10 +43,6 @@
 #include "utils/ui_fwd.h"
 #include "utils/utf8.hpp"
 
-#ifdef __3DS__
-#include "platform/ctr/zoom_slider.hpp"
-#endif
-
 namespace devilution {
 namespace {
 
@@ -99,12 +95,9 @@ bool IsValidEntry(OptionEntryBase *pOptionEntry)
 {
 #ifdef __3DS__
 	for (OptionEntryBase *pGraphicsEntry : GetOptions().Graphics.GetEntries()) {
-		if (pOptionEntry == pGraphicsEntry && pOptionEntry != &GetOptions().Graphics.worldZoom && pOptionEntry != &GetOptions().Graphics.zoomControl)
+		if (pOptionEntry == pGraphicsEntry)
 			return false;
 	}
-	// The "3D slider" choice needs a 3D slider (not on a 2DS or a New 2DS XL).
-	if (pOptionEntry == &GetOptions().Graphics.zoomControl && !CtrHasZoomSlider())
-		return false;
 	if (pOptionEntry == &GetOptions().Gameplay.grabInput
 	    || pOptionEntry == &GetOptions().Gameplay.quickCast
 	    || pOptionEntry == &GetOptions().Gameplay.pauseOnFocusLoss
@@ -504,7 +497,7 @@ void UiSettingsMenu()
 			size_t catIndex = 0;
 			for (OptionCategoryBase *pCategory : GetOptions().GetCategories()) {
 #ifdef __3DS__
-				if (pCategory == &GetOptions().Keymapper || pCategory == &GetOptions().Padmapper) {
+				if (pCategory == &GetOptions().Keymapper || pCategory == &GetOptions().Padmapper || pCategory == &GetOptions().Graphics) {
 					catIndex++;
 					continue;
 				}

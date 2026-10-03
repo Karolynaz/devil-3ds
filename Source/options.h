@@ -31,9 +31,6 @@
 #include "engine/sound_defs.hpp"
 #include "mods/mod_identity.h"
 #include "pack.h"
-#ifdef __3DS__
-#include "platform/ctr/world_view.hpp"
-#endif
 #include "quick_messages.hpp"
 #include "utils/enum_traits.h"
 #include "utils/string_view_hash.hpp"
@@ -550,12 +547,6 @@ struct GraphicsOptions : OptionCategoryBase {
 	OptionEntryInt<int> brightness;
 	/** @brief Zoom on start. */
 	OptionEntryBoolean zoom;
-#ifdef __3DS__
-	/** @brief 3DS: size of the world area on the top screen (100%, 80%, 67%, 62.5%). */
-	OptionEntryEnum<CtrWorldZoom> worldZoom;
-	/** @brief 3DS: who sets the world zoom, the menu or the 3D slider. */
-	OptionEntryEnum<CtrZoomControl> zoomControl;
-#endif
 	/** @brief Subtile lighting for smoother light gradients. */
 	OptionEntryBoolean perPixelLighting;
 	/** @brief Enable color cycling animations. */

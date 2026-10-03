@@ -1,0 +1,77 @@
+# Native pixels and stereo test — 2026-10-03
+
+## Backup and base
+
+The original checkout is b53c33f9c982e852db10fcd8c1867ef783b3fa7b.
+Local backup: `Backups/2026-10-03_before_native_pixels/source.zip`.
+The ZIP was checked for CRC errors and includes all tracked files and the
+existing untracked translation release folder. Previous CIA/3DSX packages remain
+in `3DS_Release/2026-09-30_b53c33f`.
+
+Reviewed community [PR #2](https://github.com/Karolynaz/devil-3ds/pull/2),
+4c62a41f6da76cb1f00c68adf5808533b8c36073. Its useful change is separating the
+world from the UI. Its default 400-pixel camera changes the visible area, and
+its other zoom levels use bilinear sampling. The hardware slider controls zoom.
+Those choices do not match the requested test. This branch retains the separate
+scene buffer, removes the added zoom settings, and keeps the original 640x240
+world view and original nearest-neighbor sampling.
+
+## Rendering changes
+
+- The supplied 400x240 inventory, stash, character and spell backgrounds stay on
+  their native pixel grid. All six inventory backgrounds were verified byte for
+  byte through the 400 -> 640 -> 400 presentation path.
+- Static menu images, animated logos, selectors and the menu cursor are placed
+  on the physical screen grid. Small images are 1:1; oversized artwork is fit
+  with one aspect ratio using nearest-neighbor sampling. This cannot make large
+  source artwork literally 1:1, but it avoids independent X/Y stretching.
+- Hero portraits preserve their aspect inside the existing layout rectangles.
+- Movies retain the dual-screen framebuffer and fit within the top screen,
+  with a black bottom screen. A 320x200 frame stays 320x200.
+- Inventory item artwork preserves aspect, including held items. Held items use
+  the same native dimensions as placed items, even though the mouse canvas is
+  still 640 pixels wide.
+- Health, mana and experience fill reveals the original bar pixels instead of
+  squeezing its artwork into the remaining fill. The existing liquid animation
+  is retained.
+
+The entire 640-pixel world cannot be shown 1:1 on a 400-pixel screen without
+cropping or redesigning its graphics. Its framing remains unchanged as requested.
+Legacy shop side panels and some engine UI are still legacy-sized; this test
+is not a claim that every game sprite is native-resolution artwork.
+
+## Experimental 3D
+
+The old tile/scanline depth approach gives different sections of a single actor
+different depth. This test renders the scene separately for both eyes. Complete
+player, monster, NPC, item, object and missile sprites receive one consistent
+horizontal shift, including outlines and player effect icons. Ground and walls
+remain on the screen plane; this is layered 2.5D, not reconstructed 3D geometry.
+
+The 3D slider changes only stereo, never camera zoom:
+
+- Off: normal mono rendering, no second world render.
+- Lower range: 5 physical pixels of disparity.
+- Upper range: 10 physical pixels of disparity.
+
+These coarse steps keep both eyes on the same sprite sampling phase (8 logical
+columns = 5 physical columns). Stereo is disabled for panels, maps, NPC dialog,
+shops, pause and game menus. Labels, HUD, and spell selection UI are flat.
+The second render does not enqueue item labels or update dead-player tile flags.
+
+This approach requires another scene render while stereo is enabled. Performance,
+comfort, direction of perceived depth, wall occlusion, and correct operation on
+physical 3DS hardware must be tested. No claim of hardware verification is made.
+
+## Checks and hardware test
+
+Run `python3 tools/tests/test_ctr_pixels.py` and
+`python3 tools/tests/test_ctr_ui_geometry.py`.
+
+On the console, compare inventory/stash borders at slider off/on, check logo
+proportions, create a hero, drag a potion and a helmet, play an intro movie, and
+then move beside a wall and around enemies with the slider on. Check whole
+actors and mana-shield sprites rather than individual floor tiles. Lower the
+slider if the second render affects frame rate.
+
+This branch is for testing. Do not publish its installers to Releases yet.

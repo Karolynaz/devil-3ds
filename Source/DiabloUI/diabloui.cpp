@@ -74,6 +74,7 @@
 #ifdef __3DS__
 // for virtual keyboard on 3DS
 #include "platform/ctr/keyboard.h"
+#include "platform/ctr/pixel_geometry.hpp"
 #endif
 
 namespace devilution {
@@ -700,10 +701,13 @@ void Prepare3DSBackground()
 
 	SDL_FillSurfaceRect(UiBottomBackgroundBuffer->surface, nullptr, 0);
 
-	// Center the 186-pixel menu box on the 240-pixel bottom screen.
-	const SDL_Rect srcRect = { 0, 204, 640, 226 };
-	const SDL_Rect dstRect = { 0, (240 - 186) / 2, 640, 186 };
-	UiBottomBackgroundBuffer->ScaleBlitFrom(tempSurface, srcRect, dstRect);
+	static OwnedSurface native(320, 240);
+	SDL_FillSurfaceRect(native.surface, nullptr, 0);
+	const Size fit = CtrFitImage({ 640, 226 }, { 320, 240 });
+	native.ScaleBlitFrom(tempSurface, MakeSdlRect(0, 204, 640, 226),
+		MakeSdlRect((320 - fit.width) / 2, (240 - fit.height) / 2, fit.width, fit.height));
+	UiBottomBackgroundBuffer->ScaleBlitFromPreservingDownscale(native,
+		MakeSdlRect(0, 0, 320, 240), MakeSdlRect(0, 0, 640, 240));
 }
 #endif
 
@@ -875,6 +879,12 @@ ClxSpriteList GetListSelectorSprites(int itemHeight)
 }
 } // namespace
 
+#ifdef __3DS__
+namespace {
+void RenderCtrImage(ClxSprite sprite, SDL_Rect rect, bool centered);
+}
+#endif
+
 void DrawSelector(const SDL_Rect &rect)
 {
 	const ClxSpriteList sprites = GetListSelectorSprites(rect.h);
@@ -885,19 +895,11 @@ void DrawSelector(const SDL_Rect &rect)
 
 	const Surface &out = Surface(DiabloUiSurface());
 #ifdef __3DS__
-	if (rect.y >= 240 && out.w() >= 640) {
-		static OwnedSurface spriteScratch(64, 64);
-		if (spriteScratch.w() != sprite.width() || spriteScratch.h() != sprite.height()) {
-			spriteScratch = OwnedSurface(sprite.width(), sprite.height());
-		}
-		SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
-		RenderClxSprite(spriteScratch, sprite, { 0, 0 });
-		out.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
-		    MakeSdlRect(rect.x, y, sprite.width() * 2, sprite.height()));
-		out.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
-		    MakeSdlRect(rect.x + rect.w - sprite.width() * 2, y, sprite.width() * 2, sprite.height()));
-		return;
-	}
+	const int screenWidth = rect.y >= 240 ? 320 : 400;
+	const int logicalWidth = (sprite.width() * 640 + screenWidth - 1) / screenWidth;
+	RenderCtrImage(sprite, MakeSdlRect(rect.x, y, logicalWidth, sprite.height()), false);
+	RenderCtrImage(sprite, MakeSdlRect(rect.x + rect.w - logicalWidth, y, logicalWidth, sprite.height()), false);
+	return;
 #endif
 	RenderClxSprite(out, sprite, { rect.x, y });
 	RenderClxSprite(out, sprite, { rect.x + rect.w - sprite.width(), y });
@@ -962,6 +964,42 @@ void Render(const UiArtText &uiArtText)
 	    { .flags = uiArtText.GetFlags(), .spacing = uiArtText.GetSpacing(), .lineHeight = uiArtText.GetLineHeight() });
 }
 
+#ifdef __3DS__
+// Draw into physical pixel coordinates first, then encode each pixel on the
+// global logical canvas grid. The presenter restores it without filtering.
+void RenderCtrImage(ClxSprite sprite, SDL_Rect rect, bool centered)
+{
+	const Surface &out = Surface(DiabloUiSurface());
+	const bool bottom = rect.y >= 240;
+	const int screenWidth = bottom ? 320 : 400;
+	const int screenY = bottom ? 240 : 0;
+	const int nativeX = rect.x * screenWidth / 640;
+	const int areaWidth = rect.w > 0 ? rect.w * screenWidth / 640 : screenWidth;
+	const int areaHeight = rect.h > 0 ? rect.h : 240 - (rect.y - screenY);
+	const Size size = CtrFitImage({ sprite.width(), sprite.height() }, { areaWidth, areaHeight });
+	if (size.width <= 0 || size.height <= 0) return;
+	const int x = nativeX + (centered ? (areaWidth - size.width) / 2 : 0);
+	const int y = rect.y + (rect.h > 0 ? (rect.h - size.height) / 2 : 0);
+	static std::optional<OwnedSurface> scratch;
+	if (!scratch || scratch->w() != sprite.width() || scratch->h() != sprite.height())
+		scratch.emplace(sprite.width(), sprite.height());
+	SDL_FillSurfaceRect(scratch->surface, nullptr, 0);
+	RenderClxSprite(*scratch, sprite, { 0, 0 });
+	const int firstX = CtrNativeColumn(std::max(x, 0), screenWidth);
+	const int lastX = CtrNativeColumn(std::min(x + size.width, screenWidth), screenWidth);
+	for (int dstY = std::max(y, screenY); dstY < std::min(y + size.height, screenY + 240); ++dstY) {
+		const uint8_t *src = scratch->at(0, (dstY - y) * sprite.height() / size.height);
+		uint8_t *dst = out.at(0, dstY);
+		for (int dstX = firstX; dstX < lastX; ++dstX) {
+			const int imageX = CtrInverseColumn(dstX, screenWidth) - x;
+			if (imageX < 0 || imageX >= size.width) continue;
+			const uint8_t color = src[imageX * sprite.width() / size.width];
+			if (color != 0) dst[dstX] = color;
+		}
+	}
+}
+#endif
+
 void Render(const UiImageClx &uiImage)
 {
 	const ClxSprite sprite = uiImage.sprite();
@@ -988,7 +1026,12 @@ void Render(const UiImageClx &uiImage)
 			return;
 		}
 		if (gb3DSBackgroundIsTitle) {
-			RenderClxSprite(out, sprite, { x, uiImage.m_rect.y });
+			static OwnedSurface titleScratch(640, 480);
+			SDL_FillSurfaceRect(titleScratch.surface, nullptr, 0);
+			RenderClxSprite(titleScratch, sprite, { 0, 0 });
+			static OwnedSurface titleTop(400, 240);
+			titleTop.BlitFrom(titleScratch, MakeSdlRect(120, 0, 400, 240), { 0, 0 });
+			out.ScaleBlitFromPreservingDownscale(titleTop, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, 640, 240));
 			SDL_Rect bottomRect = MakeSdlRect(0, 240, out.w(), 240);
 			SDL_FillSurfaceRect(out.surface, &bottomRect, 0);
 			return;
@@ -998,17 +1041,8 @@ void Render(const UiImageClx &uiImage)
 		return;
 	}
 
-	if (uiImage.m_rect.w > 0 && uiImage.m_rect.h > 0 && (uiImage.m_rect.w != sprite.width() || uiImage.m_rect.h != sprite.height())) {
-		const Surface &out = Surface(DiabloUiSurface());
-		static OwnedSurface spriteScratch(180, 76);
-		if (spriteScratch.w() != sprite.width() || spriteScratch.h() != sprite.height()) {
-			spriteScratch = OwnedSurface(sprite.width(), sprite.height());
-		}
-		SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
-		RenderClxSprite(spriteScratch, sprite, { 0, 0 });
-		out.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()), uiImage.m_rect);
-		return;
-	}
+	RenderCtrImage(sprite, uiImage.m_rect, uiImage.isCentered());
+	return;
 #endif
 	RenderClxSprite(Surface(DiabloUiSurface()), sprite, { x, uiImage.m_rect.y });
 }
@@ -1016,6 +1050,10 @@ void Render(const UiImageClx &uiImage)
 void Render(const UiImageAnimatedClx &uiImage)
 {
 	const ClxSprite sprite = uiImage.sprite(GetAnimationFrame(uiImage.numFrames()));
+#ifdef __3DS__
+	RenderCtrImage(sprite, uiImage.m_rect, uiImage.isCentered());
+	return;
+#endif
 	int x = uiImage.m_rect.x;
 	if (uiImage.isCentered()) {
 		x += GetCenterOffset(sprite.width(), uiImage.m_rect.w);
@@ -1340,18 +1378,8 @@ void DrawMouse()
 		return;
 	const Surface &out = Surface(DiabloUiSurface());
 #ifdef __3DS__
-	const ClxSprite sprite = (*ArtCursor)[0];
-	if (MousePosition.y >= 240 && out.w() >= 640) {
-		static OwnedSurface spriteScratch(64, 64);
-		if (spriteScratch.w() != sprite.width() || spriteScratch.h() != sprite.height()) {
-			spriteScratch = OwnedSurface(sprite.width(), sprite.height());
-		}
-		SDL_FillSurfaceRect(spriteScratch.surface, nullptr, 0);
-		RenderClxSprite(spriteScratch, sprite, { 0, 0 });
-		out.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
-		    MakeSdlRect(MousePosition.x, MousePosition.y, sprite.width() * 2, sprite.height()));
-		return;
-	}
+	RenderCtrImage((*ArtCursor)[0], MakeSdlRect(MousePosition.x, MousePosition.y, 0, 0), false);
+	return;
 #endif
 	RenderClxSprite(out, (*ArtCursor)[0], MousePosition);
 }

@@ -65,7 +65,7 @@
 namespace devilution {
 
 /**
- * @brief Mouse position in world pixels. On 3DS the world is 400 px wide while the mouse uses the 640 wide space.
+ * @brief Mouse position in world pixels. The fixed 3DS camera and mouse use the same 640-wide space.
  */
 Point GetWorldMousePosition()
 {

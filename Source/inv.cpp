@@ -7,6 +7,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
 #include "control/control_panel.hpp"
 #include "panels/quest_log.hpp"
 #include "engine/render/primitive_render.hpp"
@@ -1444,6 +1445,16 @@ void DrawCtrScaledItem(const Surface &out, const Item &item, Rectangle target, b
 	const Size sourceSize = GetInvItemSize(cursId);
 	if (sourceSize.width <= 0 || sourceSize.height <= 0 || target.size.width <= 0 || target.size.height <= 0)
 		return;
+	const bool logicalCanvas = out.w() >= 640;
+	const int screenWidth = target.position.y < 240 ? 400 : 320;
+	if (logicalCanvas) {
+		target.position.x = target.position.x * screenWidth / 640;
+		target.size.width = target.size.width * screenWidth / 640;
+	}
+	const Size fit = CtrFitImage(sourceSize, target.size);
+	target.position.x += (target.size.width - fit.width) / 2;
+	target.position.y += (target.size.height - fit.height) / 2;
+	target.size = fit;
 	static std::optional<OwnedSurface> source;
 	constexpr int ScratchSize = 128;
 	if (!source)
@@ -1460,12 +1471,17 @@ void DrawCtrScaledItem(const Surface &out, const Item &item, Rectangle target, b
 		if (dstY < 0 || dstY >= out.h())
 			continue;
 		for (int x = 0; x < target.size.width; ++x) {
-			const int dstX = target.position.x + x;
-			if (dstX < 0 || dstX >= out.w())
-				continue;
+			const int nativeX = target.position.x + x;
 			const uint8_t color = *source->at(x * sourceSize.width / target.size.width, y * sourceSize.height / target.size.height);
-			if (color != 0)
-				*out.at(dstX, dstY) = color;
+			if (color == 0) continue;
+			if (!logicalCanvas) {
+				if (nativeX >= 0 && nativeX < out.w()) *out.at(nativeX, dstY) = color;
+				continue;
+			}
+			if (nativeX < 0 || nativeX >= screenWidth) continue;
+			const int first = CtrNativeColumn(nativeX, screenWidth);
+			const int last = CtrNativeColumn(nativeX + 1, screenWidth);
+			for (int dstX = first; dstX < last; ++dstX) *out.at(dstX, dstY) = color;
 		}
 	}
 }

@@ -4,7 +4,6 @@
  * Implementation of functionality for rendering the dungeons, monsters and calling other render routines.
  */
 #include "engine/render/scrollrt.h"
-
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
 #include "platform/ctr/world_surface.hpp"
@@ -318,13 +317,12 @@ void DrawCursor(const Surface &out)
 		cursor.rect.size = { 0, 0 };
 		return;
 	}
-
 #ifdef __3DS__
 	if (!MyPlayer->HoldItem.isEmpty()) {
 		const Size slots = GetInventorySize(MyPlayer->HoldItem);
 		const int physicalScreenWidth = MousePosition.y < 240 ? CtrTopSize.width : 320;
 		const Size drawnSize {
-			(slots.width * CtrItemSlotPitch - 1) * gnScreenWidth / physicalScreenWidth,
+			((slots.width * CtrItemSlotPitch - 1) * gnScreenWidth + physicalScreenWidth - 1) / physicalScreenWidth,
 			slots.height * CtrItemSlotPitch - 1,
 		};
 		const Point position = MousePosition - Displacement { drawnSize / 2 };
@@ -383,6 +381,9 @@ void DrawCursor(const Surface &out)
  */
 void DrawMissilePrivate(const Surface &out, const Missile &missile, Point targetBufferPosition, bool pre, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	if (missile._miPreFlag != pre || !missile._miDrawFlag)
 		return;
 
@@ -512,6 +513,9 @@ uint8_t GetPlayerOutlineColor(int id)
  */
 void DrawPlayer(const Surface &out, const Player &player, Point tilePosition, Point targetBufferPosition, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	if (!IsTileLit(tilePosition) && !MyPlayer->_pInfraFlag && !MyPlayer->isOnArenaLevel() && leveltype != DTYPE_TOWN) {
 		return;
 	}
@@ -547,11 +551,17 @@ void DrawPlayer(const Surface &out, const Player &player, Point tilePosition, Po
  */
 void DrawDeadPlayer(const Surface &out, Point tilePosition, Point targetBufferPosition, int lightTableIndex)
 {
-	dFlags[tilePosition.x][tilePosition.y] &= ~DungeonFlag::DeadPlayer;
+#ifdef __3DS__
+	if (!CtrRenderingRightEye())
+#endif
+		dFlags[tilePosition.x][tilePosition.y] &= ~DungeonFlag::DeadPlayer;
 
 	for (const Player &player : Players) {
 		if (player.plractive && player.hasNoLife() && player.isOnActiveLevel() && player.position.tile == tilePosition) {
-			dFlags[tilePosition.x][tilePosition.y] |= DungeonFlag::DeadPlayer;
+#ifdef __3DS__
+			if (!CtrRenderingRightEye())
+#endif
+				dFlags[tilePosition.x][tilePosition.y] |= DungeonFlag::DeadPlayer;
 			const Point playerRenderPosition { targetBufferPosition };
 			DrawPlayer(out, player, tilePosition, playerRenderPosition, lightTableIndex);
 		}
@@ -568,6 +578,9 @@ void DrawDeadPlayer(const Surface &out, Point tilePosition, Point targetBufferPo
  */
 void DrawObject(const Surface &out, const Object &objectToDraw, Point tilePosition, Point targetBufferPosition, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	const ClxSprite sprite = objectToDraw.currentSprite();
 
 	const Point screenPosition = targetBufferPosition + objectToDraw.getRenderingOffset(sprite, tilePosition);
@@ -758,6 +771,9 @@ void DrawFloorTile(const Surface &out, const Lightmap &lightmap, Point tilePosit
  */
 void DrawItem(const Surface &out, int8_t itemIndex, Point targetBufferPosition, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	const Item &item = Items[itemIndex];
 	const ClxSprite sprite = item.AnimInfo.currentSprite();
 	const Point position = targetBufferPosition + item.getRenderingOffset(sprite);
@@ -765,8 +781,12 @@ void DrawItem(const Surface &out, int8_t itemIndex, Point targetBufferPosition, 
 		ClxDrawOutlineSkipColorZero(out, GetOutlineColor(item, false), position, sprite);
 	}
 	ClxDrawLight(out, position, sprite, lightTableIndex);
-	if (item.AnimInfo.isLastFrame() || item._iCurs == ICURS_MAGIC_ROCK)
-		AddItemToLabelQueue(itemIndex, position);
+	if (item.AnimInfo.isLastFrame() || item._iCurs == ICURS_MAGIC_ROCK) {
+#ifdef __3DS__
+		if (!CtrRenderingRightEye())
+#endif
+			AddItemToLabelQueue(itemIndex, position);
+	}
 }
 
 /**
@@ -777,6 +797,9 @@ void DrawItem(const Surface &out, int8_t itemIndex, Point targetBufferPosition, 
  */
 void DrawMonsterHelper(const Surface &out, Point tilePosition, Point targetBufferPosition, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	int mi = dMonster[tilePosition.x][tilePosition.y];
 
 	mi = std::abs(mi) - 1;
@@ -1361,10 +1384,10 @@ void DrawView(const Surface &out, Point startPosition)
 	DebugCoordsMap.clear();
 #endif
 #ifdef __3DS__
-	// The world is drawn into its own buffer (400 / s x 240 / s). The top of
+	// Preserve the existing 640x240 world view; UI pixels stay independent. The top of
 	// `out` is cleared to the key index, so the presenter shows the world in
 	// every pixel that the UI below does not draw.
-	CtrWorldBeginFrame(out);
+	CtrWorldBeginFrame(out, !AutomapActive && !invflag && !CharFlag && !SpellbookFlag && !QuestLogIsOpen && !IsPlayerInStore() && !qtextflag && !IsStashOpen && PauseMode == 0 && !gmenu_is_active());
 	const Surface &worldOut = CtrWorldSurface();
 #else
 	const Surface &worldOut = out;
@@ -1372,6 +1395,13 @@ void DrawView(const Surface &out, Point startPosition)
 	Displacement offset = {};
 	CalcFirstTilePosition(startPosition, offset);
 	DrawGame(worldOut, startPosition, offset);
+#ifdef __3DS__
+	if (CtrWorldHasRightEye()) {
+		CtrSetRenderingRightEye(true);
+		DrawGame(CtrWorldRightSurface(), startPosition, offset);
+		CtrSetRenderingRightEye(false);
+	}
+#endif
 	if (AutomapActive) {
 		DrawAutomap(worldOut.subregion(0, 0, GetViewportWidth(), GetViewportHeight()));
 	}
@@ -1443,9 +1473,10 @@ void DrawView(const Surface &out, Point startPosition)
 		}
 	}
 #endif
-	DrawItemNameLabels(worldOut);
-	DrawMonsterHealthBar(worldOut);
-	DrawFloatingNumbers(worldOut, startPosition, offset);
+	// Labels and HUD belong to the flat UI, shared by both eyes.
+	DrawItemNameLabels(out);
+	DrawMonsterHealthBar(out);
+	DrawFloatingNumbers(out, startPosition, offset);
 
 	if (IsPlayerInStore() && !qtextflag)
 		DrawSText(out);
@@ -1511,7 +1542,6 @@ void DrawView(const Surface &out, Point startPosition)
 		DrawSpellBook(out);
 	}
 #endif
-
 #ifdef __3DS__
 	if (!invflag && !SpellbookFlag && !CharFlag && !QuestLogIsOpen) {
 		DrawDurIcon(out);
@@ -1521,7 +1551,6 @@ void DrawView(const Surface &out, Point startPosition)
 	DrawDurIcon(out);
 	DrawLevelButton(out);
 #endif
-
 #ifdef __3DS__
 	if (CharFlag || QuestLogIsOpen) {
 		if (CharFlag)
@@ -1712,16 +1741,7 @@ void OptionShowFPSChanged()
 }
 const auto OptionChangeHandlerShowFPS = (GetOptions().Graphics.showFPS.SetValueChangedCallback(OptionShowFPSChanged), true);
 
-#ifdef __3DS__
-/** @brief "World zoom" changed: the world size follows at once. The buffer is reallocated in the next frame. */
-void OptionWorldZoomChanged()
-{
-	UpdateMinimapRect();
-	CalcViewportGeometry();
-	RedrawEverything();
-}
-const auto OptionChangeHandlerWorldZoom = (GetOptions().Graphics.worldZoom.SetValueChangedCallback(OptionWorldZoomChanged), true);
-#endif
+
 
 } // namespace
 
@@ -1991,7 +2011,6 @@ void scrollrt_draw_game_screen()
 #endif
 	RenderPresent();
 }
-
 #ifdef __3DS__
 int CtrExperienceFill()
 {
@@ -2085,7 +2104,6 @@ void DrawAndBlit()
 #ifndef __3DS__
 	const Rectangle &mainPanel = GetMainPanel();
 #endif
-
 #ifdef __3DS__
 	drawHealth = true;
 	drawMana = true;

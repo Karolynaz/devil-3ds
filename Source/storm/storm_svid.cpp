@@ -40,6 +40,8 @@
 
 #ifdef __3DS__
 #include "platform/ctr/display.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
+#include "engine/surface.hpp"
 #endif
 
 namespace devilution {
@@ -226,6 +228,23 @@ void UpdatePalette()
 
 bool BlitFrame()
 {
+#ifdef __3DS__
+	SDL_Surface *output = GetOutputSurface();
+	if (output->w == 640 && output->h == 480 && output->format->BitsPerPixel == 8) {
+		static OwnedSurface nativeFrame(400, 240);
+		SDL_FillSurfaceRect(nativeFrame.surface, nullptr, 0);
+		const Size fit = CtrFitImage({ static_cast<int>(SVidWidth), static_cast<int>(SVidHeight) }, { 400, 240 });
+		nativeFrame.ScaleBlitFrom(Surface(SVidSurface.get()), MakeSdlRect(0, 0, SVidWidth, SVidHeight),
+			MakeSdlRect((400 - fit.width) / 2, (240 - fit.height) / 2, fit.width, fit.height));
+		SDL_FillSurfaceRect(output, nullptr, 0);
+		Surface(output).ScaleBlitFromPreservingDownscale(nativeFrame,
+			MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, 640, 240));
+		CTR_UpdateBottomPalette(SVidPalette->colors);
+		RenderPresent();
+		return true;
+	}
+#endif
+
 #ifndef USE_SDL1
 	if (renderer != nullptr) {
 		if (
@@ -452,7 +471,9 @@ bool SVidPlayBegin(const char *filename, int flags)
 		RenderPresent();
 	}
 #endif
+	#ifndef __3DS__
 	TrySetVideoModeToSVidForSDL1();
+	#endif
 #endif
 
 	// Set the background to black.

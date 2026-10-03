@@ -27,7 +27,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/display.hpp"
-#include "platform/ctr/zoom_slider.hpp"
+#include "platform/ctr/world_view.hpp"
 #endif
 
 #ifdef NXDK
@@ -95,29 +95,6 @@ uint16_t GetViewportHeight()
 #endif
 }
 
-#ifdef __3DS__
-int CtrWorldZoomLevel()
-{
-	const int level = static_cast<int>(*GetOptions().Graphics.worldZoom);
-	return std::clamp(level, 0, CtrZoomLevelCount - 1);
-}
-
-bool CtrZoomSliderActive()
-{
-	return *GetOptions().Graphics.zoomControl == CtrZoomControl::Slider3D && CtrHasZoomSlider();
-}
-
-void CtrPollZoomSlider()
-{
-	if (!CtrZoomSliderActive())
-		return;
-	auto &worldZoom = GetOptions().Graphics.worldZoom;
-	const int current = static_cast<int>(*worldZoom);
-	const int level = CtrSliderZoomLevel(CtrReadZoomSlider(), current);
-	if (level != current)
-		worldZoom.SetValue(static_cast<CtrWorldZoom>(level));
-}
-#endif
 
 uint16_t GetViewportWidth()
 {

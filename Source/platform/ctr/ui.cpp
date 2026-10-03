@@ -153,12 +153,11 @@ void DrawCtrBarArtwork(const Surface &out, CtrBarArtwork bar, Point position, fl
 	// preserve red/blue hues; borders and the fill height remain unchanged.
 	const unsigned phase = SDL_GetTicks() / 90 + (bar == CtrBarArtwork::Mana ? 16 : 0);
 	for (int y = 0; y < (vertical ? fillPixels : height); ++y) {
-		const int sourceY = vertical ? y * height / fillPixels : y;
+		const int sourceY = vertical ? height - fillPixels + y : y;
 		const uint8_t *srcRow = Bars[index]->at(0, sourceY);
 		for (int x = 0; x < (vertical ? width : fillPixels); ++x) {
-			// Scale the whole motif into the filled region so its jeweled cap
-			// follows the liquid edge as health/mana/experience changes.
-			const int sourceX = vertical ? x : x * width / fillPixels;
+			// Reveal native artwork pixels; changing fill must not stretch the ornament.
+			const int sourceX = x;
 			uint8_t color = srcRow[sourceX];
 			if (vertical && x >= 3 && x < width - 3 && y >= 3 && y < fillPixels - 3) {
 				const unsigned wave = (x * 2 + y + phase) & 31;

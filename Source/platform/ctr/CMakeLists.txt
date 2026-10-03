@@ -7,7 +7,6 @@ add_devilutionx_object_library(libdevilutionx_ctr
   display.cpp
   ui.cpp
   world_surface.cpp
-  zoom_slider.cpp
   messagebox.cpp
   sockets.cpp
   locale.cpp

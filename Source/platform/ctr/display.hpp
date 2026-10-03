@@ -22,8 +22,8 @@ struct CtrWorldFrame {
 	/** @brief First pixel of the 8-bit world buffer. */
 	const uint8_t *pixels;
 	int pitch;
-	/** @brief Zoom level (index in CtrZoomScales). The world size follows from it. */
-	int level;
+	const uint8_t *rightPixels;
+	int rightPitch;
 };
 
 /** @brief Sets the world for the next CTR_PresentFrame only (one-shot). A frame without it is a plain UI frame. */

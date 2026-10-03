@@ -177,18 +177,6 @@ void BlitFramebuffer(uint8_t *framebuffer, GSPGPU_FramebufferFormat format, cons
 // The world for the next present (one-shot), see CTR_SetWorldFrame.
 bool worldFramePending = false;
 CtrWorldFrame worldFrame {};
-// Tables of the zoom level. Built when the level changes.
-CtrWorldSampling worldSampling {};
-int worldSamplingLevel = -1;
-
-/** @brief The two world rows and the vertical weight of one screen row. Built for each frame. */
-struct WorldRow {
-	const uint8_t *row0;
-	const uint8_t *row1;
-	uint32_t weight1;
-};
-WorldRow worldRows[CtrScreenHeight];
-
 template <GSPGPU_FramebufferFormat Format>
 inline void StoreColor(uint8_t *dst, uint32_t r, uint32_t g, uint32_t b)
 {
@@ -218,92 +206,37 @@ inline void StorePaletteColor(uint8_t *dst, uint8_t index)
 	}
 }
 
-/**
- * @brief Top screen with the world (CtrWorldKeyIndex pixels of the UI layer show the world).
- *
- * A UI pixel is written as in BlitFramebuffer. A key pixel is the world at
- * (x / s, y / s): the nearest world pixel when !Bilinear (100%, exact 1:1), else
- * a bilinear blend of 4 world pixels in RGB. The inner loop has no division
- * and no floating point: the column and row indexes and weights come from the
- * tables (8 bit fraction); the red and blue channels share one multiply.
- */
-template <GSPGPU_FramebufferFormat Format, bool Bilinear>
-void BlitTopWithWorld(uint8_t *framebuffer, const uint8_t *source, int pitch)
+// Native UI is sampled on its exact screen grid. Only the unchanged 640-wide
+// world needs downsampling. No interpolation or zoom is applied.
+template <GSPGPU_FramebufferFormat Format>
+void BlitTopWithWorld(uint8_t *framebuffer, const uint8_t *source, int pitch, const uint8_t *world, int worldPitch)
 {
-	constexpr int Width = CtrScreenWidth;
-	constexpr int Height = CtrScreenHeight;
 	constexpr int BytesPerPixel = Format == GSP_BGR8_OES ? 3 : Format == GSP_RGB565_OES ? 2 : 4;
-	for (int x = 0; x < Width; ++x) {
-		const uint8_t *src = source + CtrPresenterSourceColumn(x, Width) + (Height - 1) * pitch;
-		uint8_t *dst = framebuffer + x * Height * BytesPerPixel;
-		const int column0 = worldSampling.columns[x].i0;
-		[[maybe_unused]] const int column1 = worldSampling.columns[x].i1;
-		[[maybe_unused]] const uint32_t weightX1 = worldSampling.columns[x].w;
-		[[maybe_unused]] const uint32_t weightX0 = CtrWeightOne - weightX1;
-		// The framebuffer column starts at the bottom screen row.
-		for (int y = 0; y < Height; ++y, dst += BytesPerPixel) {
-			const uint8_t ui = *src;
-			if (ui != CtrWorldKeyIndex && ui != CtrWorldDimKeyIndex) {
-				StorePaletteColor<Format>(dst, ui);
+	for (int x = 0; x < CtrScreenWidth; ++x) {
+		const int column = CtrPresenterSourceColumn(x, CtrScreenWidth);
+		const uint8_t *ui = source + column + (CtrScreenHeight - 1) * pitch;
+		const uint8_t *scene = world + column + (CtrScreenHeight - 1) * worldPitch;
+		uint8_t *dst = framebuffer + x * CtrScreenHeight * BytesPerPixel;
+		for (int y = 0; y < CtrScreenHeight; ++y, dst += BytesPerPixel) {
+			if (*ui == CtrWorldKeyIndex) {
+				StorePaletteColor<Format>(dst, *scene);
+			} else if (*ui == CtrWorldDimKeyIndex) {
+				const uint32_t redBlue = CtrDimRedBlue(paletteRedBlue[*scene]);
+				StoreColor<Format>(dst, redBlue & 0xFF, CtrDimChannel(paletteGreen[*scene]), redBlue >> 16);
 			} else {
-				const WorldRow &row = worldRows[Height - 1 - y];
-				if constexpr (!Bilinear) {
-					const uint32_t index = row.row0[column0];
-					if (ui == CtrWorldKeyIndex) {
-						StorePaletteColor<Format>(dst, index);
-					} else {
-						const uint32_t redBlue = CtrDimRedBlue(paletteRedBlue[index]);
-						StoreColor<Format>(dst, redBlue & 0xFF, CtrDimChannel(paletteGreen[index]), redBlue >> 16);
-					}
-				} else {
-					const uint32_t a = row.row0[column0];
-					const uint32_t b = row.row0[column1];
-					const uint32_t c = row.row1[column0];
-					const uint32_t d = row.row1[column1];
-					const uint32_t weightY1 = row.weight1;
-					const uint32_t weightY0 = CtrWeightOne - weightY1;
-					const uint32_t topRedBlue = ((paletteRedBlue[a] * weightX0 + paletteRedBlue[b] * weightX1) >> 8) & 0x00FF00FFu;
-					const uint32_t bottomRedBlue = ((paletteRedBlue[c] * weightX0 + paletteRedBlue[d] * weightX1) >> 8) & 0x00FF00FFu;
-					uint32_t redBlue = ((topRedBlue * weightY0 + bottomRedBlue * weightY1) >> 8) & 0x00FF00FFu;
-					const uint32_t topGreen = (paletteGreen[a] * weightX0 + paletteGreen[b] * weightX1) >> 8;
-					const uint32_t bottomGreen = (paletteGreen[c] * weightX0 + paletteGreen[d] * weightX1) >> 8;
-					uint32_t green = (topGreen * weightY0 + bottomGreen * weightY1) >> 8;
-					if (ui != CtrWorldKeyIndex) {
-						redBlue = CtrDimRedBlue(redBlue);
-						green = CtrDimChannel(green);
-					}
-					StoreColor<Format>(dst, redBlue & 0xFF, green, redBlue >> 16);
-				}
+				StorePaletteColor<Format>(dst, *ui);
 			}
-			if (y != Height - 1)
-				src -= pitch;
+			if (y != CtrScreenHeight - 1) { ui -= pitch; scene -= worldPitch; }
 		}
 	}
 }
-
-template <bool Bilinear>
-void BlitTopWithWorld(uint8_t *framebuffer, GSPGPU_FramebufferFormat format, const uint8_t *source, int pitch)
+void BlitTopWithWorld(uint8_t *fb, GSPGPU_FramebufferFormat format, const uint8_t *ui, int pitch, const uint8_t *world, int worldPitch)
 {
 	switch (format) {
-	case GSP_BGR8_OES: BlitTopWithWorld<GSP_BGR8_OES, Bilinear>(framebuffer, source, pitch); break;
-	case GSP_RGB565_OES: BlitTopWithWorld<GSP_RGB565_OES, Bilinear>(framebuffer, source, pitch); break;
-	case GSP_RGBA8_OES: BlitTopWithWorld<GSP_RGBA8_OES, Bilinear>(framebuffer, source, pitch); break;
+	case GSP_BGR8_OES: BlitTopWithWorld<GSP_BGR8_OES>(fb, ui, pitch, world, worldPitch); break;
+	case GSP_RGB565_OES: BlitTopWithWorld<GSP_RGB565_OES>(fb, ui, pitch, world, worldPitch); break;
+	case GSP_RGBA8_OES: BlitTopWithWorld<GSP_RGBA8_OES>(fb, ui, pitch, world, worldPitch); break;
 	default: break;
-	}
-}
-
-/** @brief Builds the tables for the zoom level (when it changes) and the world rows of this frame. */
-void PrepareWorldFrame(const CtrWorldFrame &frame)
-{
-	if (worldSamplingLevel != frame.level) {
-		CtrBuildWorldSampling(worldSampling, frame.level);
-		worldSamplingLevel = frame.level;
-	}
-	for (int y = 0; y < CtrScreenHeight; ++y) {
-		const CtrAxisSample &sample = worldSampling.rows[y];
-		worldRows[y].row0 = frame.pixels + sample.i0 * frame.pitch;
-		worldRows[y].row1 = frame.pixels + sample.i1 * frame.pitch;
-		worldRows[y].weight1 = sample.w;
 	}
 }
 
@@ -311,7 +244,7 @@ void PrepareWorldFrame(const CtrWorldFrame &frame)
 
 void CTR_SetWorldFrame(const CtrWorldFrame &frame)
 {
-	if (frame.pixels == nullptr || frame.level < 0 || frame.level >= CtrZoomLevelCount)
+	if (frame.pixels == nullptr || frame.pitch < CtrWorldWidth())
 		return;
 	worldFrame = frame;
 	worldFramePending = true;
@@ -352,7 +285,8 @@ bool CTR_PresentFrame(const SDL_Surface *surface)
 	}
 	if (!nativePresenterSynchronized)
 		return false;
-	gfxSet3D(false);
+	const bool stereo = hasWorld && worldFrame.rightPixels != nullptr;
+	gfxSet3D(stereo);
 
 	u16 fbW = 0, fbH = 0;
 	u8 *fbLeft = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &fbW, &fbH);
@@ -368,18 +302,19 @@ bool CTR_PresentFrame(const SDL_Surface *surface)
 	const uint8_t *srcPixels = static_cast<const uint8_t *>(surface->pixels);
 	const int srcPitch = surface->pitch;
 	if (hasWorld) {
-		PrepareWorldFrame(worldFrame);
-		if (worldFrame.level == static_cast<int>(CtrWorldZoom::Percent100))
-			BlitTopWithWorld<false>(fbLeft, topFormat, srcPixels, srcPitch);
-		else
-			BlitTopWithWorld<true>(fbLeft, topFormat, srcPixels, srcPitch);
+		BlitTopWithWorld(fbLeft, topFormat, srcPixels, srcPitch, worldFrame.pixels, worldFrame.pitch);
+		if (stereo) {
+			u8 *fbRight = gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, nullptr, nullptr);
+			if (fbRight == nullptr) return false;
+			BlitTopWithWorld(fbRight, topFormat, srcPixels, srcPitch, worldFrame.rightPixels, worldFrame.rightPitch);
+		}
 	} else {
 		BlitFramebuffer<400>(fbLeft, topFormat, srcPixels, srcPitch);
 	}
 	BlitFramebuffer<320>(fbBottom, bottomFormat, srcPixels + 240 * srcPitch, srcPitch);
 	gfxFlushBuffers();
 	gspWaitForVBlank();
-	gfxScreenSwapBuffers(GFX_TOP, false);
+	gfxScreenSwapBuffers(GFX_TOP, stereo);
 	gfxScreenSwapBuffers(GFX_BOTTOM, false);
 	return true;
 }
