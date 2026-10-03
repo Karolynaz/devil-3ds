@@ -1446,7 +1446,8 @@ void DrawCtrScaledItem(const Surface &out, const Item &item, Rectangle target, b
 	if (sourceSize.width <= 0 || sourceSize.height <= 0 || target.size.width <= 0 || target.size.height <= 0)
 		return;
 	const bool logicalCanvas = out.w() >= 640;
-	const int screenWidth = target.position.y < 240 ? 400 : 320;
+	const int screenY = logicalCanvas && MousePosition.y >= 240 ? 240 : 0;
+	const int screenWidth = screenY == 0 ? 400 : 320;
 	if (logicalCanvas) {
 		target.position.x = target.position.x * screenWidth / 640;
 		target.size.width = target.size.width * screenWidth / 640;
@@ -1468,7 +1469,7 @@ void DrawCtrScaledItem(const Surface &out, const Item &item, Rectangle target, b
 	DrawItem(item, *source, { 0, sourceSize.height - 1 }, sprite);
 	for (int y = 0; y < target.size.height; ++y) {
 		const int dstY = target.position.y + y;
-		if (dstY < 0 || dstY >= out.h())
+		if (dstY < 0 || dstY >= out.h() || (logicalCanvas && (dstY < screenY || dstY >= screenY + 240)))
 			continue;
 		for (int x = 0; x < target.size.width; ++x) {
 			const int nativeX = target.position.x + x;
