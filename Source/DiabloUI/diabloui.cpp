@@ -881,7 +881,7 @@ ClxSpriteList GetListSelectorSprites(int itemHeight)
 
 #ifdef __3DS__
 namespace {
-void RenderCtrImage(ClxSprite sprite, SDL_Rect rect, bool centered);
+void RenderCtrImage(ClxSprite sprite, SDL_Rect rect, bool centered, bool allowUpscale = false);
 }
 #endif
 
@@ -967,7 +967,7 @@ void Render(const UiArtText &uiArtText)
 #ifdef __3DS__
 // Draw into physical pixel coordinates first, then encode each pixel on the
 // global logical canvas grid. The presenter restores it without filtering.
-void RenderCtrImage(ClxSprite sprite, SDL_Rect rect, bool centered)
+void RenderCtrImage(ClxSprite sprite, SDL_Rect rect, bool centered, bool allowUpscale)
 {
 	const Surface &out = Surface(DiabloUiSurface());
 	const bool bottom = rect.y >= 240;
@@ -976,7 +976,10 @@ void RenderCtrImage(ClxSprite sprite, SDL_Rect rect, bool centered)
 	const int nativeX = rect.x * screenWidth / 640;
 	const int areaWidth = rect.w > 0 ? rect.w * screenWidth / 640 : screenWidth;
 	const int areaHeight = rect.h > 0 ? rect.h : 240 - (rect.y - screenY);
-	const Size size = CtrFitImage({ sprite.width(), sprite.height() }, { areaWidth, areaHeight });
+	const Size sourceSize { sprite.width(), sprite.height() };
+	const Size bounds { areaWidth, areaHeight };
+	const Size enlarged = allowUpscale ? CtrEnlargeImage(sourceSize, bounds) : Size { 0, 0 };
+	const Size size = enlarged.width > 0 ? enlarged : CtrFitImage(sourceSize, bounds);
 	if (size.width <= 0 || size.height <= 0) return;
 	const int x = nativeX + (centered ? (areaWidth - size.width) / 2 : 0);
 	const int y = rect.y + (rect.h > 0 ? (rect.h - size.height) / 2 : 0);
@@ -1041,7 +1044,7 @@ void Render(const UiImageClx &uiImage)
 		return;
 	}
 
-	RenderCtrImage(sprite, uiImage.m_rect, uiImage.isCentered());
+	RenderCtrImage(sprite, uiImage.m_rect, uiImage.isCentered(), uiImage.allowsUpscale());
 	return;
 #endif
 	RenderClxSprite(Surface(DiabloUiSurface()), sprite, { x, uiImage.m_rect.y });

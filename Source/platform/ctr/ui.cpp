@@ -184,9 +184,11 @@ void Draw3DSLoadingScreen(const Surface &out)
 
 	SDL_FillSurfaceRect(out.surface, nullptr, 0);
 
-	const int topX = (out.w() - BackgroundWidth) / 2;
 	if (LoadingBackground) {
-		out.BlitFrom(*LoadingBackground, { 0, 0, BackgroundWidth, BackgroundHeight }, { topX, 0 });
+		// Encode the complete native 400x240 frame, rather than placing a
+		// 400-wide image inside the 640-wide canvas and squeezing it again.
+		out.ScaleBlitFromPreservingDownscale(*LoadingBackground,
+		    { 0, 0, BackgroundWidth, BackgroundHeight }, { 0, 0, out.w(), 240 });
 	}
 
 	// Keep the existing translation, splitting at a word near its midpoint.

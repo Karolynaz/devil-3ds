@@ -113,8 +113,12 @@ public:
 		sprite_ = sprite;
 	}
 
+	void setAllowUpscale(bool value) { allowUpscale_ = value; }
+	[[nodiscard]] bool allowsUpscale() const { return allowUpscale_; }
+
 private:
 	ClxSprite sprite_;
+	bool allowUpscale_ = false;
 };
 
 //=============================================================================

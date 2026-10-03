@@ -75,3 +75,28 @@ actors and mana-shield sprites rather than individual floor tiles. Lower the
 slider if the second render affects frame rate.
 
 This branch is for testing. Do not publish its installers to Releases yet.
+
+## Screen repair test — 2026-10-03
+
+The old emulator configuration contained Width=800, Height=480. The native
+presenter only accepts a 640x480 indexed canvas. An 800-wide canvas bypassed it,
+showing the scene key as a solid color and letting SDL filter encoded UI pixels.
+Movie routing also bypassed its 640x480 path. Menu elements included an extra
+80-pixel logical offset, cutting off right selectors.
+
+The 3DS resolution loader now migrates to 640x480; window creation also fixes
+that canvas size, including command-line overrides. No settings deletion is
+needed. Fullscreen toggles cannot recreate a 32-bit SDL surface. Initial GPU
+synchronization retries without waking SDL's texture renderer.
+
+The new supplied 400x240 loading logo is encoded across the complete top screen.
+Loading text remains centered in both axes over two lines on the bottom screen.
+New Hero hides its empty summary and enlarges the three-hero picture by an
+integer factor of two (360x152), centered on the 400x240 screen. Choosing an
+existing hero or a class restores the normal summary. The menu uses Credits.
+
+Run `python3 tools/tests/test_ctr_presenter.py` in addition to the two tests above.
+It executes the production presenter with mocked hardware calls, checking world
+composition, both eyes, right-edge pixels, movie frame separation and recovery
+from temporary GPU access failures. These checks do not establish physical 3DS
+operation. Check the repaired build on the console before publishing a release.

@@ -65,6 +65,20 @@ std::vector<std::unique_ptr<UiListItem>> vecSelHeroDlgItems;
 std::vector<std::unique_ptr<UiItemBase>> vecSelDlgItems;
 
 UiImageClx *SELHERO_DIALOG_HERO_IMG;
+#ifdef __3DS__
+std::vector<UiItemBase *> HeroSummaryElements;
+void SetHeroSummaryVisible(bool visible)
+{
+	for (auto *element : HeroSummaryElements) {
+		if (visible) element->Show();
+		else element->Hide();
+	}
+	SELHERO_DIALOG_HERO_IMG->m_rect = visible
+	    ? MakeSdlRect(GetUIRectangle().position.x + 12, 82, 288, 76)
+	    : MakeSdlRect(0, 0, 640, 240);
+	SELHERO_DIALOG_HERO_IMG->setAllowUpscale(!visible);
+}
+#endif
 
 void SelheroListFocus(size_t value);
 void SelheroListSelect(size_t value);
@@ -88,6 +102,9 @@ void SelheroFree()
 {
 	ArtBackground = std::nullopt;
 
+#ifdef __3DS__
+	HeroSummaryElements.clear();
+#endif
 	vecSelHeroDialog.clear();
 
 	vecSelDlgItems.clear();
@@ -97,6 +114,9 @@ void SelheroFree()
 
 void SelheroSetStats()
 {
+#ifdef __3DS__
+	SetHeroSummaryVisible(true);
+#endif
 	SELHERO_DIALOG_HERO_IMG->setSprite(UiGetHeroDialogSprite(static_cast<size_t>(selhero_heroInfo.heroclass)));
 	CopyUtf8(textStats[0], StrCat(selhero_heroInfo.level), sizeof(textStats[0]));
 	CopyUtf8(textStats[1], StrCat(selhero_heroInfo.strength), sizeof(textStats[1]));
@@ -151,6 +171,9 @@ void SelheroListFocus(size_t value)
 	}
 
 	SELHERO_DIALOG_HERO_IMG->setSprite(UiGetHeroDialogSprite(GetNumPlayerClasses()));
+#ifdef __3DS__
+	SetHeroSummaryVisible(false);
+#endif
 	for (char *textStat : textStats)
 		strcpy(textStat, "--");
 	SELLIST_DIALOG_DELETE_BUTTON->SetFlags(baseFlags | UiFlags::ColorUiSilver | UiFlags::ElementDisabled);
@@ -554,14 +577,17 @@ void selhero_Init()
 	SDL_Rect rect = MakeSdlRect(uiPosition.x + 20, 15, 600, 32);
 	vecSelHeroDialog.push_back(std::make_unique<UiArtText>(&title, rect, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
+	HeroSummaryElements.push_back(vecSelHeroDialog.back().get());
+
 	// Top screen: 640 logical width -> 400 physical width (factor 0.625).
 	// 288 logical width -> 180 physical width, preserving 180:76 (1:1 Diablo pixel aspect ratio).
 	// Vertically centered at Y = 82 relative to the stats block (Y = 55..185).
 	rect = MakeSdlRect(uiPosition.x + 12, 82, 288, 76);
-	auto heroImg = std::make_unique<UiImageClx>(UiGetHeroDialogSprite(0), rect, UiFlags::None);
+	auto heroImg = std::make_unique<UiImageClx>(UiGetHeroDialogSprite(0), rect, UiFlags::AlignCenter);
 	SELHERO_DIALOG_HERO_IMG = heroImg.get();
 	vecSelHeroDialog.push_back(std::move(heroImg));
 
+	const size_t statsStart = vecSelHeroDialog.size();
 	const UiFlags labelFlags = UiFlags::FontSize24 | UiFlags::ColorUiSilverDark | UiFlags::AlignRight;
 	const UiFlags valueFlags = UiFlags::FontSize24 | UiFlags::ColorUiGold | UiFlags::AlignCenter;
 	const int labelX = uiPosition.x + 295;
@@ -585,6 +611,8 @@ void selhero_Init()
 		vecSelHeroDialog.push_back(std::make_unique<UiArtText>(textStats[i + 1], MakeSdlRect(valueX, statY, valueWidth, statHeight), valueFlags));
 		statY += statHeight;
 	}
+	for (size_t i = statsStart; i < vecSelHeroDialog.size(); ++i)
+		HeroSummaryElements.push_back(vecSelHeroDialog[i].get());
 #else
 	SDL_Rect rect = MakeSdlRect(uiPosition.x + 24, uiPosition.y + 161, 590, 35);
 	vecSelHeroDialog.push_back(std::make_unique<UiArtText>(&title, rect, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));

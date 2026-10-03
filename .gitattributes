@@ -1,2 +1,5 @@
 # Do not let git change line endings.
 * -text
+
+# Raw palette-indexed art is binary even when a dark frame contains mostly spaces.
+*.pal8 binary

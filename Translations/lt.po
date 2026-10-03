@@ -441,6 +441,10 @@ msgstr "Pagalba"
 msgid "Show Credits"
 msgstr "Kūrėjai"
 
+#: Source/DiabloUI/mainmenu.cpp
+msgid "Credits"
+msgstr "Kūrėjai"
+
 #: Source/DiabloUI/mainmenu.cpp:54
 msgid "Exit Hellfire"
 msgstr "Išeiti iš „Hellfire“"

@@ -1,5 +1,5 @@
 #include "platform/ctr/display.hpp"
-#include "platform/ctr/ui_geometry.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
 #include "platform/ctr/world_view.hpp"
 #include <SDL.h>
 #include <3ds.h>
@@ -144,7 +144,7 @@ void BlitFramebuffer(uint8_t *framebuffer, const uint8_t *source, int pitch)
 	// then write sequentially without per-pixel division or format branches.
 	constexpr int BytesPerPixel = Format == GSP_BGR8_OES ? 3 : Format == GSP_RGB565_OES ? 2 : 4;
 	for (int x = 0; x < Width; ++x) {
-		const uint8_t *src = source + CtrPresenterSourceColumn(x, Width) + 239 * pitch;
+		const uint8_t *src = source + CtrNativeColumn(x, Width) + 239 * pitch;
 		uint8_t *dst = framebuffer + x * 240 * BytesPerPixel;
 		for (int y = 0; y < 240; ++y, dst += BytesPerPixel) {
 			const CTRPaletteEntry &color = bottomPalette[*src];
@@ -213,7 +213,7 @@ void BlitTopWithWorld(uint8_t *framebuffer, const uint8_t *source, int pitch, co
 {
 	constexpr int BytesPerPixel = Format == GSP_BGR8_OES ? 3 : Format == GSP_RGB565_OES ? 2 : 4;
 	for (int x = 0; x < CtrScreenWidth; ++x) {
-		const int column = CtrPresenterSourceColumn(x, CtrScreenWidth);
+		const int column = CtrNativeColumn(x, CtrScreenWidth);
 		const uint8_t *ui = source + column + (CtrScreenHeight - 1) * pitch;
 		const uint8_t *scene = world + column + (CtrScreenHeight - 1) * worldPitch;
 		uint8_t *dst = framebuffer + x * CtrScreenHeight * BytesPerPixel;
@@ -257,10 +257,9 @@ void CTR_ConfigureFramePresenter(bool dualScreen)
 	nativeDualScreenMode = dualScreen;
 	nativePresenterSynchronized = false;
 	gfxSet3D(false);
-	if (dualScreen && C3D_FrameBegin(0)) {
-		C3D_FrameEnd(GX_CMDLIST_FLUSH);
-		nativePresenterSynchronized = true;
-	}
+	// Synchronize on the first present when GPU access is available. A failed
+	// initial attempt must never hand the keyed UI canvas to SDL's GPU renderer.
+	worldFramePending = false;
 }
 
 bool CTR_PresentFrame(const SDL_Surface *surface)
@@ -283,8 +282,12 @@ bool CTR_PresentFrame(const SDL_Surface *surface)
 		nativePresenterSynchronized = false;
 		return false;
 	}
-	if (!nativePresenterSynchronized)
-		return false;
+	if (!nativePresenterSynchronized) {
+		if (!C3D_FrameBegin(C3D_FRAME_SYNCDRAW))
+			return true; // Keep SDL idle and retry when GPU access is restored.
+		C3D_FrameEnd(GX_CMDLIST_FLUSH);
+		nativePresenterSynchronized = true;
+	}
 	const bool stereo = hasWorld && worldFrame.rightPixels != nullptr;
 	gfxSet3D(stereo);
 

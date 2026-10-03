@@ -28,6 +28,7 @@
 #ifdef __3DS__
 #include "platform/ctr/display.hpp"
 #include "platform/ctr/world_view.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
 #endif
 
 #ifdef NXDK
@@ -162,7 +163,12 @@ void CalculateUIRectangle()
 
 Size GetPreferredWindowSize()
 {
+#ifdef __3DS__
+	// Physical screens and all native UI encoders share this one canvas size.
+	Size windowSize = CtrCanvasSize;
+#else
 	Size windowSize = forceResolution.width != 0 ? forceResolution : *GetOptions().Graphics.resolution;
+#endif
 
 #ifndef USE_SDL1
 	if (*GetOptions().Graphics.upscale && *GetOptions().Graphics.fitToScreen) {
@@ -837,6 +843,11 @@ void ReinitializeRenderer()
 
 void SetFullscreenMode()
 {
+#ifdef __3DS__
+	// A console is always fullscreen. SDL's bpp=0 toggle would recreate the
+	// surface as 32-bit and discard the dual-screen flags and native presenter.
+	return;
+#endif
 #ifdef USE_SDL1
 	Uint32 flags = ghMainWnd->flags ^ SDL_FULLSCREEN;
 	if (*GetOptions().Graphics.fullscreen) {

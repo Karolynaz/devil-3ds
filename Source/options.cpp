@@ -45,6 +45,7 @@
 #include "utils/logged_fstream.hpp"
 #ifdef __3DS__
 #include "platform/ctr/display.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
 #endif
 #include "utils/paths.h"
 #include "utils/sdl_ptrs.h"
@@ -565,7 +566,12 @@ OptionEntryResolution::OptionEntryResolution()
 }
 void OptionEntryResolution::LoadFromIni(std::string_view category)
 {
+#ifdef __3DS__
+	// Migrate old 800x480 settings to the fixed dual-screen canvas.
+	size_ = CtrCanvasSize;
+#else
 	size_ = { ini->getInt(category, "Width", DEFAULT_WIDTH), ini->getInt(category, "Height", DEFAULT_HEIGHT) };
+#endif
 }
 void OptionEntryResolution::SaveToIni(std::string_view category) const
 {

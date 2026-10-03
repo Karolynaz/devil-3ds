@@ -14,6 +14,9 @@ TEST = r'''
 using namespace devilution;
 void check(bool ok) { if (!ok) std::abort(); }
 int main() {
+    check(CtrCanvasSize == Size(640, 480));
+    check(CtrEnlargeImage({180, 76}, {400, 240}) == Size(360, 152));
+    check(CtrEnlargeImage({400, 240}, {400, 240}) == Size(400, 240));
     // No camera size depends on the hardware slider.
     check(CtrWorldWidth() == 640 && CtrWorldHeight() == 240);
     for (int width : {320, 400}) {
@@ -51,7 +54,7 @@ with tempfile.TemporaryDirectory() as tmp:
     subprocess.run([str(exe)], check=True)
 # Full supplied inventory frames, not just a synthetic line: verify every byte
 # through the same existing expand/present convention (400 -> 640 -> 400).
-for asset in sorted((ROOT/'assets/data').glob('ctr_inventory_*.pal8')):
+for asset in sorted((ROOT/'assets/data').glob('ctr_inventory_*.pal8')) + [ROOT/'assets/data/ctr_loading.pal8']:
     image = asset.read_bytes()
     assert len(image) == 400*240
     assert 1 not in image and 2 not in image, f'{asset.name}: reserved UI key'
@@ -60,4 +63,4 @@ for asset in sorted((ROOT/'assets/data').glob('ctr_inventory_*.pal8')):
     presented = bytes(expanded[y*640+x*640//400]
                       for y in range(240) for x in range(400))
     assert presented == image, f'{asset.name}: native pixels changed'
-print('PASS: all six inventory frames unchanged, native UI grid, aspect fit, fixed camera, stereo phase')
+print('PASS: all six inventory frames and loading art unchanged, native UI grid, aspect fit, fixed camera, stereo phase')
