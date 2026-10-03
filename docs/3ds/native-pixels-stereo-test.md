@@ -124,3 +124,39 @@ checking that all fade frames use the scene and that cleared art does not reuse
 it. Existing native pixels, geometry and presenter tests also pass.
 
 This build is for local console testing. No emulator test and no Releases upload.
+
+## Follow-up: native spell icons, category rows and camera
+
+Backup before this change: `Backups/2026-10-03_before_native_spells_camera/source.zip`,
+base commit `9c240a9005f2ddf9b055c7a2f53378c2c5167b9d`.
+
+- Original spell artwork is 56x56. The old active HUD icon used 40x40 and picker
+  icons used 30x30. Both now use the same original 56x56 pixels, encoded on the
+  global native sampling grid. No local resizing is used. Drawing the selection
+  border last preserves all four two-pixel edges.
+- The picker has separate rows for learned spells, equipped staff charges,
+  innate skills, and scrolls, in that order. Empty categories are omitted.
+  Left/right moves within a category, up/down changes category. Each row shows
+  six icons and scrolls horizontally to reveal every available entry; side arrows
+  indicate more entries. Opening the picker focuses the current spell and source.
+  The separate active HUD icon is hidden while the picker is open to avoid overlap.
+- The player anchor moves down 28 screen pixels so the torso is closer to screen
+  center. World pointer conversion and the full automap follow that offset.
+  Pointer rows above zero are normalized before tile/diamond conversion, keeping
+  top-edge targeting aligned. World size, sampling and stereo slider are retained.
+
+Verification: `test_ctr_spell_pixels.py` uses the production native blitter and
+border renderer to compare three original reference frames byte for byte at all
+horizontal sampling phases, checks every border edge in all row layouts, and
+checks clipping with address/undefined-behavior sanitizers.
+`test_ctr_spell_navigation.py` executes production picker layout and navigation
+with all three base-class skills, spell/staff/scroll masks, long rows, duplicate
+spell IDs from different sources, removed categories and empty lists.
+`test_ctr_camera.py` executes production view and inverse pointer geometry and
+checks rendered tile centers map back to the same tiles in both zoom modes.
+The existing pixel, layout, presenter, multiline and fade checks also pass.
+
+Test on the physical console: inspect both icon sizes and all selection edges,
+move through a row with more than six spells, switch between categories, cast
+from each source, and check player framing and targeting near the top edge.
+No emulator test and no Releases upload.

@@ -4,6 +4,9 @@
 #include <vector>
 
 #include "engine/point.hpp"
+#ifdef __3DS__
+#include "controls/axis_direction.h"
+#endif
 #include "engine/surface.hpp"
 #include "tables/spelldat.h"
 
@@ -14,6 +17,7 @@ struct SpellListItem {
 	SpellType type;
 	SpellID id;
 	bool isSelected;
+	bool isVisible = true;
 };
 
 /**
@@ -23,6 +27,10 @@ struct SpellListItem {
 void DrawSpell(const Surface &out);
 void DrawSpellList(const Surface &out);
 std::vector<SpellListItem> GetSpellListItems();
+#ifdef __3DS__
+bool Focus3dsSpellListItem(SpellID spell, SpellType type);
+void Move3dsSpellListSelection(AxisDirection dir);
+#endif
 void SetSpell();
 void SetSpeedSpell(size_t slot);
 bool IsValidSpeedSpell(size_t slot);

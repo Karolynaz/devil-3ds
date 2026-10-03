@@ -30,6 +30,10 @@
 #include "lighting.h"
 #endif
 
+#ifdef __3DS__
+#include "platform/ctr/world_view.hpp"
+#endif
+
 namespace devilution {
 
 namespace {
@@ -1265,7 +1269,7 @@ Displacement GetAutomapScreen()
 		screen = {
 			GetViewportWidth() / 2,
 #ifdef __3DS__
-			GetViewportHeight() / 2
+			GetViewportHeight() / 2 + CtrCameraVerticalOffset
 #else
 			(gnScreenHeight - GetMainPanel().size.height) / 2
 #endif

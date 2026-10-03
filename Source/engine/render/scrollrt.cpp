@@ -1858,6 +1858,9 @@ void CalcViewportGeometry()
 	const int pixelsToPanel = screenHeight - panelHeight;
 #endif
 	Point playerPosition { screenWidth / 2, pixelsToPanel / 2 };
+#ifdef __3DS__
+	playerPosition.y += CtrCameraVerticalOffset / zoomFactor;
+#endif
 
 	if (*GetOptions().Graphics.zoom)
 		playerPosition.y += TILE_HEIGHT / 4;

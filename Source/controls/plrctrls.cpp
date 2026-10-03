@@ -1751,14 +1751,12 @@ void HotSpellMove(AxisDirection dir)
 	if (dir.x == AxisDirectionX_NONE && dir.y == AxisDirectionY_NONE)
 		return;
 
+#ifdef __3DS__
+	Move3dsSpellListSelection(dir);
+#else
 	auto spellListItems = GetSpellListItems();
 	const auto spellCenter = [](const SpellListItem &spellListItem) {
-#ifdef __3DS__
-		const int width = (30 * gnScreenWidth + 200) / 400;
-		return spellListItem.location + Displacement { width / 2, -15 };
-#else
 		return spellListItem.location + Displacement { SPLICONLENGTH / 2, -SPLICONLENGTH / 2 };
-#endif
 	};
 
 	Point position = MousePosition;
@@ -1772,34 +1770,6 @@ void HotSpellMove(AxisDirection dir)
 		}
 	}
 
-#ifdef __3DS__
-	// Choose adjacent icons rather than the first entry in list iteration order.
-	// In a partial row, vertical movement may also change the column.
-	const Point origin = position;
-	int bestDistance = std::numeric_limits<int>::max();
-	for (const SpellListItem &item : spellListItems) {
-		const Point center = spellCenter(item);
-		const int dx = center.x - origin.x;
-		const int dy = center.y - origin.y;
-		int distance;
-		if (dir.y != AxisDirectionY_NONE) {
-			if ((dir.y == AxisDirectionY_UP && dy >= 0) || (dir.y == AxisDirectionY_DOWN && dy <= 0))
-				continue;
-			distance = std::abs(dy) * gnScreenWidth + std::abs(dx);
-		} else {
-			if (dy != 0 || (dir.x == AxisDirectionX_LEFT && dx >= 0) || (dir.x == AxisDirectionX_RIGHT && dx <= 0))
-				continue;
-			distance = std::abs(dx);
-		}
-		if (distance < bestDistance) {
-			bestDistance = distance;
-			position = center;
-		}
-	}
-	if (position != MousePosition)
-		SetCursorPos(position);
-	return;
-#else
 	const auto search = [&](AxisDirection dir, bool searchForward) {
 		if (dir.x == AxisDirectionX_NONE && dir.y == AxisDirectionY_NONE)
 			return;

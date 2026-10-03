@@ -52,6 +52,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "platform/ctr/world_view.hpp"
 #endif
 
 #ifdef UNPACKED_MPQS
@@ -718,6 +719,10 @@ void AlterMousePositionViaPlayer(Point &screenPosition, const Player &myPlayer)
 	CalcTileOffset(&xo, &yo);
 	screenPosition.x += xo;
 	screenPosition.y += yo;
+#ifdef __3DS__
+	// Invert the same camera offset used by CalcViewportGeometry.
+	screenPosition.y -= CtrCameraVerticalOffset / (*GetOptions().Graphics.zoom ? 2 : 1);
+#endif
 
 	// Adjust for player walking
 	if (myPlayer.isWalking()) {
@@ -761,6 +766,16 @@ Point ConvertToTileGrid(Point &screenPosition)
 	if (*GetOptions().Graphics.zoom) {
 		screenPosition.y -= TILE_HEIGHT / 4;
 	}
+
+#ifdef __3DS__
+	// The lower camera anchor can place top-edge pointer coordinates above zero.
+	// Normalize whole rows before integer division and diamond alignment.
+	if (screenPosition.y < 0) {
+		const int rowsAbove = (-screenPosition.y + TILE_HEIGHT - 1) / TILE_HEIGHT;
+		screenPosition.y += rowsAbove * TILE_HEIGHT;
+		ShiftGrid(&currentTile, 0, -rowsAbove);
+	}
+#endif
 
 	const int tx = screenPosition.x / TILE_WIDTH;
 	const int ty = screenPosition.y / TILE_HEIGHT;

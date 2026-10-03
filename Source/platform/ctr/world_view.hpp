@@ -5,6 +5,8 @@
 namespace devilution {
 constexpr int CtrScreenWidth = 400;
 constexpr int CtrScreenHeight = 240;
+// Player sprites extend above their tile anchor. Center the torso, not the feet.
+constexpr int CtrCameraVerticalOffset = 28;
 constexpr int CtrWorldWidth() { return 640; }
 constexpr int CtrWorldHeight() { return 240; }
 constexpr int CtrUiToWorldX(int x, int uiWidth) { return x * CtrWorldWidth() / uiWidth; }
