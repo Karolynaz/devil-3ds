@@ -56,6 +56,12 @@ void CtrWorldRepeatFrame()
 	if (WorldFrameValid && WorldBuffer)
 		GiveWorldToPresenter();
 }
+void CtrWorldClearFrame()
+{
+	WorldFrameValid = false;
+	StereoFrame = false;
+	CTR_SetWorldFrame({ nullptr, 0, nullptr, 0 });
+}
 bool CtrIsUiLayer(const Surface &out)
 {
 	return (!WorldBuffer || !Contains(*WorldBuffer, out))

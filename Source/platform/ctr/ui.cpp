@@ -13,6 +13,7 @@
 #include "engine/palette.h"
 #include "engine/render/primitive_render.hpp"
 #include "platform/ctr/ui_geometry.hpp"
+#include "platform/ctr/world_surface.hpp"
 #include "DiabloUI/ui_flags.hpp"
 #include "engine/render/text_render.hpp"
 #include "utils/language.h"
@@ -182,6 +183,7 @@ void Draw3DSLoadingScreen(const Surface &out)
 	if (!LoadingBackgroundLoadAttempted)
 		LoadLoadingBackground();
 
+	CtrWorldClearFrame();
 	SDL_FillSurfaceRect(out.surface, nullptr, 0);
 
 	if (LoadingBackground) {
@@ -191,11 +193,15 @@ void Draw3DSLoadingScreen(const Surface &out)
 		    { 0, 0, BackgroundWidth, BackgroundHeight }, { 0, 0, out.w(), 240 });
 	}
 
-	// Keep the existing translation, splitting at a word near its midpoint.
 	std::string loadingText { _("Not Even Death Can Save You") };
-	const auto lineBreak = loadingText.find(' ', loadingText.size() / 2);
-	if (lineBreak != std::string::npos)
-		loadingText[lineBreak] = '\n';
+	if (loadingText == "Not Even Death Can Save You") {
+		loadingText = "Not Even Death\nCan Save You";
+	} else {
+		// Keep translations, splitting at a word near their midpoint.
+		const auto lineBreak = loadingText.find(' ', loadingText.size() / 2);
+		if (lineBreak != std::string::npos)
+			loadingText[lineBreak] = '\n';
+	}
 	const Rectangle bottomTextRect { { 20, 240 }, { out.w() - 40, 240 } };
 	DrawString(out, loadingText, bottomTextRect,
 	    { .flags = UiFlags::FontSize24 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,

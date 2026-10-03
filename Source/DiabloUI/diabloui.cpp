@@ -75,6 +75,7 @@
 // for virtual keyboard on 3DS
 #include "platform/ctr/keyboard.h"
 #include "platform/ctr/pixel_geometry.hpp"
+#include "platform/ctr/world_surface.hpp"
 #endif
 
 namespace devilution {
@@ -678,16 +679,58 @@ void LoadUiGFX()
 
 #ifdef __3DS__
 std::unique_ptr<OwnedSurface> UiBottomBackgroundBuffer;
+std::unique_ptr<OwnedSurface> UiTopBackgroundBuffer;
+
+void Prepare3DSMenuTitleBackground()
+{
+	UiTopBackgroundBuffer = nullptr;
+	std::array<SDL_Color, 256> titlePalette {};
+	// Read the original demon artwork from the player's game files, as the
+	// title dialog does. No additional redistributed game asset is needed.
+	const auto title = LoadPcx("ui_art\\title", std::nullopt, titlePalette.data(), false);
+	if (!title || (*title)[0].width() < 640 || (*title)[0].height() < 480)
+		return;
+	OwnedSurface original(640, 480);
+	RenderClxSprite(original, (*title)[0], { 0, 0 });
+	OwnedSurface native(400, 240);
+	native.BlitFrom(original, MakeSdlRect(120, 0, 400, 240), { 0, 0 });
+
+	// Main-menu text keeps its own palette. Translate the title background
+	// once on loading, preserving the demon's colors behind the flames.
+	std::array<uint8_t, 256> translation {};
+	for (size_t i = 0; i < translation.size(); ++i) {
+		int bestDistance = 3 * 256 * 256;
+		for (size_t j = 0; j < logical_palette.size(); ++j) {
+			const int r = static_cast<int>(titlePalette[i].r) - logical_palette[j].r;
+			const int g = static_cast<int>(titlePalette[i].g) - logical_palette[j].g;
+			const int b = static_cast<int>(titlePalette[i].b) - logical_palette[j].b;
+			const int distance = r * r + g * g + b * b;
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				translation[i] = static_cast<uint8_t>(j);
+			}
+		}
+	}
+	for (int y = 0; y < native.h(); ++y)
+		for (int x = 0; x < native.w(); ++x)
+			*native.at(x, y) = translation[*native.at(x, y)];
+	UiTopBackgroundBuffer = std::make_unique<OwnedSurface>(640, 240);
+	UiTopBackgroundBuffer->ScaleBlitFromPreservingDownscale(native,
+	    MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, 640, 240));
+}
 
 void Prepare3DSBackground()
 {
 	if (!gb3DSUseBottomBoxBackground || !ArtBackground) {
 		UiBottomBackgroundBuffer = nullptr;
+		UiTopBackgroundBuffer = nullptr;
 		return;
 	}
+	Prepare3DSMenuTitleBackground();
 	const ClxSprite sprite = (*ArtBackground)[0];
 	if (sprite.height() < 480 || sprite.width() < 640) {
 		UiBottomBackgroundBuffer = nullptr;
+		UiTopBackgroundBuffer = nullptr;
 		return;
 	}
 
@@ -724,6 +767,7 @@ void UnloadUiGFX()
 {
 #ifdef __3DS__
 	UiBottomBackgroundBuffer = nullptr;
+	UiTopBackgroundBuffer = nullptr;
 #endif
 	ArtHero = std::nullopt;
 	for (OptionalOwnedClxSpriteList &override : ArtHeroOverrides)
@@ -812,6 +856,7 @@ bool UiLoadBlackBackground()
 	ArtBackground = std::nullopt;
 #ifdef __3DS__
 	UiBottomBackgroundBuffer = nullptr;
+	UiTopBackgroundBuffer = nullptr;
 #endif
 	UiLoadDefaultPalette();
 	UiOnBackgroundChange();
@@ -908,6 +953,7 @@ void DrawSelector(const SDL_Rect &rect)
 void UiClearScreen()
 {
 #ifdef __3DS__
+	CtrWorldClearFrame();
 	SDL_FillSurfaceRect(DiabloUiSurface(), nullptr, 0);
 #else
 	if (!ArtBackground || gnScreenWidth > (*ArtBackground)[0].width() || gnScreenHeight > (*ArtBackground)[0].height()) {
@@ -1020,6 +1066,8 @@ void Render(const UiImageClx &uiImage)
 			if (!UiBottomBackgroundBuffer) {
 				Prepare3DSBackground();
 			}
+			if (UiTopBackgroundBuffer)
+				out.BlitFrom(*UiTopBackgroundBuffer, { 0, 0, 640, 240 }, { 0, 0 });
 			if (UiBottomBackgroundBuffer) {
 				out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { (out.w() - 640) / 2, 240 });
 			} else {

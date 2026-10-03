@@ -800,12 +800,13 @@ uint32_t DoDrawString(const Surface &out, std::string_view text, Rectangle rect,
 			}
 
 			if (HasAnyOf(opts.flags, UiFlags::AlignCenter | UiFlags::AlignRight)) {
-				lineWidth = width;
+				// A newline belongs to the previous line; include only a wrapped glyph.
+				lineWidth = next == U'\n' ? 0 : width;
 				if (remaining.size() > cpLen) {
 #ifdef __3DS__
-					lineWidth += curSpacing + GetLineWidth(remaining.substr(cpLen), size, curSpacing, nullptr, scale);
+					lineWidth += (next == U'\n' ? 0 : curSpacing) + GetLineWidth(remaining.substr(cpLen), size, curSpacing, nullptr, scale);
 #else
-					lineWidth += curSpacing + GetLineWidth(remaining.substr(cpLen), size, curSpacing, nullptr, doubleWidth);
+					lineWidth += (next == U'\n' ? 0 : curSpacing) + GetLineWidth(remaining.substr(cpLen), size, curSpacing, nullptr, doubleWidth);
 #endif
 				}
 			}
@@ -1490,16 +1491,17 @@ void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFo
 			}
 
 			if (HasAnyOf(opts.flags, UiFlags::AlignCenter | UiFlags::AlignRight)) {
-				lineWidth = width;
+				// A newline belongs to the previous line; include only a wrapped glyph.
+				lineWidth = next == U'\n' ? 0 : width;
 				if (str->size() > cpLen) {
 #ifdef __3DS__
-					lineWidth += curSpacing
+					lineWidth += (next == U'\n' ? 0 : curSpacing)
 					    + (isProcessingFormatArgValue
 					            ? GetLineWidth(remaining, args, argsLen, fmtArgParser.offset(), size, curSpacing, &charactersInLine,
 					                  /*firstArgOffset=*/args[fmtArgParser.offset() - 1].GetFormatted().size() - (curFormatted.size() - cpLen), scale)
 					            : GetLineWidth(remaining.substr(cpLen), args, argsLen, fmtArgParser.offset(), size, curSpacing, &charactersInLine, std::nullopt, scale));
 #else
-					lineWidth += curSpacing
+					lineWidth += (next == U'\n' ? 0 : curSpacing)
 					    + (isProcessingFormatArgValue
 					            ? GetLineWidth(remaining, args, argsLen, fmtArgParser.offset(), size, curSpacing, &charactersInLine,
 					                  /*firstArgOffset=*/args[fmtArgParser.offset() - 1].GetFormatted().size() - (curFormatted.size() - cpLen), doubleWidth)

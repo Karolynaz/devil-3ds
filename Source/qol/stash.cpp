@@ -68,9 +68,9 @@ constexpr Rectangle StashButtonRect[] = {
 #ifdef __3DS__
 constexpr Rectangle CtrStashButtonRect[] = {
 	{},
-	{ { 19, 29 }, { 26, 18 } },
-	{ { 50, 29 }, { 110, 18 } },
-	{ { 165, 29 }, { 26, 18 } },
+	{ { 19, 24 }, { 26, 18 } },
+	{ { 50, 24 }, { 110, 18 } },
+	{ { 165, 24 }, { 26, 18 } },
 	{},
 };
 constexpr int StashHalfCellPixels = CtrItemSlotPixels / 2;
@@ -518,7 +518,7 @@ void DrawCtrStashItems(const Surface &out)
 
 	const UiFlags labelStyle = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing;
 	DrawString(out, FormatRuntime(_("Stash ({:d})"), Stash.GetPage() + 1),
-	    { { 19, 11 }, { 180, 18 } }, { .flags = labelStyle });
+	    { { 19, 13 }, { 180, 18 } }, { .flags = labelStyle });
 	for (int i = 1; i <= 3; ++i) {
 		const Rectangle button = CtrStashButtonRect[i];
 		FillRect(out, button.position.x, button.position.y, button.size.width, button.size.height, 0);

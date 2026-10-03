@@ -26,7 +26,7 @@ struct CtrWorldFrame {
 	int rightPitch;
 };
 
-/** @brief Sets the world for the next CTR_PresentFrame only (one-shot). A frame without it is a plain UI frame. */
+/** @brief Sets the world for the next present only. A null pixels pointer cancels any pending scene. */
 void CTR_SetWorldFrame(const CtrWorldFrame &frame);
 
 void CTR_ConfigureFramePresenter(bool dualScreen);

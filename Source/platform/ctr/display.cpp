@@ -244,7 +244,11 @@ void BlitTopWithWorld(uint8_t *fb, GSPGPU_FramebufferFormat format, const uint8_
 
 void CTR_SetWorldFrame(const CtrWorldFrame &frame)
 {
-	if (frame.pixels == nullptr || frame.pitch < CtrWorldWidth())
+	if (frame.pixels == nullptr) {
+		worldFramePending = false;
+		return;
+	}
+	if (frame.pitch < CtrWorldWidth())
 		return;
 	worldFrame = frame;
 	worldFramePending = true;

@@ -1919,6 +1919,9 @@ void ClearScreenBuffer()
 		return;
 
 	assert(PalSurface != nullptr);
+#ifdef __3DS__
+	CtrWorldClearFrame();
+#endif
 	SDL_FillSurfaceRect(PalSurface, nullptr, 0);
 }
 

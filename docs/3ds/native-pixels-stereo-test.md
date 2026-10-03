@@ -100,3 +100,27 @@ It executes the production presenter with mocked hardware calls, checking world
 composition, both eyes, right-edge pixels, movie frame separation and recovery
 from temporary GPU access failures. These checks do not establish physical 3DS
 operation. Check the repaired build on the console before publishing a release.
+
+## Follow-up: independent line centering and game fade
+
+- Center each explicit line independently. The old renderer counted the newline
+  glyph plus spacing as part of the next line's width. This displaced the second
+  loading/copyright line. The English loading text has the explicit break
+  `Not Even Death` / `Can Save You`; translated text is retained.
+- Keep the scene attached during every palette-only game fade frame. Replacing
+  the canvas with a menu/loading/movie frame invalidates the scene reference.
+  This prevents the orange world-key palette entry appearing during startup.
+- Show the original title demon behind the main menu's animated flaming logo.
+  The artwork is read from the player's game files and translated once to the
+  menu palette; no new original-game artwork is distributed.
+- Stash heading moves down 2 native pixels; all three buttons and their pointer
+  hit regions move up 5 native pixels.
+
+Verification: `test_ctr_multiline.py` executes the production multiline layout,
+including both loading/copyright strings with different spacing and alignment;
+it fails on the previous code. `test_ctr_fades.py` executes production palette
+fade routines, world-buffer lifetime and the native framebuffer presenter,
+checking that all fade frames use the scene and that cleared art does not reuse
+it. Existing native pixels, geometry and presenter tests also pass.
+
+This build is for local console testing. No emulator test and no Releases upload.

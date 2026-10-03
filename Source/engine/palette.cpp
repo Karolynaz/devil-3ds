@@ -33,6 +33,7 @@
 #ifdef __3DS__
 #include "platform/ctr/display.hpp"
 #include "platform/ctr/world_view.hpp"
+#include "platform/ctr/world_surface.hpp"
 #endif
 
 namespace devilution {
@@ -318,6 +319,10 @@ void PaletteFadeIn(int fr, const std::array<SDL_Color, 256> &srcPalette)
 			prevFadeValue = i;
 
 			BltFast(nullptr, nullptr);
+#ifdef __3DS__
+			// Palette-only frames still need the scene behind the keyed UI.
+			CtrWorldRepeatFrame();
+#endif
 			RenderPresent();
 		}
 	}
@@ -328,6 +333,9 @@ void PaletteFadeIn(int fr, const std::array<SDL_Color, 256> &srcPalette)
 
 	if (fr <= 0) {
 		BltFast(nullptr, nullptr);
+#ifdef __3DS__
+		CtrWorldRepeatFrame();
+#endif
 		RenderPresent();
 	}
 
@@ -358,6 +366,10 @@ void PaletteFadeOut(int fr, const std::array<SDL_Color, 256> &srcPalette)
 			prevFadeValue = i;
 
 			BltFast(nullptr, nullptr);
+#ifdef __3DS__
+			// Palette-only frames still need the scene behind the keyed UI.
+			CtrWorldRepeatFrame();
+#endif
 			RenderPresent();
 		}
 	}
@@ -367,6 +379,9 @@ void PaletteFadeOut(int fr, const std::array<SDL_Color, 256> &srcPalette)
 
 	if (fr <= 0) {
 		BltFast(nullptr, nullptr);
+#ifdef __3DS__
+		CtrWorldRepeatFrame();
+#endif
 		RenderPresent();
 	}
 
