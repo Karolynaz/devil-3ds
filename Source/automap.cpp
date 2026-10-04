@@ -1563,6 +1563,12 @@ Rectangle MinimapRect {};
 
 void UpdateMinimapRect()
 {
+#ifdef __3DS__
+	// Logical 640x240 world -> physical 400x240 top screen. Including the
+	// border this is about 133x80 pixels, one ninth of the visible area.
+	MinimapRect = Rectangle { { GetViewportWidth() - 213, 4 }, { 207, 76 } };
+	return;
+#endif
 	// Set the dimensions and screen position of the minimap relative to the screen dimensions
 	const int minimapWidth = GetViewportWidth() / 4;
 	const Size minimapSize { minimapWidth, minimapWidth / 2 };
@@ -1573,6 +1579,9 @@ void UpdateMinimapRect()
 void InitAutomapOnce()
 {
 	AutomapActive = false;
+#ifdef __3DS__
+	SetAutomapType(*GetOptions().Gameplay.showSmallMap ? AutomapType::Minimap : AutomapType::Opaque);
+#endif
 	AutoMapScale = 50;
 
 	UpdateMinimapRect();
@@ -1580,7 +1589,7 @@ void InitAutomapOnce()
 	// Set minimap scale
 	const int height = 480;
 	const int scale = 25;
-	const int factor = gnScreenHeight / height;
+	const int factor = std::max(1, gnScreenHeight / height);
 
 	if (factor >= 8) {
 		MinimapScale = scale * 8;

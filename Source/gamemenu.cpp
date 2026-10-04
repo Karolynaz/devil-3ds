@@ -10,6 +10,7 @@
 #endif
 
 #include "cursor.h"
+#include "automap.h"
 #include "diablo_msg.hpp"
 #include "engine/backbuffer_state.hpp"
 #include "engine/demomode.h"
@@ -44,6 +45,9 @@ void GamemenuMusicVolume(bool bActivate);
 void GamemenuSoundVolume(bool bActivate);
 void GamemenuBrightness(bool bActivate);
 void GamemenuSpeed(bool bActivate);
+#ifdef __3DS__
+void GamemenuSmallMap(bool bActivate);
+#endif
 
 /** Contains the game menu items of the single player menu. */
 TMenuItem sgSingleMenu[] = {
@@ -78,6 +82,9 @@ TMenuItem sgOptionsMenu[] = {
 	{ GMENU_ENABLED | GMENU_SLIDER, nullptr,             &GamemenuSoundVolume  },
 	{ GMENU_ENABLED | GMENU_SLIDER, N_("Gamma"),         &GamemenuBrightness   },
 	{ GMENU_ENABLED | GMENU_SLIDER, N_("Speed"),         &GamemenuSpeed        },
+#ifdef __3DS__
+	{ GMENU_ENABLED               , N_("Show small map"), &GamemenuSmallMap     },
+#endif
 	{ GMENU_ENABLED               , N_("Previous Menu"), &GamemenuPrevious     },
 	{ GMENU_ENABLED               , nullptr,             nullptr               },
 	// clang-format on
@@ -186,8 +193,30 @@ int GamemenuSliderBrightness()
 	return gmenu_slider_get(&sgOptionsMenu[2], 0, 100);
 }
 
+#ifdef __3DS__
+void GamemenuSmallMapLabel()
+{
+	sgOptionsMenu[4].pszStr = *GetOptions().Gameplay.showSmallMap ? N_("Show small map: On") : N_("Show small map: Off");
+}
+
+void GamemenuSmallMap(bool /*bActivate*/)
+{
+	auto &option = GetOptions().Gameplay.showSmallMap;
+	option.SetValue(!*option);
+	SetAutomapType(*option ? AutomapType::Minimap : AutomapType::Opaque);
+	UpdateMinimapRect();
+	AutomapOffset = { 0, 0 };
+	GamemenuSmallMapLabel();
+	SaveOptions();
+	RedrawEverything();
+}
+#endif
+
 void GamemenuOptions(bool /*bActivate*/)
 {
+#ifdef __3DS__
+	GamemenuSmallMapLabel();
+#endif
 	GamemenuGetMusic();
 	GamemenuGetSound();
 	GamemenuGetBrightness();

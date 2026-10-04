@@ -592,6 +592,7 @@ struct GameplayOptions : OptionCategoryBase {
 	/** @brief Show the current level progress. */
 	OptionEntryBoolean experienceBar;
 	/** @brief Display current/max health values on health globe. */
+	OptionEntryBoolean showSmallMap;
 	OptionEntryBoolean showHealthValues;
 	/** @brief Display current/max mana values on mana globe. */
 	OptionEntryBoolean showManaValues;

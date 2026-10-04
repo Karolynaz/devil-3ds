@@ -36,6 +36,7 @@ jobs:
         run: |
           apt-get update && apt-get install -y --no-install-recommends --no-install-suggests \
             ffmpeg gettext
+          dkp-pacman -S --needed --noconfirm 3ds-curl
 
       - name: Get external dependencies
         run: |
@@ -55,7 +56,7 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/3DS.cmake
 
       - name: Build Devil-3Ds
-        run: cmake --build build
+        run: cmake --build build -- -k 100
 
       - name: Upload 3dsx Package
         if: ${{ !env.ACT }}

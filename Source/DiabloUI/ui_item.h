@@ -372,6 +372,10 @@ public:
 
 	// private:
 	StringOrView m_text;
+#ifdef __3DS__
+	std::string rightText;
+	bool columns = false;
+#endif
 	std::vector<DrawStringFormatArg> args;
 	int m_value;
 	UiFlags uiFlags;

@@ -871,6 +871,7 @@ GameplayOptions::GameplayOptions()
     , testBard("Test Bard", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Test Bard"), N_("Force the Bard character type to appear in the hero selection menu."), false)
     , testBarbarian("Test Barbarian", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Test Barbarian"), N_("Force the Barbarian character type to appear in the hero selection menu."), false)
     , experienceBar("Experience Bar", CtrGraphicsFlag, N_("Experience Bar"), N_("Experience Bar is added to the UI at the bottom of the screen."), true)
+    , showSmallMap("Show small map", OptionEntryFlags::Invisible, N_("Show small map"), N_("Draws the map in the upper-right corner."), false)
     , showHealthValues("Show health values", OptionEntryFlags::None, N_("Show health values"), N_("Displays current / max health value on health globe."), false)
     , showManaValues("Show mana values", OptionEntryFlags::None, N_("Show mana values"), N_("Displays current / max mana value on mana globe."), false)
     , showMultiplayerPartyInfo("Show Multiplayer Party Information", OptionEntryFlags::CantChangeInMultiPlayer, N_("Show Party Information"), N_("Displays the health and mana of all connected multiplayer party members."), false)
@@ -923,6 +924,7 @@ std::vector<OptionEntryBase *> GameplayOptions::GetEntries()
 		&experienceBar,
 		&floatingInfoBox,
 		&storeUi,
+		&showSmallMap,
 		&showHealthValues,
 		&showManaValues,
 		&showMultiplayerPartyInfo,

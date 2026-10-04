@@ -643,6 +643,11 @@ void DoAutoMap()
 
 void CycleAutomapType()
 {
+#ifdef __3DS__
+	SetAutomapType(*GetOptions().Gameplay.showSmallMap ? AutomapType::Minimap : AutomapType::Opaque);
+	DoAutoMap();
+	return;
+#endif
 	if (!AutomapActive) {
 		StartAutomap();
 		return;

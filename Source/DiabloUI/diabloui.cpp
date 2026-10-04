@@ -1139,6 +1139,17 @@ void Render(const UiList &uiList)
 		    Displacement(selectorWidth, 0));
 
 		const UiFlags uiFlags = uiList.GetFlags() | item.uiFlags;
+#ifdef __3DS__
+		if (item.columns) {
+			constexpr int valueWidth = 104;
+			const Rectangle nameRect { rectangle.position, { rectangle.size.width - valueWidth - 12, rectangle.size.height } };
+			const Rectangle valueRect { { rectangle.position.x + rectangle.size.width - valueWidth, rectangle.position.y }, { valueWidth, rectangle.size.height } };
+			const std::string wrapped = WordWrapString(item.m_text.str(), nameRect.size.width, GameFont12, 0, doubleWidth);
+			DrawString(out, wrapped, nameRect, { .flags = UiFlags::FontSize12 | UiFlags::ColorUiGold | UiFlags::VerticalCenter, .spacing = 0, .lineHeight = 14 });
+			DrawString(out, item.rightText, valueRect, { .flags = UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignRight | UiFlags::VerticalCenter, .spacing = 0 });
+			continue;
+		}
+#endif
 		const GameFontTables fontSize = GetFontSizeFromUiFlags(uiFlags);
 		std::string_view text = item.m_text.str();
 		while (GetLineWidth(text, fontSize, 1, nullptr, doubleWidth) > rectangle.size.width) {

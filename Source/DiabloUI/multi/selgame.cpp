@@ -196,7 +196,7 @@ void UiInitGameSelectionList(std::string_view search)
 	}
 
 #ifdef __3DS__
-	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 150, 280, 340, 24, UiFlags::AlignCenter | UiFlags::FontSize24));
+	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 24, 280, 592, 24, UiFlags::AlignCenter | UiFlags::FontSize12));
 #else
 	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 305, (uiPosition.y + 255), 285, 26, UiFlags::AlignCenter | UiFlags::FontSize24));
 
@@ -311,7 +311,7 @@ void selgame_GameSelection_Focus(size_t value)
 		break;
 	}
 #ifdef __3DS__
-	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont12, 1, /*doubleWidth=*/true), sizeof(selgame_Description));
+	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont24, 1, CtrTextScale::TopScreen), sizeof(selgame_Description));
 #else
 	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH), sizeof(selgame_Description));
 #endif

@@ -28,7 +28,11 @@ if (Gettext_FOUND)
     list(APPEND devilutionx_lang_targets "${_lang_target}")
     list(APPEND devilutionx_lang_files "${_gmo_file}")
 
-    if(APPLE)
+    if(NINTENDO_3DS)
+  list(APPEND devilutionx_assets cacert.pem)
+endif()
+
+if(APPLE)
       set_source_files_properties("${_gmo_file}" PROPERTIES
         MACOSX_PACKAGE_LOCATION Resources
         XCODE_EXPLICIT_FILE_TYPE compiled)

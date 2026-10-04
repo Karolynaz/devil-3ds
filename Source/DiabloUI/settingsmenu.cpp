@@ -42,6 +42,9 @@
 #include "utils/str_cat.hpp"
 #include "utils/ui_fwd.h"
 #include "utils/utf8.hpp"
+#ifdef __3DS__
+#include "platform/ctr/update.hpp"
+#endif
 
 namespace devilution {
 namespace {
@@ -50,6 +53,8 @@ constexpr size_t IndexKeyOrPadInput = 1;
 constexpr size_t IndexPadTimerText = 2;
 #ifdef __3DS__
 constexpr int ControlsCategoryIndex = 999;
+constexpr int UpdateCategoryIndex = 1000;
+std::string updateStatus;
 #endif
 
 bool endMenu = false;
@@ -69,6 +74,7 @@ enum class ShownMenuType : uint8_t {
 	PadInput,
 #ifdef __3DS__
 	Controls,
+	Update,
 #endif
 };
 
@@ -173,6 +179,7 @@ void GoBackOneMenuLevel()
 	case ShownMenuType::Settings:
 #ifdef __3DS__
 	case ShownMenuType::Controls:
+	case ShownMenuType::Update:
 #endif
 		shownMenu = ShownMenuType::Categories;
 		break;
@@ -246,6 +253,10 @@ void ItemFocused(size_t value)
 		if (vecItem->m_value < 0)
 			return;
 #ifdef __3DS__
+		if (vecItem->m_value == UpdateCategoryIndex) {
+			CopyUtf8(optionDescription, _("Check GitHub for a newer Devil-3Ds release."), sizeof(optionDescription));
+			return;
+		}
 		if (vecItem->m_value == ControlsCategoryIndex) {
 			CopyUtf8(optionDescription, _("3DS button layout and in-game controls."), sizeof(optionDescription));
 			return;
@@ -344,6 +355,11 @@ void ItemSelected(size_t value)
 	switch (shownMenu) {
 	case ShownMenuType::Categories: {
 #ifdef __3DS__
+		if (vecItemValue == UpdateCategoryIndex) {
+			endMenu = true;
+			shownMenu = ShownMenuType::Update;
+			return;
+		}
 		if (vecItemValue == ControlsCategoryIndex) {
 			endMenu = true;
 			shownMenu = ShownMenuType::Controls;
@@ -382,6 +398,12 @@ void ItemSelected(size_t value)
 			updateValueDescription = ChangeOptionValue(pOption, 0);
 		}
 		if (updateValueDescription) {
+#ifdef __3DS__
+			if (vecItem->columns) {
+				vecItem->rightText = pOption->GetValueDescription();
+				break;
+			}
+#endif
 			auto args = CreateDrawStringFormatArgForEntry(pOption);
 			const bool optionUsesTwoLines = ((value + 1) < vecDialogItems.size() && vecDialogItems[value]->m_value == vecDialogItems[value + 1]->m_value);
 			if (NeedsTwoLinesToDisplayOption(args) != optionUsesTwoLines) {
@@ -397,6 +419,14 @@ void ItemSelected(size_t value)
 			}
 		}
 	} break;
+#ifdef __3DS__
+	case ShownMenuType::Update:
+		if (!CtrUpdateBusy()) {
+			updateStatus = std::string(_("Checking for updates..."));
+			CtrCheckForUpdates();
+		}
+		break;
+#endif
 	case ShownMenuType::ListOption: {
 		ChangeOptionValue(selectedOption, vecItemValue);
 		GoBackOneMenuLevel();
@@ -471,6 +501,9 @@ void UiSettingsMenu()
 			titleText = _("Settings");
 			break;
 #ifdef __3DS__
+		case ShownMenuType::Update:
+			titleText = _("Update");
+			break;
 		case ShownMenuType::Controls:
 			titleText = _("Controls");
 			break;
@@ -518,9 +551,14 @@ void UiSettingsMenu()
 			}
 #ifdef __3DS__
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Controls"), ControlsCategoryIndex, UiFlags::ColorUiGold));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Update"), UpdateCategoryIndex, UiFlags::ColorUiGold));
 #endif
 		} break;
 #ifdef __3DS__
+		case ShownMenuType::Update:
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Check for updates"), 0, UiFlags::ColorUiGold));
+			vecDialog.push_back(std::make_unique<UiArtText>(CtrProjectUrl.data(), MakeSdlRect(12, 465, 616, 14), UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 0));
+			break;
 		case ShownMenuType::Controls: {
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Player Controls"), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiGold | UiFlags::ElementDisabled));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("A: Action / Attack / Talk"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
@@ -554,12 +592,19 @@ void UiSettingsMenu()
 					itemToSelect = vecDialogItems.size();
 				auto formatArgs = CreateDrawStringFormatArgForEntry(pEntry);
 				const int optionId = static_cast<int>(vecOptions.size());
+#ifdef __3DS__
+				auto row = std::make_unique<UiListItem>(pEntry->GetName(), optionId, UiFlags::ColorUiGold);
+				row->columns = true;
+				row->rightText = pEntry->GetValueDescription();
+				vecDialogItems.push_back(std::move(row));
+#else
 				if (NeedsTwoLinesToDisplayOption(formatArgs)) {
 					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view("{}:"), formatArgs, optionId, UiFlags::ColorUiGold | UiFlags::NeedsNextElement));
 					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string(pEntry->GetValueDescription()), optionId, SettingsSecondaryTextColor | UiFlags::ElementDisabled));
 				} else {
 					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view("{}: {}"), formatArgs, optionId, UiFlags::ColorUiGold));
 				}
+#endif
 				vecOptions.push_back(pEntry);
 			}
 		} break;
@@ -686,12 +731,15 @@ void UiSettingsMenu()
 
 #ifdef __3DS__
 		const bool isControlsMenu = (shownMenu == ShownMenuType::Controls);
-		const int ListItemHeight = isControlsMenu ? 19 : 27;
+		const bool isSettingsMenu = (shownMenu == ShownMenuType::Settings);
+		const int ListItemHeight = isControlsMenu ? 19 : (isSettingsMenu ? 32 : 27);
 		const int maxListHeight = isControlsMenu ? 171 : 135;
-		rectList = { { uiRectangle.position.x + 50, isControlsMenu ? 292 : 283 },
-			Size { uiRectangle.size.width - 100, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, maxListHeight) } };
+		rectList = { { uiRectangle.position.x + 24, isControlsMenu ? 292 : 283 },
+			Size { uiRectangle.size.width - 48, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, maxListHeight) } };
 		rectDescription = { { uiRectangle.position.x + 24, 423 },
 			Size { uiRectangle.size.width - 48, 53 } };
+		if (shownMenu == ShownMenuType::Update)
+			rectDescription = { { 24, 332 }, { 592, 125 } };
 		const UiFlags listFontFlags = isControlsMenu ? (UiFlags::FontSize12 | UiFlags::AlignCenter) : (UiFlags::FontSize24 | UiFlags::AlignCenter);
 #else
 		constexpr int ListItemHeight = 26;
@@ -711,6 +759,21 @@ void UiSettingsMenu()
 		UiInitList(ItemFocused, ItemSelected, EscPressed, vecDialog, true, FullscreenChanged, nullptr, itemToSelect);
 
 		while (!endMenu) {
+#ifdef __3DS__
+			if (shownMenu == ShownMenuType::Update) {
+				if (auto result = CtrPollUpdate()) {
+					switch (result->state) {
+					case CtrUpdateState::Available: updateStatus = std::string(_("A newer release is available.")); break;
+					case CtrUpdateState::Current: updateStatus = std::string(_("No newer release. This build is up to date.")); break;
+					case CtrUpdateState::Different: updateStatus = std::string(_("Different release branch. Check GitHub for details.")); break;
+					case CtrUpdateState::Error: updateStatus = std::string(_("Update check failed.")) + "\n" + result->detail; break;
+					}
+					if (!result->version.empty()) updateStatus += "\n" + std::string(_("Latest release: ")) + result->version;
+				}
+				const std::string status = std::string(_("Build: ")) + std::string(CtrBuildCommit().substr(0, 7)) + "\n\n" + (updateStatus.empty() ? std::string(_("Press A to check for updates.")) : updateStatus);
+				CopyUtf8(optionDescription, WordWrapString(status, rectDescription.size.width, GameFont12, 1, true), sizeof(optionDescription));
+			}
+#endif
 			UiClearScreen();
 			UpdatePadEntryTimerText();
 			UiPollAndRender(eventHandler);

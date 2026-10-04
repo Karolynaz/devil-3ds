@@ -185,6 +185,10 @@ void SelconnSelect(size_t value)
 
 bool UiSelectProvider(GameData *gameData)
 {
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+	provider = SELCONN_ZT;
+	return SNetInitializeProvider(provider, gameData);
+#endif
 	selconn_GameData = gameData;
 	SelconnLoad();
 

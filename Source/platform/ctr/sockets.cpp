@@ -13,6 +13,11 @@ constexpr auto SOC_ALIGN = 0x1000;
 constexpr auto SOC_BUFFERSIZE = 0x100000;
 static u32 *socBuffer;
 static bool initialized;
+static LightLock socketLock = 1;
+struct SocketGuard {
+	SocketGuard() { LightLock_Lock(&socketLock); }
+	~SocketGuard() { LightLock_Unlock(&socketLock); }
+};
 
 static bool waitForWifi()
 {
@@ -35,35 +40,42 @@ static bool waitForWifi()
 
 void n3ds_socExit()
 {
+	SocketGuard guard;
 	if (socBuffer == nullptr)
 		return;
 
 	socExit();
 	free(socBuffer);
 	socBuffer = nullptr;
+	initialized = false;
 }
 
-void n3ds_socInit()
+bool n3ds_socInit()
 {
+	SocketGuard guard;
+	if (initialized)
+		return true;
 	if (!waitForWifi()) {
 		LogError("n3ds_socInit: Wifi off");
-		return;
+		return false;
 	}
 
 	socBuffer = (u32 *)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
 	if (socBuffer == nullptr) {
 		LogError("n3ds_socInit: memalign() failed");
-		return;
+		return false;
 	}
 
 	Result result = socInit(socBuffer, SOC_BUFFERSIZE);
 	if (!R_SUCCEEDED(result)) {
 		LogError("n3ds_socInit: socInit() failed");
 		free(socBuffer);
-		return;
+		socBuffer = nullptr;
+		return false;
 	}
 
 	initialized = true;
+	return true;
 }
 
 } // namespace devilution
