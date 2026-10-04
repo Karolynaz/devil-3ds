@@ -105,6 +105,7 @@
 #include "platform/ctr/keyboard.h"
 #include "control/control_chat.hpp"
 #include <atomic>
+#include <vector>
 #endif
 #include "stores.h"
 #include "storm/storm_net.hpp"
@@ -233,6 +234,10 @@ void FreeGame()
 
 bool ProcessInput()
 {
+#ifdef __3DS__
+	// System keyboard owns HID/GSP; only game/network logic advances there.
+	if (CtrNativeChatActive) return true;
+#endif
 	if (PauseMode == 2) {
 		return false;
 	}
@@ -908,6 +913,7 @@ void RunCtrChatSession()
 	sgbMouseDown = CLICK_NONE;
 	LastPlayerAction = PlayerActionType::None;
 	CtrChatSession session;
+	CtrNativeChatActive = true;
 	Thread worker = threadCreate([](void *opaque) {
 		auto &session = *static_cast<CtrChatSession *>(opaque);
 		while (!session.stop.load(std::memory_order_acquire)) {
@@ -928,6 +934,7 @@ void RunCtrChatSession()
 		}
 	}, &session, 512 * 1024, 0x30, -2, false);
 	if (worker == nullptr) {
+		CtrNativeChatActive = false;
 		EventPlrMsg(_("Not enough memory to open chat."));
 		return;
 	}
@@ -949,14 +956,18 @@ void RunCtrChatSession()
 	session.stop.store(true, std::memory_order_release);
 	threadJoin(worker, UINT64_MAX);
 	threadFree(worker);
+	CtrNativeChatActive = false;
 	ControllerActionHeld = GameActionType_NONE;
 	sgbMouseDown = CLICK_NONE;
 	LastPlayerAction = PlayerActionType::None;
 	// Discard applet button events before normal controls resume.
 	SDL_Event event;
+	std::vector<SDL_Event> gameEvents;
 	while (SDL_PollEvent(&event)) {
 		if (event.type == SDL_EVENT_QUIT) gbRunGame = false;
+		else if (IsCustomEvent(event.type)) gameEvents.push_back(event);
 	}
+	for (SDL_Event &queued : gameEvents) SDL_PushEvent(&queued);
 	RedrawEverything();
 }
 #endif

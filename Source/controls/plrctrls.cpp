@@ -2,6 +2,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "control/control_chat.hpp"
 #include "panels/spell_book.hpp"
 #endif
 
@@ -2479,6 +2480,9 @@ void plrctrls_every_frame()
 
 void plrctrls_after_game_logic()
 {
+#ifdef __3DS__
+	if (CtrNativeChatActive) return;
+#endif
 	Movement(*MyPlayer);
 }
 

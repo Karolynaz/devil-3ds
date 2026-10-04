@@ -28,8 +28,8 @@ static inline int ctr_zt_condattr_init(ctr_zt_condattr_t *a) { *a = 0; return 0;
 static inline int ctr_zt_condattr_destroy(ctr_zt_condattr_t *a) { (void)a; return 0; }
 static inline int ctr_zt_condattr_setclock(ctr_zt_condattr_t *a, clockid_t c) { (void)a; (void)c; return 0; }
 static inline void ctr_zt_monotonic(struct timespec *t) { u64 ticks = svcGetSystemTick(); t->tv_sec = ticks / SYSCLOCK_ARM11; t->tv_nsec = (ticks % SYSCLOCK_ARM11) * 1000000000ULL / SYSCLOCK_ARM11; }
-static inline int ctr_zt_cond_wait(CondVar *c, ctr_zt_mutex_t *m) { m->owner = m->depth = 0; CondVar_Wait(c, &m->gate); m->owner = ctr_zt_thread_id(); m->depth = 1; return 0; }
-static inline int ctr_zt_cond_timedwait(CondVar *c, ctr_zt_mutex_t *m, const struct timespec *deadline) { struct timespec now; ctr_zt_monotonic(&now); s64 ns = (s64)(deadline->tv_sec - now.tv_sec) * 1000000000LL + deadline->tv_nsec - now.tv_nsec; if (ns <= 0) return ETIMEDOUT; m->owner = m->depth = 0; int r = CondVar_WaitTimeout(c, &m->gate, ns); m->owner = ctr_zt_thread_id(); m->depth = 1; return r ? ETIMEDOUT : 0; }
+static inline int ctr_zt_cond_wait(CondVar *c, ctr_zt_mutex_t *m) { __atomic_store_n(&m->owner, 0, __ATOMIC_RELEASE); m->depth = 0; CondVar_Wait(c, &m->gate); m->depth = 1; __atomic_store_n(&m->owner, ctr_zt_thread_id(), __ATOMIC_RELEASE); return 0; }
+static inline int ctr_zt_cond_timedwait(CondVar *c, ctr_zt_mutex_t *m, const struct timespec *deadline) { struct timespec now; ctr_zt_monotonic(&now); s64 ns = (s64)(deadline->tv_sec - now.tv_sec) * 1000000000LL + deadline->tv_nsec - now.tv_nsec; if (ns <= 0) return ETIMEDOUT; __atomic_store_n(&m->owner, 0, __ATOMIC_RELEASE); m->depth = 0; int r = CondVar_WaitTimeout(c, &m->gate, ns); m->depth = 1; __atomic_store_n(&m->owner, ctr_zt_thread_id(), __ATOMIC_RELEASE); return r ? ETIMEDOUT : 0; }
 static inline int ctr_zt_cond_broadcast(CondVar *c) { CondVar_Broadcast(c); return 0; }
 struct ctr_zt_start { void *(*fn)(void *); void *arg; };
 static inline void ctr_zt_trampoline(void *opaque) { struct ctr_zt_start start = *(struct ctr_zt_start *)opaque; free(opaque); start.fn(start.arg); }

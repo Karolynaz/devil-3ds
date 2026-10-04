@@ -17,6 +17,7 @@ namespace devilution {
 
 #ifdef __3DS__
 bool CtrChatRequested = false;
+bool CtrNativeChatActive = false;
 
 void SendCtrChatMessage(std::string_view text)
 {

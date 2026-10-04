@@ -48,3 +48,10 @@ for name in ['ext/lwip/src/include/lwip/sockets.h', 'ext/lwip/src/include/lwip/p
              'ext/lwip/src/api/sockets.c', 'src/Sockets.cpp']:
     names = {n: 'ctr_lwip_' + n for n in ['fd_set', 'FD_SET', 'FD_CLR', 'FD_ISSET', 'FD_ZERO', 'FD_SETSIZE']}
     edit(name, lambda s: re.sub(r'\b(?:' + '|'.join(names) + r')\b', lambda m: names[m[0]], s))
+# The virtual-tap thread only waits for shutdown. Use a native event instead of
+# a nonexistent pipe; it sleeps without polling and wakes before join().
+edit('src/VirtualTap.hpp', lambda s: s.replace('int _shutdownSignalPipe[2]', '#ifdef __3DS__\n    LightEvent _shutdownEvent;\n#endif\n    int _shutdownSignalPipe[2]'))
+edit('src/VirtualTap.cpp', lambda s: s.replace('#ifndef __WINDOWS__', '#if !defined(__WINDOWS__) && !defined(__3DS__)')
+     .replace('OSUtils::ztsnprintf(vtap_full_name, VTAP_NAME_LEN, "libzt-vtap-%llx", _net_id);', 'OSUtils::ztsnprintf(vtap_full_name, VTAP_NAME_LEN, "libzt-vtap-%llx", _net_id);\n#ifdef __3DS__\n    LightEvent_Init(&_shutdownEvent, RESET_STICKY);\n#endif')
+     .replace('_run = false;', '_run = false;\n#ifdef __3DS__\n    LightEvent_Signal(&_shutdownEvent);\n#endif')
+     .replace('void VirtualTap::threadMain() throw()\n{', 'void VirtualTap::threadMain() throw()\n{\n#ifdef __3DS__\n    LightEvent_Wait(&_shutdownEvent);\n    return;\n#endif'))

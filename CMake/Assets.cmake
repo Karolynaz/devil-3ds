@@ -28,11 +28,7 @@ if (Gettext_FOUND)
     list(APPEND devilutionx_lang_targets "${_lang_target}")
     list(APPEND devilutionx_lang_files "${_gmo_file}")
 
-    if(NINTENDO_3DS)
-  list(APPEND devilutionx_assets cacert.pem)
-endif()
-
-if(APPLE)
+    if(APPLE)
       set_source_files_properties("${_gmo_file}" PROPERTIES
         MACOSX_PACKAGE_LOCATION Resources
         XCODE_EXPLICIT_FILE_TYPE compiled)
@@ -243,6 +239,8 @@ endif()
 
 if(NINTENDO_3DS)
   list(APPEND devilutionx_assets
+    cacert.pem
+    licenses/jsmn.txt
     sfx/ctr/banner.wav
     data/ctr_character_background.pal8
     data/ctr_quest_background.pal8
