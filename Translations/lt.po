@@ -10918,3 +10918,87 @@ msgstr "Auksas: {:s}"
 #, c++-format
 msgid "Copy to this SD card folder:\n{:s}\n\nRequired files:\n{:s}"
 msgstr "Nukopijuokite į SD kortelės aplanką:\n{:s}\n\nReikalingi failai:\n{:s}"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Show small map"
+msgstr "Mažas žemėlapis"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Show small map: On"
+msgstr "Mažas žemėlapis: Įjungtas"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Show small map: Off"
+msgstr "Mažas žemėlapis: Išjungtas"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Draws the map in the upper-right corner."
+msgstr "Rodo žemėlapį viršutiniame dešiniajame kampe."
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Update"
+msgstr "Atnaujinimas"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Check for updates"
+msgstr "Tikrinti atnaujinimus"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Checking GitHub..."
+msgstr "Tikrinama GitHub..."
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "A newer release is available."
+msgstr "Yra naujesnė versija."
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "No newer release. This build is up to date."
+msgstr "Naujesnės versijos nėra."
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Different release branch. Check GitHub for details."
+msgstr "Versijos skirtingose šakose. Daugiau informacijos GitHub."
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Update check failed."
+msgstr "Atnaujinimo patikrinti nepavyko."
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Latest release: "
+msgstr "Naujausia versija: "
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Talk"
+msgstr "Kalbėti"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Send"
+msgstr "Siųsti"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "I'm hostile: No"
+msgstr "Esu priešiškas: Ne"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "I'm hostile: Yes"
+msgstr "Esu priešiškas: Taip"
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "Not enough memory to open chat."
+msgstr "Nepakanka atminties pokalbiui."
+
+#: Source/platform/ctr/update.cpp Source/gamemenu.cpp
+msgid "No Wi-Fi connection. Connect in System Settings."
+msgstr "Nėra Wi-Fi ryšio. Prisijunkite per konsolės nuostatas."
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Checking for updates..."
+msgstr "Tikrinami atnaujinimai..."
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Press A to check for updates."
+msgstr "Paspauskite A, kad patikrintumėte atnaujinimus."
+
+#: Source/DiabloUI/settingsmenu.cpp
+msgid "Build: "
+msgstr "Versija: "

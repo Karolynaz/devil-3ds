@@ -904,6 +904,9 @@ void RunCtrChatSession()
 {
 	CtrChatRequested = false;
 	if (!gbIsMultiplayer) return;
+	ControllerActionHeld = GameActionType_NONE;
+	sgbMouseDown = CLICK_NONE;
+	LastPlayerAction = PlayerActionType::None;
 	CtrChatSession session;
 	Thread worker = threadCreate([](void *opaque) {
 		auto &session = *static_cast<CtrChatSession *>(opaque);
@@ -946,6 +949,9 @@ void RunCtrChatSession()
 	session.stop.store(true, std::memory_order_release);
 	threadJoin(worker, UINT64_MAX);
 	threadFree(worker);
+	ControllerActionHeld = GameActionType_NONE;
+	sgbMouseDown = CLICK_NONE;
+	LastPlayerAction = PlayerActionType::None;
 	// Discard applet button events before normal controls resume.
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {

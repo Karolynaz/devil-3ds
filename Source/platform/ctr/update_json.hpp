@@ -3,6 +3,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#define JSMN_STRICT
 #define JSMN_STATIC
 #define JSMN_PARENT_LINKS
 #include <jsmn.h>
@@ -21,8 +22,11 @@ inline std::optional<std::string> CtrJsonString(std::string_view json, std::stri
 			break;
 		tokens.resize(tokens.size() * 2);
 	}
-	if (count < 1 || tokens[0].type != JSMN_OBJECT)
+	if (count < 1 || tokens[0].type != JSMN_OBJECT || tokens[0].start < 0 || tokens[0].end < 0)
 		return std::nullopt;
+	// A second JSON root must never be accepted as a valid API response.
+	for (int i = 1; i < count; ++i)
+		if (tokens[i].parent == -1) return std::nullopt;
 	for (int i = 1; i + 1 < count; ++i) {
 		const auto &t = tokens[i];
 		if (t.type != JSMN_STRING || t.parent != 0 || json.substr(t.start, t.end - t.start) != key)

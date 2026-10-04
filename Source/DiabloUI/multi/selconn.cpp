@@ -14,6 +14,7 @@
 #include "DiabloUI/ui_flags.hpp"
 #include "DiabloUI/ui_item.h"
 #include "engine/point.hpp"
+#include "DiabloUI/selok.h"
 #include "engine/render/text_render.hpp"
 #include "multi.h"
 #include "storm/storm_net.hpp"
@@ -190,7 +191,7 @@ bool UiSelectProvider(GameData *gameData)
 {
 #if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
 	if (!n3ds_socInit()) {
-		UiSelOkDialog(_("Multiplayer"), _("No Wi-Fi connection. Connect in System Settings."));
+		UiSelOkDialog(_("Multiplayer").data(), _("No Wi-Fi connection. Connect in System Settings.").data(), false);
 		return false;
 	}
 	provider = SELCONN_ZT;
