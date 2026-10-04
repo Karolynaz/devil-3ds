@@ -375,6 +375,7 @@ public:
 	StringOrView m_text;
 #ifdef __3DS__
 	std::string rightText;
+	int columnValueWidth = 104;
 	bool columns = false;
 #endif
 	std::vector<DrawStringFormatArg> args;

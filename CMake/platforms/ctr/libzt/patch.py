@@ -55,3 +55,13 @@ edit('src/VirtualTap.cpp', lambda s: s.replace('#ifndef __WINDOWS__', '#if !defi
      .replace('OSUtils::ztsnprintf(vtap_full_name, VTAP_NAME_LEN, "libzt-vtap-%llx", _net_id);', 'OSUtils::ztsnprintf(vtap_full_name, VTAP_NAME_LEN, "libzt-vtap-%llx", _net_id);\n#ifdef __3DS__\n    LightEvent_Init(&_shutdownEvent, RESET_STICKY);\n#endif')
      .replace('_run = false;', '_run = false;\n#ifdef __3DS__\n    LightEvent_Signal(&_shutdownEvent);\n#endif')
      .replace('void VirtualTap::threadMain() throw()\n{', 'void VirtualTap::threadMain() throw()\n{\n#ifdef __3DS__\n    LightEvent_Wait(&_shutdownEvent);\n    return;\n#endif'))
+
+# Virtual DNS error state must not collide with libctru's actual SOC resolver.
+for name in ['ext/lwip/src/include/lwip/netdb.h', 'ext/lwip/src/api/netdb.c']:
+    edit(name, lambda s: re.sub(r'\bh_errno\b', 'ctr_lwip_h_errno', s))
+# Virtual IPv6 has a different sockaddr layout from the native ASIO shim.
+# Distinct type names keep LTO from treating the two layouts as one C++ type.
+for name in ['ext/lwip/src/include/lwip/inet.h', 'ext/lwip/src/include/lwip/sockets.h',
+             'ext/lwip/src/core/ipv6/inet6.c', 'ext/lwip/src/netif/ppp/ipv6cp.c']:
+    names = {n: 'ctr_lwip_' + n for n in ['in6_addr', 'sockaddr_in6']}
+    edit(name, lambda s: re.sub(r'\b(?:' + '|'.join(names) + r')\b', lambda m: names[m[0]], s))

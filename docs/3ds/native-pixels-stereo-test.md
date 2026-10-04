@@ -160,3 +160,40 @@ Test on the physical console: inspect both icon sizes and all selection edges,
 move through a row with more than six spells, switch between categories, cast
 from each source, and check player framing and targeting near the top edge.
 No emulator test and no Releases upload.
+
+## Settings, network and small map test — 2026-10-04
+
+Backup: `Backups/2026-10-04_before_settings_multiplayer/source.zip`.
+Base: `56c0fbfd111fc2eb43b0470d6ef94f2824a7da47`.
+
+- Settings use native 12-pixel text, names on the left and values on the right.
+  Names and long values wrap into two lines. Short numeric values retain the
+  wider name column. The shipped English/Lithuanian font metrics are checked
+  with production word wrapping by `test_ctr_settings_layout.py`.
+- Settings > Update > Check for updates checks the latest release of
+  Karolynaz/devil-3ds with certificate-verified HTTPS. It compares the release
+  tag with the exact build commit, reports newer/current/divergent/error states,
+  and shows the project address. It does not download or install updates.
+  Mozilla CA bundle from curl.se is packaged in RomFS alongside jsmn's MIT
+  license. JSON parsing is tested against nested fields and malformed input.
+- Multiplayer goes directly to ZeroTier. Description text is on the top screen,
+  actions are on the bottom, and hero selection retains the single-player flow.
+  The pinned libzt library has a private 3DS adapter for threads, events, SOC
+  transport and secure randomness. Virtual lwIP descriptors/DNS error state and
+  IPv6 types are separate from native SOC descriptors and types.
+- Multiplayer Start menu includes Talk and I'm hostile: No/Yes. Talk sends
+  UTF-8 chat via the native Nintendo keyboard; Send refreshes the top game frame
+  and reopens an empty keyboard for another message. Cancel exits the session.
+  **The native keyboard applet owns the GPU: the top screen is a static game
+  frame while each keyboard session is open, not a live animated scene.**
+  A worker continues game/network processing while typing. Incoming messages
+  appear at the lower left after the top frame refreshes.
+- Single-player and multiplayer Start > Options > Show small map persistently
+  chooses a map in the upper-right corner, approximately 133x80 physical pixels
+  including its border. The normal map button toggles visibility; turning the
+  option off restores the full-screen map. Production map geometry and clipping
+  are verified by `test_ctr_minimap.py`.
+
+No emulator or console was launched. ZeroTier connectivity, native keyboard
+behavior, latency, hardware performance and TLS access still need console tests.
+The prior stereo rendering and camera framing are retained. No Releases upload.

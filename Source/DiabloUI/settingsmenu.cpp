@@ -600,6 +600,8 @@ void UiSettingsMenu()
 				auto row = std::make_unique<UiListItem>(pEntry->GetName(), optionId, UiFlags::ColorUiGold);
 				row->columns = true;
 				row->rightText = pEntry->GetValueDescription();
+				if (GetLineWidth(row->rightText, GameFont12, 0, nullptr, true) > row->columnValueWidth)
+					row->columnValueWidth = 192;
 				vecDialogItems.push_back(std::move(row));
 #else
 				if (NeedsTwoLinesToDisplayOption(formatArgs)) {

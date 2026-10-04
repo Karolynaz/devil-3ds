@@ -14,7 +14,11 @@ namespace net {
 void print_ip6_addr(void *x)
 {
 	char ipstr[INET6_ADDRSTRLEN];
+#ifdef __3DS__
+	auto *in = static_cast<ctr_lwip_sockaddr_in6 *>(x);
+#else
 	auto *in = static_cast<sockaddr_in6 *>(x);
+#endif
 	lwip_inet_ntop(AF_INET6, &(in->sin6_addr), ipstr, INET6_ADDRSTRLEN);
 	Log("ZeroTier: ZTS_EVENT_ADDR_NEW_IP6, addr={}", ipstr);
 }
