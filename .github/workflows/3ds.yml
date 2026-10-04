@@ -69,7 +69,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: devil-3ds-debug-symbols
-          path: ./build/devil-3ds.elf
+          path: ./build/devil-3ds.elf.elf
+          if-no-files-found: error
 
       - name: Upload 3dsx Package
         if: ${{ !env.ACT }}
