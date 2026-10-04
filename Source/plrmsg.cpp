@@ -103,8 +103,8 @@ void DrawPlrMsg(const Surface &out)
 
 	int x = 10;
 #ifdef __3DS__
-	int y = 207;
-	int width = 360;
+	int y = 232;
+	int width = 520;
 #else
 	int y = GetMainPanel().position.y - 13;
 	int width = gnScreenWidth - 20;
@@ -128,7 +128,11 @@ void DrawPlrMsg(const Surface &out)
 		if (!ChatFlag && SDL_GetTicks() - message.time >= 10000)
 			break;
 
+#ifdef __3DS__
+		std::string text = WordWrapString(message.text, width, GameFont12, 1, CtrTextScale::TopScreen);
+#else
 		std::string text = WordWrapString(message.text, width);
+#endif
 		const int chatlines = CountLinesOfText(text);
 #ifdef __3DS__
 		if (y - message.lineHeight * chatlines < 8)

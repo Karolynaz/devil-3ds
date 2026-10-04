@@ -15,6 +15,20 @@
 
 namespace devilution {
 
+#ifdef __3DS__
+bool CtrChatRequested = false;
+
+void SendCtrChatMessage(std::string_view text)
+{
+	if (!gbIsMultiplayer || text.empty()) return;
+	char message[MAX_SEND_STR_LEN] {};
+	CopyUtf8(message, text, sizeof(message));
+	if (!CheckChatCommand(message))
+		NetSendCmdString((1U << MAX_PLRS) - 1, message);
+}
+#endif
+
+
 std::optional<TextInputState> ChatInputState;
 char TalkMessage[MAX_SEND_STR_LEN];
 bool TalkButtonsDown[3];

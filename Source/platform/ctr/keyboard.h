@@ -21,3 +21,7 @@ void ctr_vkbdFlush();
 
 /** Opens the native numeric keyboard; cancellation returns no value. */
 std::optional<int> ctr_vkbdNumberInput(std::string_view hint, int maximum);
+
+/** Repeated native Send/Cancel chat input. refresh runs with GSP restored. */
+void ctr_vkbdChat(int maxBytes, void *context,
+    void (*send)(void *, std::string_view), bool (*refresh)(void *));

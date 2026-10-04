@@ -102,6 +102,9 @@
 #ifdef __3DS__
 #include "engine/palette.h"
 #include "platform/ctr/ui_background.hpp"
+#include "platform/ctr/keyboard.h"
+#include "control/control_chat.hpp"
+#include <atomic>
 #endif
 #include "stores.h"
 #include "storm/storm_net.hpp"
@@ -890,6 +893,68 @@ void GameEventHandler(const SDL_Event &event, uint16_t modState)
 	}
 }
 
+
+#ifdef __3DS__
+struct CtrChatSession {
+	LightLock lock = 1;
+	std::atomic_bool stop { false };
+};
+
+void RunCtrChatSession()
+{
+	CtrChatRequested = false;
+	if (!gbIsMultiplayer) return;
+	CtrChatSession session;
+	Thread worker = threadCreate([](void *opaque) {
+		auto &session = *static_cast<CtrChatSession *>(opaque);
+		while (!session.stop.load(std::memory_order_acquire)) {
+			LightLock_Lock(&session.lock);
+			if (!gbRunGame) {
+				session.stop.store(true, std::memory_order_release);
+			} else {
+				bool drawGame = false;
+				if (nthread_has_500ms_passed(&drawGame)) {
+					ProcessGameMessagePackets();
+					if (game_loop(false)) diablo_color_cyc_logic();
+				} else {
+					DvlNet_ProcessNetworkPackets();
+				}
+			}
+			LightLock_Unlock(&session.lock);
+			svcSleepThread(5 * 1000 * 1000);
+		}
+	}, &session, 512 * 1024, 0x30, -2, false);
+	if (worker == nullptr) {
+		EventPlrMsg(_("Not enough memory to open chat."));
+		return;
+	}
+	ctr_vkbdChat(MAX_SEND_STR_LEN, &session, [](void *opaque, std::string_view text) {
+		auto &session = *static_cast<CtrChatSession *>(opaque);
+		LightLock_Lock(&session.lock);
+		if (gbRunGame) SendCtrChatMessage(text);
+		LightLock_Unlock(&session.lock);
+		// Let the local broadcast be received before presenting the next snapshot.
+		svcSleepThread(50 * 1000 * 1000);
+	}, [](void *opaque) {
+		auto &session = *static_cast<CtrChatSession *>(opaque);
+		LightLock_Lock(&session.lock);
+		const bool running = gbRunGame;
+		if (running) { RedrawEverything(); DrawAndBlit(); }
+		LightLock_Unlock(&session.lock);
+		return running;
+	});
+	session.stop.store(true, std::memory_order_release);
+	threadJoin(worker, UINT64_MAX);
+	threadFree(worker);
+	// Discard applet button events before normal controls resume.
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_EVENT_QUIT) gbRunGame = false;
+	}
+	RedrawEverything();
+}
+#endif
+
 void RunGameLoop(interface_mode uMsg)
 {
 	demo::NotifyGameLoopStart();
@@ -949,6 +1014,12 @@ void RunGameLoop(interface_mode uMsg)
 		if (!gbRunGame)
 			break;
 
+#ifdef __3DS__
+		if (CtrChatRequested) {
+			RunCtrChatSession();
+			if (!gbRunGame) break;
+		}
+#endif
 		bool drawGame = true;
 		bool processInput = true;
 		const bool runGameLoop = demo::IsRunning() ? demo::GetRunGameLoop(drawGame, processInput) : nthread_has_500ms_passed(&drawGame);

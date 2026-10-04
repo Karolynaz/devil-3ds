@@ -882,14 +882,16 @@ void LoadBackgroundArt(const char *pszFile, int frames)
 	UiOnBackgroundChange();
 }
 
-void UiAddBackground(std::vector<std::unique_ptr<UiItemBase>> *vecDialog)
+void UiAddBackground(std::vector<std::unique_ptr<UiItemBase>> *vecDialog, bool showTitle)
 {
 	const SDL_Rect rect = MakeSdlRect(0, GetUIRectangle().position.y, 0, 0);
 	if (ArtBackgroundWidescreen) {
 		vecDialog->push_back(std::make_unique<UiImageClx>((*ArtBackgroundWidescreen)[0], rect, UiFlags::AlignCenter));
 	}
 	if (ArtBackground) {
-		vecDialog->push_back(std::make_unique<UiImageClx>((*ArtBackground)[0], rect, UiFlags::AlignCenter));
+		auto background = std::make_unique<UiImageClx>((*ArtBackground)[0], rect, UiFlags::AlignCenter);
+		background->showTitleBackground = showTitle;
+		vecDialog->push_back(std::move(background));
 	}
 }
 
@@ -1066,7 +1068,7 @@ void Render(const UiImageClx &uiImage)
 			if (!UiBottomBackgroundBuffer) {
 				Prepare3DSBackground();
 			}
-			if (UiTopBackgroundBuffer)
+			if (uiImage.showTitleBackground && UiTopBackgroundBuffer)
 				out.BlitFrom(*UiTopBackgroundBuffer, { 0, 0, 640, 240 }, { 0, 0 });
 			if (UiBottomBackgroundBuffer) {
 				out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { (out.w() - 640) / 2, 240 });

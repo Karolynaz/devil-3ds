@@ -133,7 +133,7 @@ void UiInitGameSelectionList(std::string_view search)
 
 	selgame_Label[0] = '\0';
 
-	UiAddBackground(&vecSelGameDialog);
+	UiAddBackground(&vecSelGameDialog, false);
 #ifndef __3DS__
 	UiAddLogo(&vecSelGameDialog);
 #endif
@@ -345,7 +345,7 @@ void selgame_GameSelection_Select(size_t value)
 		return;
 	}
 
-	UiAddBackground(&vecSelGameDialog);
+	UiAddBackground(&vecSelGameDialog, false);
 #ifndef __3DS__
 	UiAddLogo(&vecSelGameDialog);
 #endif
@@ -567,7 +567,7 @@ void selgame_GameSpeedSelection()
 
 	selgame_FreeVectors();
 
-	UiAddBackground(&vecSelGameDialog);
+	UiAddBackground(&vecSelGameDialog, false);
 #ifndef __3DS__
 	UiAddLogo(&vecSelGameDialog);
 #endif
@@ -672,7 +672,7 @@ void selgame_Password_Init(size_t /*value*/)
 
 	selgame_FreeVectors();
 
-	UiAddBackground(&vecSelGameDialog);
+	UiAddBackground(&vecSelGameDialog, false);
 #ifndef __3DS__
 	UiAddLogo(&vecSelGameDialog);
 #endif

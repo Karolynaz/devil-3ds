@@ -113,6 +113,7 @@ public:
 		sprite_ = sprite;
 	}
 
+	bool showTitleBackground = true;
 	void setAllowUpscale(bool value) { allowUpscale_ = value; }
 	[[nodiscard]] bool allowsUpscale() const { return allowUpscale_; }
 

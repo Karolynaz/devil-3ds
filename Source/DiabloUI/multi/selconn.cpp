@@ -21,6 +21,9 @@
 #include "utils/language.h"
 #include "utils/ui_fwd.h"
 #include "utils/utf8.hpp"
+#ifdef __3DS__
+#include "platform/ctr/sockets.hpp"
+#endif
 
 namespace devilution {
 
@@ -186,6 +189,10 @@ void SelconnSelect(size_t value)
 bool UiSelectProvider(GameData *gameData)
 {
 #if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+	if (!n3ds_socInit()) {
+		UiSelOkDialog(_("Multiplayer"), _("No Wi-Fi connection. Connect in System Settings."));
+		return false;
+	}
 	provider = SELCONN_ZT;
 	return SNetInitializeProvider(provider, gameData);
 #endif

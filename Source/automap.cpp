@@ -1893,7 +1893,10 @@ void DrawAutomap(const Surface &out)
 		SearchAutomapItem(out, myPlayerOffset, std::max(MAXDUNX, MAXDUNY), ShouldHighlightDebugAutomapTile);
 #endif
 
-	DrawAutomapText(out);
+#ifdef __3DS__
+	if (GetAutomapType() != AutomapType::Minimap)
+#endif
+		DrawAutomapText(out);
 }
 
 void UpdateAutomapExplorer(Point map, MapExplorationType explorer)

@@ -490,7 +490,11 @@ void UiSettingsMenu()
 		UiAddLogo(&vecDialog, uiRectangle.position.y);
 #endif
 
+		#ifdef __3DS__
+		const int descriptionLineHeight = shownMenu == ShownMenuType::Update ? 14 : (IsSmallFontTall() ? 20 : 18);
+#else
 		const int descriptionLineHeight = IsSmallFontTall() ? 20 : 18;
+#endif
 		const int descriptionMarginTop = IsSmallFontTall() ? 10 : 16;
 
 		optionDescription[0] = '\0';

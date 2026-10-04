@@ -10,6 +10,9 @@
 #endif
 
 #include "cursor.h"
+#ifdef __3DS__
+#include "control/control_chat.hpp"
+#endif
 #include "automap.h"
 #include "diablo_msg.hpp"
 #include "engine/backbuffer_state.hpp"
@@ -47,6 +50,8 @@ void GamemenuBrightness(bool bActivate);
 void GamemenuSpeed(bool bActivate);
 #ifdef __3DS__
 void GamemenuSmallMap(bool bActivate);
+void GamemenuTalk(bool bActivate);
+void GamemenuHostile(bool bActivate);
 #endif
 
 /** Contains the game menu items of the single player menu. */
@@ -68,6 +73,10 @@ TMenuItem sgMultiMenu[] = {
 	// clang-format off
 	// dwFlags,      pszStr,                  fnMenu
 	{ GMENU_ENABLED, N_("Options"),           &GamemenuOptions    },
+#ifdef __3DS__
+	{ GMENU_ENABLED, N_("Talk"),              &GamemenuTalk       },
+	{ GMENU_ENABLED, N_("I'm hostile: No"),   &GamemenuHostile    },
+#endif
 	{ GMENU_ENABLED, N_("Exit to Main Menu"), &GamemenuNewGame    },
 #ifndef __3DS__
 	{ GMENU_ENABLED, N_("Quit Game"),         &gamemenu_quit_game },
@@ -194,6 +203,23 @@ int GamemenuSliderBrightness()
 }
 
 #ifdef __3DS__
+void GamemenuUpdateMulti()
+{
+	sgMultiMenu[2].pszStr = MyPlayer->friendlyMode ? N_("I'm hostile: No") : N_("I'm hostile: Yes");
+}
+
+void GamemenuTalk(bool /*bActivate*/)
+{
+	gamemenu_off();
+	CtrChatRequested = true;
+}
+
+void GamemenuHostile(bool /*bActivate*/)
+{
+	// The synchronized command handler changes the flag for all peers.
+	NetSendCmd(true, CMD_FRIENDLYMODE);
+}
+
 void GamemenuSmallMapLabel()
 {
 	sgOptionsMenu[4].pszStr = *GetOptions().Gameplay.showSmallMap ? N_("Show small map: On") : N_("Show small map: Off");
@@ -401,7 +427,12 @@ void gamemenu_on()
 	if (!gbIsMultiplayer) {
 		gmenu_set_items(sgSingleMenu, GamemenuUpdateSingle);
 	} else {
+		#ifdef __3DS__
+		GamemenuUpdateMulti();
+		gmenu_set_items(sgMultiMenu, GamemenuUpdateMulti);
+#else
 		gmenu_set_items(sgMultiMenu, nullptr);
+#endif
 	}
 	PressEscKey();
 }

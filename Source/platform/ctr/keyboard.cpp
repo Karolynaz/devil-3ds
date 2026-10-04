@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdlib>
 #include <iterator>
 #include <cstring>
@@ -12,8 +13,8 @@
 constexpr size_t MAX_TEXT_LENGTH = 255;
 
 struct vkbdEvent {
-	std::string_view hintText;
-	std::string_view inText;
+	std::string hintText;
+	std::string inText;
 	void (*textInputFn)(std::string_view);
 };
 
@@ -94,4 +95,27 @@ std::optional<int> ctr_vkbdNumberInput(std::string_view hint, int maximum)
 	if (result.ec != std::errc {} || result.ptr != buffer + std::strlen(buffer) || value < 1 || value > maximum)
 		return std::nullopt;
 	return value;
+}
+
+void ctr_vkbdChat(int maxBytes, void *context,
+    void (*send)(void *, std::string_view), bool (*refresh)(void *))
+{
+	// The system applet owns GSP while open. Refresh between sends, then reopen
+	// with an empty input field; only Cancel ends this conversation session.
+	std::string buffer(maxBytes, '\0');
+	while (refresh(context)) {
+		SwkbdState keyboard;
+		swkbdInit(&keyboard, SWKBD_TYPE_WESTERN, 2, maxBytes - 1);
+		swkbdSetValidation(&keyboard, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+		const std::string hint { _("Talk") };
+		const std::string cancel { _("Cancel") };
+		const std::string submit { _("Send") };
+		swkbdSetHintText(&keyboard, hint.c_str());
+		swkbdSetButton(&keyboard, SWKBD_BUTTON_LEFT, cancel.c_str(), false);
+		swkbdSetButton(&keyboard, SWKBD_BUTTON_RIGHT, submit.c_str(), true);
+		std::fill(buffer.begin(), buffer.end(), '\0');
+		if (swkbdInputText(&keyboard, buffer.data(), buffer.size()) != SWKBD_BUTTON_CONFIRM)
+			break;
+		send(context, std::string_view(buffer.c_str()));
+	}
 }

@@ -111,7 +111,7 @@ void DrawMouse();
 void UiLoadDefaultPalette();
 bool UiLoadBlackBackground();
 void LoadBackgroundArt(const char *pszFile, int frames = 1);
-void UiAddBackground(std::vector<std::unique_ptr<UiItemBase>> *vecDialog);
+void UiAddBackground(std::vector<std::unique_ptr<UiItemBase>> *vecDialog, bool showTitle = true);
 #ifdef __3DS__
 void UiAddLogo(std::vector<std::unique_ptr<UiItemBase>> *vecDialog, int y = 10);
 #else
