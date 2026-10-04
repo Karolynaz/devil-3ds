@@ -22,6 +22,10 @@ The tracked source before these changes is in `Backups/2026-10-04_before_hellfir
 | The native inventory background used the local player's class while its items used the inspected player's class. | Use the inspected class for both, including Monk, Bard and Barbarian. |
 | The update worker could terminate without publishing a result or cleaning up curl resources after an allocation failure. | Protect the response callback, use automatic HTTP cleanup, and publish a failure result when exceptions are enabled. Exception-disabled builds still compile. |
 
+## Packaging verification follow-up
+
+The first successful SDK build revealed a parallel cleanup race: the core RomFS trim target could delete Hellfire files copied earlier by the mod target. The parent cleanup now excludes `mods`, whose own trim target remains responsible for its assets. A CMake regression covers parent/mod cleanup in that order. GitHub Actions now checks every declared Hellfire asset, the CA bundle and the jsmn license in both final packages before uploading them.
+
 ## Performance improvement
 
 Network initialization now happens when ZeroTier, TCP or the update checker needs it. Until then, single player avoids the 1 MiB SOC buffer and a Wi-Fi wait of up to five seconds. TCP builds without ZeroTier also initialize sockets explicitly before connecting.

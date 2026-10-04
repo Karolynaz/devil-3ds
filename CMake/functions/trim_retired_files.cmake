@@ -1,6 +1,6 @@
 set(SCRIPT_CONTENT [=[
 include(functions/trim_retired_files)
-trim_retired_files("${ROOT_FOLDER}" "${CURRENT_FILES}" "${OUTPUT_FILE}")
+trim_retired_files("${ROOT_FOLDER}" "${CURRENT_FILES}" "${OUTPUT_FILE}" ${EXCLUDE_DIRECTORIES})
 ]=])
 
 function(trim_retired_files root_folder current_files output_file)
@@ -8,6 +8,17 @@ function(trim_retired_files root_folder current_files output_file)
     GLOB_RECURSE retired_files
     RELATIVE "${root_folder}"
     "${root_folder}/*")
+
+  # Nested asset owners trim their own directories. Keep them intact even when
+  # their copy tasks run before this parent directory is cleaned.
+  foreach(excluded_directory ${ARGN})
+    foreach(retired_file ${retired_files})
+      string(FIND "${retired_file}" "${excluded_directory}/" prefix_index)
+      if(prefix_index EQUAL 0)
+        list(REMOVE_ITEM retired_files "${retired_file}")
+      endif()
+    endforeach()
+  endforeach()
 
   list(REMOVE_ITEM retired_files ${current_files})
   list(LENGTH retired_files retired_file_count)
@@ -26,7 +37,7 @@ function(add_trim_target arg_TARGET_NAME)
     BYPRODUCT
     SCRIPT_PATH)
 
-  set(multiValueArgs CURRENT_FILES)
+  set(multiValueArgs CURRENT_FILES EXCLUDE_DIRECTORIES)
   cmake_parse_arguments(PARSE_ARGV 0 arg "" "${oneValueArgs}" "${multiValueArgs}")
 
   if(NOT arg_ROOT_FOLDER)
@@ -55,6 +66,7 @@ function(add_trim_target arg_TARGET_NAME)
       -D "CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}"
       -D "ROOT_FOLDER=${arg_ROOT_FOLDER}"
       -D "CURRENT_FILES=${arg_CURRENT_FILES}"
+      -D "EXCLUDE_DIRECTORIES=${arg_EXCLUDE_DIRECTORIES}"
       -D "OUTPUT_FILE=${arg_BYPRODUCT}"
       -P "${arg_SCRIPT_PATH}"
     VERBATIM)

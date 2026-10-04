@@ -292,9 +292,16 @@ else()
     endforeach()
   endif()
 
+  set(_asset_trim_excluded_directories)
+  if(NINTENDO_3DS)
+    # Built-in mods share RomFS but have independent copy/cleanup targets.
+    list(APPEND _asset_trim_excluded_directories mods)
+  endif()
+
   add_trim_target(devilutionx_trim_assets
     ROOT_FOLDER "${DEVILUTIONX_ASSETS_OUTPUT_DIRECTORY}"
-    CURRENT_FILES ${DEVILUTIONX_MPQ_FILES})
+    CURRENT_FILES ${DEVILUTIONX_MPQ_FILES}
+    EXCLUDE_DIRECTORIES ${_asset_trim_excluded_directories})
   if(devilutionx_lang_targets)
     add_dependencies(devilutionx_trim_assets ${devilutionx_lang_targets})
   endif()

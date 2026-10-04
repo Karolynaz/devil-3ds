@@ -35,7 +35,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update && apt-get install -y --no-install-recommends --no-install-suggests \
-            ffmpeg gettext
+            ffmpeg gettext python3
           dkp-pacman -S --needed --noconfirm 3ds-curl
 
       - name: Get external dependencies
@@ -55,8 +55,14 @@ jobs:
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/3DS.cmake
 
+      - name: Check nested asset cleanup
+        run: cmake -DTEST_DIRECTORY="$PWD/build/asset-trim-regression" -P tools/tests/test_asset_trimming.cmake
+
       - name: Build Devil-3Ds
         run: cmake --build build -- -k 100
+
+      - name: Verify bundled package assets
+        run: python3 tools/verify_3ds_packages.py build
 
       - name: Upload 3dsx Package
         if: ${{ !env.ACT }}
