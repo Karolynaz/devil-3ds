@@ -214,11 +214,13 @@ std::expected<bool, PacketError> protocol_zt::send_queued_peer(const endpoint &p
 
 bool protocol_zt::recv_peer(const endpoint &peer)
 {
-	unsigned char buf[PKTBUF_LEN];
+	unsigned char *const buf = receiveBuffer.get();
 	peer_state &state = peer_list[peer];
 	while (true) {
-		auto len = lwip_recv(state.fd, buf, sizeof(buf), 0);
-		if (len >= 0) {
+		auto len = lwip_recv(state.fd, buf, PKTBUF_LEN, 0);
+		if (len == 0)
+			return false; // TCP EOF: stop polling this disconnected peer.
+		if (len > 0) {
 			state.recv_queue.Write(buffer_t(buf, buf + len));
 		} else {
 			return errno == EAGAIN || errno == EWOULDBLOCK;
@@ -255,11 +257,11 @@ bool protocol_zt::recv_from_peers()
 
 bool protocol_zt::recv_from_udp()
 {
-	unsigned char buf[PKTBUF_LEN];
+	unsigned char *const buf = receiveBuffer.get();
 	ZeroTierSocketAddress in6 {
 	};
 	socklen_t addrlen = sizeof(in6);
-	auto len = lwip_recvfrom(fd_udp, buf, sizeof(buf), 0, (struct sockaddr *)&in6, &addrlen);
+	auto len = lwip_recvfrom(fd_udp, buf, PKTBUF_LEN, 0, (struct sockaddr *)&in6, &addrlen);
 	if (len < 0)
 		return false;
 	buffer_t data(buf, buf + len);
@@ -295,6 +297,12 @@ bool protocol_zt::accept_all()
 
 bool protocol_zt::recv(endpoint &peer, buffer_t &data)
 {
+	// The lobby asks for public games before the asynchronous network is
+	// ready. Socket creation belongs to network_online(), so skip reception
+	// until both listening sockets have been initialized.
+	if (fd_tcp == -1 || fd_udp == -1)
+		return false;
+
 	accept_all();
 	send_queued_all();
 	recv_from_peers();

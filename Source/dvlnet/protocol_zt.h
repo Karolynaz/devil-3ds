@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <deque>
 #include <exception>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -98,6 +99,10 @@ public:
 private:
 	static constexpr uint32_t PKTBUF_LEN = 65536;
 	static constexpr uint16_t default_port = 6112;
+
+	// Lobby polling runs on the 3DS main thread, whose stack cannot hold a
+	// full receive packet. TCP and UDP reuse this heap-owned buffer.
+	std::unique_ptr<unsigned char[]> receiveBuffer = std::make_unique<unsigned char[]>(PKTBUF_LEN);
 
 	struct peer_state {
 		int fd = -1;
