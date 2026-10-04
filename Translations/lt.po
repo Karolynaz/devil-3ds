@@ -11002,3 +11002,25 @@ msgstr "Paspauskite A, kad patikrintumėte atnaujinimus."
 #: Source/DiabloUI/settingsmenu.cpp
 msgid "Build: "
 msgstr "Versija: "
+
+#: Source/DiabloUI/multi/selconn.cpp
+msgid "Connecting to ZeroTier..."
+msgstr "Jungiamasi prie ZeroTier..."
+
+#: Source/DiabloUI/multi/selconn.cpp
+msgid "ZeroTier initialization timed out. Please try again."
+msgstr "Baigėsi ZeroTier paleidimo laukimo laikas. Bandykite dar kartą."
+
+#: Source/DiabloUI/multi/selconn.cpp
+#, c++-brace-format
+msgid "Unable to start ZeroTier (error {})."
+msgstr "Nepavyko paleisti ZeroTier (klaida {})."
+
+#: Source/appfat.cpp
+msgid "Game Folder Error"
+msgstr "Žaidimo aplanko klaida"
+
+#: Source/appfat.cpp
+#, c++-format
+msgid "Please create {:s}\nand put game data there."
+msgstr "Sukurkite {:s}\nir įkelkite ten žaidimo duomenis."

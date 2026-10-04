@@ -24,6 +24,42 @@ for name in ['ext/ZeroTierOne/node/Mutex.hpp', 'ext/ZeroTierOne/osdep/Thread.hpp
         s = re.sub(r'\b(?:' + '|'.join(names) + r')\b', lambda m: names[m[0]], s)
         return '#include "zt_ctr_threads.h"\n' + s
     edit(name, port_threads)
+# Publish running flags before starting threads: the callback may run immediately
+# and exit if its flag is still clear. Return failures instead of silently
+# pretending that a missing callback/service thread started successfully.
+def port_node_start(s):
+    start = s.index('int zts_node_start()\n')
+    end = s.index('\nint zts_node_is_online()', start)
+    return s[:start] + '''int zts_node_start()
+{
+    ACQUIRE_SERVICE_OFFLINE();
+    zts_lwip_driver_init();
+    ctr_zt_thread_t callback_thread = NULL;
+    if (zts_events->hasCallback()) {
+        zts_events->setState(ZTS_STATE_CALLBACKS_RUNNING);
+        // Keep the handle until the service is started, so a failure can
+        // stop and join this callback before the user retries.
+        ctr_zt_attr_t callback_stack = 256 * 1024;
+        if (ctr_zt_create(&callback_thread, &callback_stack, cbRun, NULL) != 0) {
+            zts_events->clrState(ZTS_STATE_CALLBACKS_RUNNING);
+            zts_events->clrCallback();
+            return ZTS_ERR_GENERAL;
+        }
+    }
+    zts_events->setState(ZTS_STATE_NODE_RUNNING);
+    ctr_zt_thread_t service_thread;
+    if (ctr_zt_create(&service_thread, NULL, _runNodeService, NULL) != 0) {
+        zts_events->clrState(ZTS_STATE_NODE_RUNNING);
+        zts_events->clrState(ZTS_STATE_CALLBACKS_RUNNING);
+        ctr_zt_join(callback_thread, NULL);
+        return ZTS_ERR_GENERAL;
+    }
+    if (callback_thread)
+        threadDetach(callback_thread);
+    return ZTS_ERR_OK;
+}
+''' + s[end:]
+edit('src/Controls.cpp', port_node_start)
 edit('ext/ZeroTierOne/node/Constants.hpp', lambda s: s.replace('// __LINUX__', '#ifdef __3DS__\n#define __UNIX_LIKE__\n#endif\n\n// __LINUX__', 1))
 edit('ext/ZeroTierOne/osdep/Binder.hpp', lambda s: s.replace('#include <ifaddrs.h>', '#ifndef __3DS__\n#include <ifaddrs.h>\n#endif').replace('#if ! defined(ZT_SDK) || ! defined(__ANDROID__)', '#if !defined(__3DS__) && (!defined(ZT_SDK) || !defined(__ANDROID__))'))
 # SOC supports sockets, not POSIX pipes. Bound the wait instead of allocating a pipe.

@@ -104,10 +104,19 @@ void InsertCDDlg(std::string_view archiveName)
 
 void DirErrorDlg(std::string_view error)
 {
+#ifdef __3DS__
+	// Show the SD-card-relative folder users see on their computer.
+	if (error.starts_with("sdmc:"))
+		error.remove_prefix(5);
+	DisplayFatalErrorAndExit(
+	    _("Game Folder Error"),
+	    FormatRuntime(_("Please create {:s}\nand put game data there."), error));
+#else
 	DisplayFatalErrorAndExit(
 	    _("Read-Only Directory Error"),
 	    FormatRuntime(_(/* TRANSLATORS: Error when Program is not allowed to write data */ "Unable to write to location:\n{:s}"),
 	        error));
+#endif
 }
 
 } // namespace devilution

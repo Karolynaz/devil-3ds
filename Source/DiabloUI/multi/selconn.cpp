@@ -1,11 +1,14 @@
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #ifdef USE_SDL3
 #include <SDL3/SDL_rect.h>
+#include <SDL3/SDL_timer.h>
 #else
 #include <SDL.h>
 #endif
@@ -23,7 +26,9 @@
 #include "utils/ui_fwd.h"
 #include "utils/utf8.hpp"
 #ifdef __3DS__
-#include "platform/ctr/sockets.hpp"
+#ifndef DISABLE_ZERO_TIER
+#include "dvlnet/zerotier_native.h"
+#endif
 #endif
 
 namespace devilution {
@@ -52,6 +57,50 @@ std::vector<std::unique_ptr<UiItemBase>> vecSelConnDlg;
 void SelconnEsc();
 void SelconnFocus(size_t value);
 void SelconnSelect(size_t value);
+
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+bool StartupCancelled;
+
+bool WaitForZeroTierStartup()
+{
+	StartupCancelled = false;
+	std::vector<std::unique_ptr<UiListItem>> actions;
+	std::vector<std::unique_ptr<UiItemBase>> dialog;
+	UiLoadBlackBackground();
+	UiAddBackground(&dialog, false);
+	dialog.push_back(std::make_unique<UiArtText>("ZeroTier", MakeSdlRect(24, 24, 592, 36), UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver));
+	dialog.push_back(std::make_unique<UiArtText>(_("Connecting to ZeroTier...").data(), MakeSdlRect(50, 90, 540, 96), UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+	actions.push_back(std::make_unique<UiListItem>(_("Cancel"), 0));
+	dialog.push_back(std::make_unique<UiList>(actions, 1, 160, 330, 320, 36, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+	UiInitList(nullptr, [](size_t) { StartupCancelled = true; }, []() { StartupCancelled = true; }, dialog, true);
+
+	net::zerotier_network_start();
+	const uint32_t start = SDL_GetTicks();
+	net::CtrZeroTierStartup state = net::CtrZeroTierStartup::Starting;
+	while (!StartupCancelled) {
+		UiClearScreen();
+		UiPollAndRender();
+		state = net::zerotier_startup_state();
+		if (state != net::CtrZeroTierStartup::Starting || SDL_GetTicks() - start >= 30000)
+			break;
+	}
+	UiInitList_clear();
+	ArtBackground = std::nullopt;
+	if (StartupCancelled)
+		return false;
+	if (state == net::CtrZeroTierStartup::Started)
+		return true;
+	std::string error;
+	if (state == net::CtrZeroTierStartup::NoWifi)
+		error = _("No Wi-Fi connection. Connect in System Settings.");
+	else if (state == net::CtrZeroTierStartup::Starting)
+		error = _("ZeroTier initialization timed out. Please try again.");
+	else
+		error = FormatRuntime(_("Unable to start ZeroTier (error {})."), net::zerotier_startup_error());
+	UiSelOkDialog(_("Multiplayer").data(), error.c_str(), false);
+	return false;
+}
+#endif
 
 void SelconnLoad()
 {
@@ -190,10 +239,8 @@ void SelconnSelect(size_t value)
 bool UiSelectProvider(GameData *gameData)
 {
 #if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
-	if (!n3ds_socInit()) {
-		UiSelOkDialog(_("Multiplayer").data(), _("No Wi-Fi connection. Connect in System Settings.").data(), false);
+	if (!WaitForZeroTierStartup())
 		return false;
-	}
 	provider = SELCONN_ZT;
 	return SNetInitializeProvider(provider, gameData);
 #endif

@@ -5,6 +5,12 @@
 namespace devilution {
 namespace net {
 
+#ifdef __3DS__
+enum class CtrZeroTierStartup { Idle, Starting, Started, NoWifi, Failed };
+CtrZeroTierStartup zerotier_startup_state();
+int zerotier_startup_error();
+#endif
+
 bool zerotier_network_ready();
 bool zerotier_peers_ready();
 void zerotier_network_start();

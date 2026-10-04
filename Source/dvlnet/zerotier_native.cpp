@@ -35,6 +35,10 @@
 
 #include <ZeroTierSockets.h>
 #include <cstdlib>
+#ifdef __3DS__
+#include <3ds.h>
+#include "platform/ctr/sockets.hpp"
+#endif
 
 #include "utils/algorithm/container.hpp"
 #include "utils/log.hpp"
@@ -49,6 +53,11 @@ namespace {
 
 // static constexpr uint64_t zt_earth = 0x8056c2e21c000001;
 constexpr uint64_t ZtNetwork = 0xa84ac5c10a7ebb5f;
+
+#ifdef __3DS__
+std::atomic<CtrZeroTierStartup> StartupState { CtrZeroTierStartup::Idle };
+std::atomic_int StartupError { ZTS_ERR_OK };
+#endif
 
 std::atomic_bool zt_network_ready(false);
 std::atomic_bool zt_node_online(false);
@@ -193,8 +202,54 @@ bool zerotier_peers_ready()
 	return SDL_GetTicks() - zt_peers_ready >= 5000;
 }
 
+#ifdef __3DS__
+CtrZeroTierStartup zerotier_startup_state()
+{
+	return StartupState.load(std::memory_order_acquire);
+}
+
+int zerotier_startup_error()
+{
+	return StartupError.load(std::memory_order_relaxed);
+}
+#endif
+
 void zerotier_network_start()
 {
+#ifdef __3DS__
+	// Constructors run before the hero menu. Never perform network setup on
+	// the UI thread while its palette is still black from the transition.
+	const auto state = StartupState.load(std::memory_order_acquire);
+	if (state == CtrZeroTierStartup::Starting || state == CtrZeroTierStartup::Started)
+		return;
+	StartupState.store(CtrZeroTierStartup::Starting, std::memory_order_release);
+	StartupError.store(ZTS_ERR_OK, std::memory_order_relaxed);
+	Thread worker = threadCreate([](void *) {
+		auto finish = [](CtrZeroTierStartup state, int error = ZTS_ERR_OK) {
+			StartupError.store(error, std::memory_order_relaxed);
+			StartupState.store(state, std::memory_order_release);
+		};
+		try {
+			if (!n3ds_socInit()) {
+				finish(CtrZeroTierStartup::NoWifi);
+				return;
+			}
+			const std::string path = paths::ConfigPath() + "zerotier";
+			int result = zts_init_from_storage(path.c_str());
+			if (result == ZTS_ERR_OK)
+				result = zts_init_set_event_handler(&Callback);
+			if (result == ZTS_ERR_OK)
+				result = zts_node_start();
+			finish(result == ZTS_ERR_OK ? CtrZeroTierStartup::Started : CtrZeroTierStartup::Failed, result);
+		} catch (...) {
+			finish(CtrZeroTierStartup::Failed, ZTS_ERR_GENERAL);
+		}
+	}, nullptr, 256 * 1024, 0x38, -2, true);
+	if (worker == nullptr) {
+		StartupError.store(ZTS_ERR_GENERAL, std::memory_order_relaxed);
+		StartupState.store(CtrZeroTierStartup::Failed, std::memory_order_release);
+	}
+#else
 	std::string configPath = paths::ConfigPath();
 #ifdef DVL_ZT_SYMLINK
 	configPath = ToZTCompliantPath(configPath);
@@ -203,6 +258,7 @@ void zerotier_network_start()
 	zts_init_from_storage(ztpath.c_str());
 	zts_init_set_event_handler(&Callback);
 	zts_node_start();
+#endif
 }
 
 bool zerotier_is_relayed(uint64_t mac)

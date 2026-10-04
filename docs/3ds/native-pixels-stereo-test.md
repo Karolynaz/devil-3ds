@@ -197,3 +197,28 @@ Base: `56c0fbfd111fc2eb43b0470d6ef94f2824a7da47`.
 No emulator or console was launched. ZeroTier connectivity, native keyboard
 behavior, latency, hardware performance and TLS access still need console tests.
 The prior stereo rendering and camera framing are retained. No Releases upload.
+
+## Multiplayer startup black-screen correction — 2026-10-04
+
+- The provider constructor previously initialized SOC/libzt on the foreground
+  menu thread, after the transition had cleared the screen. The 3DS path now
+  starts that work in a native background thread. A visible initialization screen
+  remains responsive to Cancel/B and returns an error after 30 seconds of waiting.
+  Leaving this screen cancels the menu wait; an already running initialization
+  finishes in the background and is reused on the next attempt.
+- ZeroTier worker threads use priority 0x38, below the foreground UI's 0x30.
+  Identity generation and network work therefore yield to menu rendering.
+- The libzt adapter sets callback/service running flags before creating those
+  threads, preventing an early callback exit. Failed thread creation is returned
+  as an error instead of being reported as success; a callback is joined when
+  service creation fails, keeping retries from leaving duplicate callbacks.
+- Startup API errors, missing Wi-Fi and waiting timeouts have visible messages,
+  including Lithuanian translations. Starting successfully means the service
+  was launched; its existing online/network checks still govern joining games.
+
+Verification: the updated adapter applies to the pinned libzt sources, and source
+and translation checks pass. No game compilation, emulator or console test was
+performed for this correction. The reported symptom has not been reproduced on
+hardware; verify menu responsiveness and the hero-selection flow in the next
+test build, with Wi-Fi both enabled and disabled. Existing test binaries remain
+unchanged. No push or Releases upload.
