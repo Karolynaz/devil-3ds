@@ -64,6 +64,13 @@ jobs:
       - name: Verify bundled package assets
         run: python3 tools/verify_3ds_packages.py build
 
+      - name: Preserve debugging symbols
+        if: ${{ !env.ACT }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: devil-3ds-debug-symbols
+          path: ./build/devil-3ds.elf
+
       - name: Upload 3dsx Package
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7
