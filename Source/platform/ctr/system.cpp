@@ -98,7 +98,8 @@ void ctr_sys_init()
 	acInit();
 	atexit([]() { acExit(); });
 
-	n3ds_socInit();
+	// Multiplayer and the update checker initialize SOC when needed. Avoid a
+	// five-second Wi-Fi wait and a 1 MiB socket buffer in single player.
 	atexit([]() { n3ds_socExit(); });
 
 #ifdef PACKET_ENCRYPTION

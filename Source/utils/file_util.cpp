@@ -296,7 +296,7 @@ bool CreateDir(const char *path)
 #endif
 #else
 	const int result = ::mkdir(path, 0777);
-	if (result != 0 && result != EEXIST) {
+	if (result != 0 && !(errno == EEXIST && DirectoryExists(path))) {
 		LogError("failed to create directory {}", path);
 		return false;
 	}

@@ -45,6 +45,11 @@ bool HasHellfireMpq;
 bool IsAssetIntegrityViolated = false;
 
 namespace {
+#if defined(__3DS__) && !defined(UNPACKED_MPQS)
+// Read-only, shipped mod assets are part of this build. Keep them separate
+// from user overrides so they do not trigger the multiplayer integrity gate.
+std::vector<std::string> BundledModPaths;
+#endif
 
 #ifdef UNPACKED_MPQS
 char *FindUnpackedMpqFile(char *relativePath)
@@ -73,9 +78,11 @@ SDL_IOStream *OpenOptionalRWops(const std::string &path)
 	return SDL_IOFromFile(path.c_str(), "rb");
 };
 
-bool FindMpqFile(std::string_view filename, MpqArchive **archive, uint32_t *hashIndex)
+bool FindMpqFile(std::string_view filename, MpqArchive **archive, uint32_t *hashIndex, int minimumPriority = 0)
 {
-	for (auto &[_, mpqArchive] : MpqArchives) {
+	for (auto &[priority, mpqArchive] : MpqArchives) {
+		if (priority < minimumPriority)
+			break;
 		uint32_t hash = mpqArchive.FindHash(filename);
 		if (hash != UINT32_MAX) {
 			*archive = &mpqArchive;
@@ -213,6 +220,21 @@ AssetRef FindAsset(std::string_view filename)
 			}
 		}
 	}
+
+#ifdef __3DS__
+	if (!BundledModPaths.empty()) {
+		// External packed mods still take precedence over shipped mod assets.
+		if (FindMpqFile(filename, &result.archive, &result.hashIndex, 10000)) {
+			result.filename = filename;
+			return result;
+		}
+		for (const auto &modPath : BundledModPaths) {
+			result.directHandle = OpenOptionalRWops(modPath + relativePath);
+			if (result.directHandle != nullptr)
+				return result;
+		}
+	}
+#endif
 
 	// Look for the file in all the MPQ archives:
 	if (FindMpqFile(filename, &result.archive, &result.hashIndex)) {
@@ -548,7 +570,16 @@ void LoadGameArchives()
 	if (!HeadlessMode) {
 		if (!haveDiabdat && !haveSpawn) {
 			LogError("{}", SDL_GetError());
+#ifdef __3DS__
+			if (HasHellfireMpq)
+				InsertCDDlg("DIABDAT.MPQ\nhellfire.mpq\nhfmonk.mpq\nhfmusic.mpq\nhfvoice.mpq");
+#endif
 			InsertCDDlg(_("diabdat.mpq or spawn.mpq"));
+		}
+		// Lua can enable Hellfire before the base archives set gbIsSpawn.
+		if (gbIsHellfire && !haveDiabdat) {
+			InsertCDDlg("DIABDAT.MPQ");
+			return;
 		}
 	}
 
@@ -570,7 +601,15 @@ void LoadGameArchives()
 void LoadHellfireArchives()
 {
 	const std::vector<std::string> paths = GetMPQSearchPaths();
-	LoadMPQ(paths, "hellfire", 8000);
+	// Hellfire extends the full Diablo archive; shareware cannot supply it.
+	if (gbIsSpawn) {
+		InsertCDDlg("DIABDAT.MPQ");
+		return;
+	}
+	if (!LoadMPQ(paths, "hellfire", 8000)) {
+		InsertCDDlg("hellfire.mpq");
+		return;
+	}
 
 #ifdef UNPACKED_MPQS
 	const std::string &hellfireDataPath = MpqArchives.at(8000);
@@ -597,6 +636,9 @@ void LoadHellfireArchives()
 void UnloadModArchives()
 {
 	OverridePaths.clear();
+#if defined(__3DS__) && !defined(UNPACKED_MPQS)
+	BundledModPaths.clear();
+#endif
 
 #ifndef UNPACKED_MPQS
 	for (auto it = MpqArchives.begin(); it != MpqArchives.end();) {
@@ -675,7 +717,10 @@ std::vector<std::string> ReadPackedModRequiredMods(std::span<const std::string> 
 
 ModManifest ReadModManifestByName(std::string_view name)
 {
-	const std::vector<std::string> searchPaths = GetMPQSearchPaths();
+	std::vector<std::string> searchPaths = GetMPQSearchPaths();
+#ifdef __3DS__
+	searchPaths.push_back(paths::AssetsPath());
+#endif
 	constexpr std::string_view ManifestName = "manifest.ini";
 
 	// Loose mod directory (also how UNPACKED_MPQS builds ship their mods).
@@ -768,6 +813,15 @@ void LoadModArchives(std::span<const std::string_view> modnames)
 			// Neither a packed MPQ nor a loose override directory: this mod resolves purely
 			// from core archives (a built-in), so it is provenance-whitelisted.
 			RegisterBuiltinModIdentifier(modname);
+		}
+#endif
+#if defined(__3DS__) && !defined(UNPACKED_MPQS)
+		const std::string bundledPath = StrCat(paths::AssetsPath(), "mods" DIRECTORY_SEPARATOR_STR, modname, DIRECTORY_SEPARATOR_STR);
+		if (DirectoryExists(bundledPath)) {
+			BundledModPaths.emplace_back(bundledPath);
+			// Preserve Hellfire's save extension and program ID metadata.
+			if (!ActiveModIdentifiers.empty() && ActiveModIdentifiers.back().name == modname && ActiveModIdentifiers.back().whitelisted)
+				ActiveModIdentifiers.back().manifest = ReadModManifestByName(modname);
 		}
 #endif
 		priority++;

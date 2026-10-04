@@ -86,6 +86,23 @@ bool Init(std::string_view caption, std::string_view text, bool error, bool rend
 	if (!IsHardwareCursor() && !ArtCursor) {
 		ArtCursor = LoadPcx("ui_art\\cursor", /*transparentColor=*/0);
 	}
+#ifdef __3DS__
+	// Keep the complete message on one screen, using native font metrics.
+	constexpr int TextWidth = 576; // 360 physical pixels on the upper screen.
+	wrappedText = WordWrapString(text, TextWidth, GameFont12, 1, CtrTextScale::TopScreen);
+	if (!caption.empty()) {
+		vecOkDialog.push_back(std::make_unique<UiText>(caption,
+		    MakeSdlRect(32, 12, TextWidth, 32),
+		    UiFlags::FontSize24 | UiFlags::AlignCenter | UiFlags::ColorYellow | UiFlags::KerningFitSpacing));
+	}
+	vecOkDialog.push_back(std::make_unique<UiArtText>(wrappedText.c_str(),
+	    MakeSdlRect(32, caption.empty() ? 20 : 48, TextWidth, caption.empty() ? 212 : 184),
+	    UiFlags::FontSize12 | UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorDialogWhite, 1, 16));
+	vecOkDialog.push_back(std::make_unique<UiArtTextButton>(_("OK"), &DialogActionOK,
+	    MakeSdlRect(224, 336, 192, 48),
+	    UiFlags::FontSize24 | UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorUiGold));
+	return true;
+#endif
 	LoadDialogButtonGraphics();
 
 	OptionalClxSprite dialogSprite = LoadDialogSprite(!caption.empty(), error);
@@ -153,8 +170,13 @@ void DialogLoop(const std::vector<std::unique_ptr<UiItemBase>> &items, const std
 		}
 
 		UiClearScreen();
+#ifndef __3DS__
 		UiRenderItems(renderBehind);
 		UiRenderListItems();
+#else
+		// The handheld dialog occupies both screens; do not draw a menu through it.
+		(void)renderBehind;
+#endif
 		UiRenderItems(items);
 		DrawMouse();
 		UiFadeIn();

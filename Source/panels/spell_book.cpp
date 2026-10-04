@@ -57,7 +57,8 @@ const SpellID SpellPages[SpellBookPages][SpellBookPageEntries] = {
 
 SpellID GetSpellFromSpellPage(size_t page, size_t entry)
 {
-	assert(page <= SpellBookPages && entry <= SpellBookPageEntries);
+	if (page >= SpellBookPages || entry >= SpellBookPageEntries)
+		return SpellID::Invalid;
 	if (page == 0 && entry == 0)
 		return GetPlayerStartingLoadoutForClass(InspectPlayer->_pClass).skill;
 	return SpellPages[page][entry];
@@ -124,6 +125,11 @@ StringOrView GetSpellPowerText(SpellID spell, int spellLevel)
 void DrawSpellBook3DS(const Surface &out)
 {
 	DrawCtrPanelBackground(out, CtrPanelBackground::Spells);
+	if (gbIsHellfire) {
+		// The supplied panel has four tabs. Replace its strip with five native
+		// frames so Hellfire's fifth page does not straddle the old borders.
+		out.BlitFrom(out, MakeSdlRect(10, 28, 380, 23), { 10, CtrSpellTabsY - 3 });
+	}
 	DrawString(out, _("Spell Book"), { { 12, 22 }, { 376, 24 } },
 	    { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
 	const Player &player = *InspectPlayer;
@@ -170,6 +176,12 @@ void DrawSpellBook3DS(const Surface &out)
 		DrawHalfTransparentRectTo(out, button.position.x, button.position.y, button.size.width, button.size.height);
 		if (page == SpellbookTab)
 			DrawHalfTransparentRectTo(out, button.position.x, button.position.y, button.size.width, button.size.height, PAL16_RED + 10);
+		if (gbIsHellfire) {
+			DrawHorizontalLine(out, button.position, button.size.width, PAL16_BEIGE + 10);
+			DrawVerticalLine(out, button.position, button.size.height, PAL16_BEIGE + 10);
+			DrawHorizontalLine(out, button.position + Displacement { 0, button.size.height - 1 }, button.size.width, PAL16_BEIGE + 3);
+			DrawVerticalLine(out, button.position + Displacement { button.size.width - 1, 0 }, button.size.height, PAL16_BEIGE + 3);
+		}
 		DrawString(out, std::to_string(page + 1), button, { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorWhite });
 	}
 }

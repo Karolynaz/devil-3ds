@@ -22,6 +22,11 @@ namespace devilution {
 
 void ReadOnlyTest()
 {
+#ifdef __3DS__
+	// The SDL1 3DS backport returns this path without creating it.
+	if (!paths::PrefPath().empty())
+		RecursivelyCreateDir(paths::PrefPath().c_str());
+#endif
 	const std::string path = paths::PrefPath() + "Diablo1ReadOnlyTest.foo";
 	SDL_IOStream *file = SDL_IOFromFile(path.c_str(), "w");
 	if (file == nullptr) {

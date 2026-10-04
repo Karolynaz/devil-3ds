@@ -45,6 +45,16 @@ int main() {
     const Point top = CtrScreenToTop({x, 120}, 640);
     check(top.x >= 0 && top.x < 400 && top.y == 120);
   }
+  for(bool hellfire : {false,true}) {
+    Rectangle previous {};
+    for(int page=0; page<(hellfire?5:4); ++page) {
+      const Rectangle tab=CtrSpellTabRect(page,hellfire);
+      check(tab.position.x >= 10 && tab.position.x+tab.size.width <= 390);
+      check(tab.position.y >= 214 && tab.position.y+tab.size.height <= 234);
+      if(page) check(previous.position.x+previous.size.width < tab.position.x);
+      previous=tab;
+    }
+  }
   check(CtrBottomHealthBar.position == Point(20, 82));
   check(CtrBottomManaBar.position == Point(274, 82));
   check(CtrBottomExperienceBar.size == Size(224, 14));
@@ -60,4 +70,4 @@ with tempfile.TemporaryDirectory() as tmp:
         '-I' + str(ROOT / 'Source'), str(source), '-o', str(executable),
     ], check=True)
     subprocess.run([str(executable)], check=True)
-print('PASS: inventory, stash, and bottom-screen UI geometry')
+print('PASS: inventory, stash, Diablo/Hellfire spell tabs and bottom-screen UI geometry')

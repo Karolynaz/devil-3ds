@@ -26,6 +26,7 @@
 #include "utils/ui_fwd.h"
 #include "utils/utf8.hpp"
 #ifdef __3DS__
+#include "platform/ctr/sockets.hpp"
 #ifndef DISABLE_ZERO_TIER
 #include "dvlnet/zerotier_native.h"
 #endif
@@ -228,6 +229,12 @@ void SelconnFocus(size_t value)
 void SelconnSelect(size_t value)
 {
 	provider = vecConnItems[value]->m_value;
+#ifdef __3DS__
+	if (provider == SELCONN_TCP && !n3ds_socInit()) {
+		UiSelOkDialog(_("Multiplayer").data(), _("No Wi-Fi connection. Connect in System Settings.").data(), false);
+		return;
+	}
+#endif
 
 	SelconnFree();
 	selconn_EndMenu = SNetInitializeProvider(provider, selconn_GameData);

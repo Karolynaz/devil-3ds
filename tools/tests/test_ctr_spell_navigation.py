@@ -55,7 +55,7 @@ void checkBounds() {
 }
 int main() {
     // All classes use the same masks; their innate ability differs.
-    for(int skill:{26,27,28}) {
+    for(int skill:{26,27,28,46,5,22}) {
         player={};player._pAblSpells=uint64_t(1)<<(skill-1);
         player._pMemSpells=(uint64_t(1)<<20)-1;
         player._pScrlSpells=(uint64_t(1)<<15)-1;
@@ -89,6 +89,18 @@ int main() {
         Move3dsSpellListSelection({AxisDirectionX_NONE,AxisDirectionY_DOWN});check(selected().type==SpellType::Skill);checkBounds();
         // Reopening on an invalid active spell selects the first available entry.
         player._pRSpell=SpellID::Invalid;DoSpeedBook();check(selected().type==SpellType::Spell && selected().id==SpellID(1));
+    }
+    // Hellfire-only spells and runes remain reachable in all source rows.
+    player={};player._pRSpell=SpellID(51);player._pRSplType=SpellType::Spell;
+    for (int id=37;id<=51;++id) player._pMemSpells |= uint64_t(1)<<(id-1);
+    player._pScrlSpells=player._pMemSpells;player._pISpells=player._pMemSpells;
+    DoSpeedBook();check(selected().id==SpellID(51));checkBounds();
+    for(auto type:{SpellType::Spell,SpellType::Charges,SpellType::Scroll}) {
+        check(Focus3dsSpellListItem(SpellID(37),type));
+        for(int id=38;id<=51;++id) {
+            Move3dsSpellListSelection({AxisDirectionX_RIGHT,AxisDirectionY_NONE});
+            check(selected().type==type && selected().id==SpellID(id));checkBounds();
+        }
     }
     player={};DoSpeedBook();Move3dsSpellListSelection({AxisDirectionX_RIGHT,AxisDirectionY_DOWN});check(GetSpellListItems().empty());
     for(int rows=1;rows<=4;++rows) for(int r=0;r<rows;++r) for(int c=0;c<6;++c) {

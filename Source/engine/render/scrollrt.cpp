@@ -1491,7 +1491,7 @@ void DrawView(const Surface &out, Point startPosition)
 			out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(rect.position.x, 0, rect.size.width, 240));
 		} else {
 			CtrPanelBackground background = IsStashOpen ? CtrPanelBackground::InventoryWarriorStash : CtrPanelBackground::InventoryWarrior;
-			switch (MyPlayer->_pClass) {
+			switch (InspectPlayer->_pClass) {
 			case HeroClass::Rogue:
 			case HeroClass::Bard:
 				background = IsStashOpen ? CtrPanelBackground::InventoryRogueStash : CtrPanelBackground::InventoryRogue;

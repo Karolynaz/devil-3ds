@@ -21,7 +21,7 @@ You need a Nintendo 3DS set up to run homebrew and your own Diablo game data. Th
    - **HOME Menu:** copy the `.cia` to the SD card and install it with FBI.
    - **Homebrew Launcher:** put the `.3dsx` in `/3ds/devil-3ds/` on the SD card.
 3. Create `/3ds/devilutionx/` on the SD card and copy `DIABDAT.MPQ` from your Diablo installation into it. For the shareware edition, use `spawn.mpq` instead.
-4. For **Hellfire**, also copy `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq` and `hfvoice.mpq` into the same data folder.
+4. For **Hellfire**, keep `DIABDAT.MPQ` and also copy `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq` and `hfvoice.mpq` into the same data folder. All **five files** are required; Hellfire does not replace the base game, and `spawn.mpq` cannot substitute for `DIABDAT.MPQ`. See the [official MPQ instructions](https://devilutionx.com/mpq).
 5. Launch **Devil-3Ds**. When updating, install the new CIA or replace the 3DSX; keep the data folder and saves.
 
 The `/3ds/devilutionx/` data folder name is retained for compatibility with existing installations and saves. Both download formats include the custom interface assets and Lithuanian translation. Performance varies between original and New 3DS hardware.

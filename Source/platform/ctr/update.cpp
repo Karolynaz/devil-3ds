@@ -5,6 +5,8 @@
 #include <curl/curl.h>
 #include <atomic>
 #include <cstdlib>
+#include <memory>
+#include <new>
 
 namespace devilution {
 namespace {
@@ -17,13 +19,23 @@ size_t Receive(char *data, size_t size, size_t count, void *user)
 {
 	auto &response = *static_cast<std::string *>(user);
 	if (response.size() > MaxResponse || (size != 0 && count > (MaxResponse - response.size()) / size)) return 0;
-	response.append(data, size * count);
+#ifdef __cpp_exceptions
+	try {
+#endif
+		response.append(data, size * count);
+#ifdef __cpp_exceptions
+	} catch (const std::bad_alloc &) {
+		// Exceptions must not cross libcurl's C callback boundary.
+		return 0;
+	}
+#endif
 	return size * count;
 }
 
 bool Get(std::string_view url, std::string &body, std::string &error)
 {
-	CURL *curl = curl_easy_init();
+	const std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> handle(curl_easy_init(), curl_easy_cleanup);
+	CURL *curl = handle.get();
 	if (!curl) { error = "HTTP initialization failed."; return false; }
 	char errorBuffer[CURL_ERROR_SIZE] {};
 	const std::string address { url };
@@ -40,7 +52,6 @@ bool Get(std::string_view url, std::string &body, std::string &error)
 	const CURLcode code = curl_easy_perform(curl);
 	long status = 0;
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-	curl_easy_cleanup(curl);
 	if (code != CURLE_OK) { error = errorBuffer[0] ? errorBuffer : curl_easy_strerror(code); return false; }
 	if (status != 200) { error = status == 403 || status == 429 ? "GitHub rate limit. Try again later." : "GitHub HTTP error: " + std::to_string(status); return false; }
 	return true;
@@ -49,31 +60,47 @@ bool Get(std::string_view url, std::string &body, std::string &error)
 void Check(void *)
 {
 	CtrUpdateResult result { CtrUpdateState::Error, {}, {} };
-	if (!n3ds_socInit()) {
-		result.detail = "No Wi-Fi connection. Connect in System Settings.";
-	} else if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
-		result.detail = "HTTP initialization failed.";
-	} else {
-		std::string body;
-		if (Get("https://api.github.com/repos/Karolynaz/devil-3ds/releases/latest", body, result.detail)) {
-			const auto tag = CtrJsonString(body, "tag_name");
-			if (!tag || !CtrValidReleaseTag(*tag)) {
-				result.detail = "Invalid release response from GitHub.";
-			} else {
-				result.version = *tag;
-				body.clear();
-				const std::string url = std::string("https://api.github.com/repos/Karolynaz/devil-3ds/compare/") + CTR_BUILD_COMMIT + "..." + *tag + "?per_page=1";
-				if (Get(url, body, result.detail)) {
-					const auto status = CtrJsonString(body, "status");
-					if (status && *status == "ahead") result.state = CtrUpdateState::Available;
-					else if (status && (*status == "identical" || *status == "behind")) result.state = CtrUpdateState::Current;
-					else if (status && *status == "diverged") result.state = CtrUpdateState::Different;
-					else result.detail = "Invalid version comparison from GitHub.";
+#ifdef __cpp_exceptions
+	try {
+#endif
+		if (!n3ds_socInit()) {
+			result.detail = "No Wi-Fi connection. Connect in System Settings.";
+		} else if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
+			result.detail = "HTTP initialization failed.";
+		} else {
+			struct CurlGlobalCleanup {
+				~CurlGlobalCleanup() { curl_global_cleanup(); }
+			} cleanup;
+			std::string body;
+			if (Get("https://api.github.com/repos/Karolynaz/devil-3ds/releases/latest", body, result.detail)) {
+				const auto tag = CtrJsonString(body, "tag_name");
+				if (!tag || !CtrValidReleaseTag(*tag)) {
+					result.detail = "Invalid release response from GitHub.";
+				} else {
+					result.version = *tag;
+					body.clear();
+					const std::string url = std::string("https://api.github.com/repos/Karolynaz/devil-3ds/compare/") + CTR_BUILD_COMMIT + "..." + *tag + "?per_page=1";
+					if (Get(url, body, result.detail)) {
+						const auto status = CtrJsonString(body, "status");
+						if (status && *status == "ahead") result.state = CtrUpdateState::Available;
+						else if (status && (*status == "identical" || *status == "behind")) result.state = CtrUpdateState::Current;
+						else if (status && *status == "diverged") result.state = CtrUpdateState::Different;
+						else result.detail = "Invalid version comparison from GitHub.";
+					}
 				}
 			}
 		}
-		curl_global_cleanup();
+#ifdef __cpp_exceptions
+	} catch (const std::bad_alloc &) {
+		result.state = CtrUpdateState::Error;
+		result.version.clear();
+		result.detail = "Out of memory.";
+	} catch (...) {
+		result.state = CtrUpdateState::Error;
+		result.version.clear();
+		result.detail = "Check failed.";
 	}
+#endif
 	Result = std::move(result);
 	Ready.store(true, std::memory_order_release);
 }
@@ -97,7 +124,7 @@ void CtrCheckForUpdates()
 	Ready = false;
 	static const bool registered = []() { std::atexit(Stop); return true; }();
 	(void)registered;
-	Worker = threadCreate(Check, nullptr, 256 * 1024, 0x30, -2, false);
+	Worker = threadCreate(Check, nullptr, 256 * 1024, 0x38, -2, false);
 	if (!Worker) {
 		Result = { CtrUpdateState::Error, {}, "Not enough memory to start update check." };
 		Ready.store(true, std::memory_order_release);

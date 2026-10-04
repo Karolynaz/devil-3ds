@@ -34,6 +34,9 @@ set(DEFAULT_PER_PIXEL_LIGHTING false)
 
 #Deploy assets to romfs
 set(DEVILUTIONX_ASSETS_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/romfs")
+# Hellfire is a built-in mod with its own tables, script and UI assets.
+# Package them in the same RomFS as the core assets for both CIA and 3DSX.
+set(DEVILUTIONX_MODS_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/romfs/mods")
 
 #SDL Joystick axis mapping (circle-pad/C-stick)
 set(JOY_AXIS_LEFTX 0)
