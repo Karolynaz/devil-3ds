@@ -27,6 +27,12 @@
 namespace devilution {
 namespace net {
 
+#ifdef __3DS__
+using ZeroTierSocketAddress = ctr_lwip_sockaddr_in6;
+#else
+using ZeroTierSocketAddress = sockaddr_in6;
+#endif
+
 namespace {
 
 bool GetMAC(const protocol_zt::endpoint &peer, uint64_t &mac)
@@ -97,7 +103,7 @@ std::expected<bool, PacketError> protocol_zt::network_online()
 	if (!zerotier_network_ready())
 		return false;
 
-	struct sockaddr_in6 in6 {
+	ZeroTierSocketAddress in6 {
 	};
 	in6.sin6_port = htons(default_port);
 	in6.sin6_family = AF_INET6;
@@ -152,7 +158,7 @@ std::expected<void, PacketError> protocol_zt::send(const endpoint &peer, const b
 
 bool protocol_zt::send_oob(const endpoint &peer, const buffer_t &data) const
 {
-	struct sockaddr_in6 in6 {
+	ZeroTierSocketAddress in6 {
 	};
 	in6.sin6_port = htons(default_port);
 	in6.sin6_family = AF_INET6;
@@ -175,7 +181,7 @@ std::expected<bool, PacketError> protocol_zt::send_queued_peer(const endpoint &p
 		state.fd = lwip_socket(AF_INET6, SOCK_STREAM, 0);
 		set_nodelay(state.fd);
 		set_nonblock(state.fd);
-		struct sockaddr_in6 in6 {
+		ZeroTierSocketAddress in6 {
 		};
 		in6.sin6_port = htons(default_port);
 		in6.sin6_family = AF_INET6;
@@ -250,7 +256,7 @@ bool protocol_zt::recv_from_peers()
 bool protocol_zt::recv_from_udp()
 {
 	unsigned char buf[PKTBUF_LEN];
-	struct sockaddr_in6 in6 {
+	ZeroTierSocketAddress in6 {
 	};
 	socklen_t addrlen = sizeof(in6);
 	auto len = lwip_recvfrom(fd_udp, buf, sizeof(buf), 0, (struct sockaddr *)&in6, &addrlen);
@@ -265,7 +271,7 @@ bool protocol_zt::recv_from_udp()
 
 bool protocol_zt::accept_all()
 {
-	struct sockaddr_in6 in6 {
+	ZeroTierSocketAddress in6 {
 	};
 	socklen_t addrlen = sizeof(in6);
 	while (true) {

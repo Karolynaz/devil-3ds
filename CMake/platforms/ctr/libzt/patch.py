@@ -62,6 +62,7 @@ for name in ['ext/lwip/src/include/lwip/netdb.h', 'ext/lwip/src/api/netdb.c']:
 # Virtual IPv6 has a different sockaddr layout from the native ASIO shim.
 # Distinct type names keep LTO from treating the two layouts as one C++ type.
 for name in ['ext/lwip/src/include/lwip/inet.h', 'ext/lwip/src/include/lwip/sockets.h',
-             'ext/lwip/src/core/ipv6/inet6.c', 'ext/lwip/src/netif/ppp/ipv6cp.c']:
+             'ext/lwip/src/core/ipv6/inet6.c', 'ext/lwip/src/netif/ppp/ipv6cp.c',
+             'ext/lwip/src/api/sockets.c', 'ext/lwip/src/api/netdb.c']:
     names = {n: 'ctr_lwip_' + n for n in ['in6_addr', 'sockaddr_in6']}
     edit(name, lambda s: re.sub(r'\b(?:' + '|'.join(names) + r')\b', lambda m: names[m[0]], s))
