@@ -149,8 +149,7 @@ bool base_protocol<P>::send_info_request()
 		LogError("make_packet: {}", pkt.error().what());
 		return false;
 	}
-	proto.send_oob_mc((*pkt)->Data());
-	return true;
+	return proto.send_oob_mc((*pkt)->Data());
 }
 
 template <class P>

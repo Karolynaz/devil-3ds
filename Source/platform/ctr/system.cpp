@@ -7,6 +7,13 @@
 #include "platform/ctr/sockets.hpp"
 #include "platform/ctr/system.h"
 
+// ZeroTier sends multicast frames synchronously on the calling UI thread.
+// Its nested send path exceeds libctru's default 32 KiB main stack.
+// Match ZeroTier's 1 MiB minimum; the CIA exheader uses the same size.
+extern "C" {
+u32 __stacksize__ = 1024 * 1024;
+}
+
 using namespace devilution;
 
 bool shouldDisableBacklight;

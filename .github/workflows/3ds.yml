@@ -64,6 +64,9 @@ jobs:
       - name: Verify bundled package assets
         run: python3 tools/verify_3ds_packages.py build
 
+      - name: Verify multiplayer stack budgets
+        run: python3 tools/verify_3ds_stack.py build
+
       - name: Preserve debugging symbols
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7

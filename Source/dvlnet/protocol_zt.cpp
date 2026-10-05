@@ -111,28 +111,38 @@ std::expected<bool, PacketError> protocol_zt::network_online()
 
 	if (fd_udp == -1) {
 		fd_udp = lwip_socket(AF_INET6, SOCK_DGRAM, 0);
+		if (fd_udp < 0)
+			return std::unexpected(ProtocolError("lwip_socket UDP: {}", strerror(errno)));
 		set_reuseaddr(fd_udp);
 		auto ret = lwip_bind(fd_udp, (struct sockaddr *)&in6, sizeof(in6));
 		if (ret < 0) {
 			std::string_view format = "Error binding to ZeroTier UDP socket: {}";
 			PacketError error = ProtocolError(format, strerror(errno));
+			close_all();
 			return std::unexpected(std::move(error));
 		}
 		set_nonblock(fd_udp);
 	}
 	if (fd_tcp == -1) {
 		fd_tcp = lwip_socket(AF_INET6, SOCK_STREAM, 0);
+		if (fd_tcp < 0) {
+			PacketError error = ProtocolError("lwip_socket TCP: {}", strerror(errno));
+			close_all();
+			return std::unexpected(std::move(error));
+		}
 		set_reuseaddr(fd_tcp);
 		auto r1 = lwip_bind(fd_tcp, (struct sockaddr *)&in6, sizeof(in6));
 		if (r1 < 0) {
 			std::string_view format = "Error binding to ZeroTier TCP socket: {}";
 			PacketError error = ProtocolError(format, strerror(errno));
+			close_all();
 			return std::unexpected(std::move(error));
 		}
 		auto r2 = lwip_listen(fd_tcp, 10);
 		if (r2 < 0) {
 			std::string_view format = "Error listening on ZeroTier TCP socket: {}";
 			PacketError error = ProtocolError(format, strerror(errno));
+			close_all();
 			return std::unexpected(std::move(error));
 		}
 		set_nonblock(fd_tcp);
@@ -158,13 +168,15 @@ std::expected<void, PacketError> protocol_zt::send(const endpoint &peer, const b
 
 bool protocol_zt::send_oob(const endpoint &peer, const buffer_t &data) const
 {
+	if (fd_udp < 0)
+		return false;
 	ZeroTierSocketAddress in6 {
 	};
 	in6.sin6_port = htons(default_port);
 	in6.sin6_family = AF_INET6;
 	std::copy(peer.addr.begin(), peer.addr.end(), in6.sin6_addr.s6_addr);
-	lwip_sendto(fd_udp, data.data(), data.size(), 0, (const struct sockaddr *)&in6, sizeof(in6));
-	return true;
+	const auto sent = lwip_sendto(fd_udp, data.data(), data.size(), 0, (const struct sockaddr *)&in6, sizeof(in6));
+	return sent >= 0 && static_cast<size_t>(sent) == data.size();
 }
 
 bool protocol_zt::send_oob_mc(const buffer_t &data) const

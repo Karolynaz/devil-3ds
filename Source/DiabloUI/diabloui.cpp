@@ -1014,6 +1014,23 @@ void Render(const UiText &uiText)
 	    { .flags = uiText.GetFlags() | UiFlags::FontSizeDialog });
 }
 
+#ifdef __3DS__
+void FitCtrUiText(std::string_view text, int width, CtrTextScale scale, UiFlags &flags, int &spacing)
+{
+	// Keep every letter and native glyph pixel. Tighten spacing first, then
+	// use a smaller bitmap font when a translation is still too wide.
+	constexpr UiFlags fonts = UiFlags::FontSize12 | UiFlags::FontSize24 | UiFlags::FontSize30 | UiFlags::FontSize42 | UiFlags::FontSize46 | UiFlags::FontSizeDialog;
+	while (spacing > 0 && GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) > width)
+		--spacing;
+	if (GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) <= width)
+		return;
+	if (GetFontSizeFromUiFlags(flags) > GameFont24)
+		flags = (flags & ~fonts) | UiFlags::FontSize24;
+	if (GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) > width)
+		flags = (flags & ~fonts) | UiFlags::FontSize12;
+}
+#endif
+
 void Render(const UiArtText &uiArtText)
 {
 	const Surface &out = Surface(DiabloUiSurface());
@@ -1023,15 +1040,7 @@ void Render(const UiArtText &uiArtText)
 	const std::string_view text = uiArtText.GetText();
 	if (uiArtText.m_rect.h <= 40 && text.find('\n') == std::string_view::npos) {
 		const CtrTextScale scale = uiArtText.m_rect.y >= 240 ? CtrTextScale::BottomScreen : CtrTextScale::TopScreen;
-		constexpr UiFlags fonts = UiFlags::FontSize12 | UiFlags::FontSize24 | UiFlags::FontSize30 | UiFlags::FontSize42 | UiFlags::FontSize46 | UiFlags::FontSizeDialog;
-		if (GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) > uiArtText.m_rect.w) {
-			spacing = 0;
-			if (GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) > uiArtText.m_rect.w) {
-				flags = (flags & ~fonts) | UiFlags::FontSize24;
-				if (GetLineWidth(text, GameFont24, spacing, nullptr, scale) > uiArtText.m_rect.w)
-					flags = (flags & ~fonts) | UiFlags::FontSize12;
-			}
-		}
+		FitCtrUiText(text, uiArtText.m_rect.w, scale, flags, spacing);
 	}
 #endif
 	DrawString(out, uiArtText.GetText(), MakeRectangle(uiArtText.m_rect),
@@ -1173,7 +1182,7 @@ void Render(const UiList &uiList)
 		const Rectangle rectangle = MakeRectangle(rect).inset(
 		    Displacement(selectorWidth, 0));
 
-		const UiFlags uiFlags = uiList.GetFlags() | item.uiFlags;
+		UiFlags uiFlags = uiList.GetFlags() | item.uiFlags;
 #ifdef __3DS__
 		if (item.columns) {
 			const int valueWidth = item.columnValueWidth;
@@ -1186,16 +1195,20 @@ void Render(const UiList &uiList)
 			continue;
 		}
 #endif
-		const GameFontTables fontSize = GetFontSizeFromUiFlags(uiFlags);
 		std::string_view text = item.m_text.str();
-		while (GetLineWidth(text, fontSize, uiList.GetSpacing(), nullptr, textScale) > rectangle.size.width) {
+		int spacing = uiList.GetSpacing();
+#ifdef __3DS__
+		FitCtrUiText(text, rectangle.size.width, textScale, uiFlags, spacing);
+#endif
+		const GameFontTables fontSize = GetFontSizeFromUiFlags(uiFlags);
+		while (GetLineWidth(text, fontSize, spacing, nullptr, textScale) > rectangle.size.width) {
 			text = std::string_view(text.data(), FindLastUtf8Symbols(text));
 		}
 
 		if (item.args.empty()) {
-			DrawString(out, text, rectangle, { .flags = uiFlags, .spacing = uiList.GetSpacing() });
+			DrawString(out, text, rectangle, { .flags = uiFlags, .spacing = spacing });
 		} else {
-			DrawStringWithColors(out, text, item.args, rectangle, { .flags = uiFlags, .spacing = uiList.GetSpacing() });
+			DrawStringWithColors(out, text, item.args, rectangle, { .flags = uiFlags, .spacing = spacing });
 		}
 	}
 }

@@ -69,7 +69,7 @@ bool WaitForZeroTierStartup()
 	std::vector<std::unique_ptr<UiItemBase>> dialog;
 	UiLoadBlackBackground();
 	UiAddBackground(&dialog, false);
-	dialog.push_back(std::make_unique<UiArtText>("ZeroTier", MakeSdlRect(24, 24, 592, 36), UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver));
+	dialog.push_back(std::make_unique<UiArtText>(_("Multiplayer").data(), MakeSdlRect(24, 24, 592, 36), UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver));
 	char status[256] {};
 	dialog.push_back(std::make_unique<UiArtText>(status, MakeSdlRect(50, 90, 540, 110), UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold, 1, 26));
 	actions.push_back(std::make_unique<UiListItem>(_("Cancel"), 0));
