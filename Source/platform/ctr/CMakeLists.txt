@@ -32,6 +32,7 @@ target_link_dependencies(libdevilutionx_ctr
   3ds::citro3d
   3ds::ctrulib
   PRIVATE
+  tl
   libdevilutionx_utf8
   libdevilutionx_strings
 )
