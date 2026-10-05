@@ -38,6 +38,7 @@
 #ifdef __3DS__
 #include <3ds.h>
 #include "platform/ctr/sockets.hpp"
+extern "C" void zts_ctr_shutdown();
 #endif
 
 #include "utils/algorithm/container.hpp"
@@ -58,6 +59,8 @@ constexpr uint64_t ZtNetwork = 0xa84ac5c10a7ebb5f;
 std::atomic<CtrZeroTierStartup> StartupState { CtrZeroTierStartup::Idle };
 std::atomic_int StartupError { ZTS_ERR_OK };
 std::atomic_int NetworkError { 0 };
+Thread StartupWorker = nullptr;
+std::atomic_bool ShuttingDown { false };
 LightLock PeerEventLock = 1;
 struct PeerEventGuard {
 	PeerEventGuard() { LightLock_Lock(&PeerEventLock); }
@@ -155,6 +158,10 @@ std::string ToZTCompliantPath(std::string_view configPath)
 
 void Callback(void *ptr)
 {
+#ifdef __3DS__
+	if (ShuttingDown.load(std::memory_order_acquire))
+		return;
+#endif
 	auto *msg = reinterpret_cast<zts_event_msg_t *>(ptr);
 #ifdef __3DS__
 	Log("ZeroTier event: {}", msg->event_code);
@@ -245,6 +252,24 @@ CtrZeroTierStartup zerotier_startup_state()
 bool zerotier_node_online() { return zt_node_online; }
 int zerotier_network_error() { return NetworkError; }
 
+void zerotier_network_shutdown()
+{
+	if (ShuttingDown.exchange(true, std::memory_order_acq_rel))
+		return;
+	// Startup can still be allocating the node or initializing SOC.
+	if (StartupWorker != nullptr) {
+		threadJoin(StartupWorker, UINT64_MAX);
+		threadFree(StartupWorker);
+		StartupWorker = nullptr;
+	}
+	// Joins the node, tap, callback and lwIP threads before SDK heap teardown.
+	zts_ctr_shutdown();
+	zt_network_ready = false;
+	zt_node_online = false;
+	PeerEventGuard guard;
+	ztPeerEvents.clear();
+}
+
 int zerotier_startup_error()
 {
 	return StartupError.load(std::memory_order_relaxed);
@@ -256,12 +281,19 @@ void zerotier_network_start()
 #ifdef __3DS__
 	// Constructors run before the hero menu. Never perform network setup on
 	// the UI thread while its palette is still black from the transition.
+	if (ShuttingDown.load(std::memory_order_acquire))
+		return;
 	const auto state = StartupState.load(std::memory_order_acquire);
 	if (state == CtrZeroTierStartup::Starting || state == CtrZeroTierStartup::Started)
 		return;
+	if (StartupWorker != nullptr) {
+		threadJoin(StartupWorker, UINT64_MAX);
+		threadFree(StartupWorker);
+		StartupWorker = nullptr;
+	}
 	StartupState.store(CtrZeroTierStartup::Starting, std::memory_order_release);
 	StartupError.store(ZTS_ERR_OK, std::memory_order_relaxed);
-	Thread worker = threadCreate([](void *) {
+	StartupWorker = threadCreate([](void *) {
 		auto finish = [](CtrZeroTierStartup state, int error = ZTS_ERR_OK) {
 			StartupError.store(error, std::memory_order_relaxed);
 			StartupState.store(state, std::memory_order_release);
@@ -269,6 +301,11 @@ void zerotier_network_start()
 		try {
 			if (!n3ds_socInit()) {
 				finish(CtrZeroTierStartup::NoWifi);
+				return;
+			}
+			// Fail before spawning libzt workers if CIA/HBL denies its RNG service.
+			if (!n3ds_initSecureRandom()) {
+				finish(CtrZeroTierStartup::SecureRandomFailed);
 				return;
 			}
 			const std::string path = paths::ConfigPath() + "zerotier";
@@ -281,8 +318,8 @@ void zerotier_network_start()
 		} catch (...) {
 			finish(CtrZeroTierStartup::Failed, ZTS_ERR_GENERAL);
 		}
-	}, nullptr, 256 * 1024, 0x38, -2, true);
-	if (worker == nullptr) {
+	}, nullptr, 256 * 1024, 0x38, -2, false);
+	if (StartupWorker == nullptr) {
 		StartupError.store(ZTS_ERR_GENERAL, std::memory_order_relaxed);
 		StartupState.store(CtrZeroTierStartup::Failed, std::memory_order_release);
 	}

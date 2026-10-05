@@ -6,11 +6,12 @@ namespace devilution {
 namespace net {
 
 #ifdef __3DS__
-enum class CtrZeroTierStartup { Idle, Starting, Started, NoWifi, Failed };
+enum class CtrZeroTierStartup { Idle, Starting, Started, NoWifi, SecureRandomFailed, Failed };
 CtrZeroTierStartup zerotier_startup_state();
 int zerotier_startup_error();
 bool zerotier_node_online();
 int zerotier_network_error();
+void zerotier_network_shutdown();
 #endif
 
 bool zerotier_network_ready();

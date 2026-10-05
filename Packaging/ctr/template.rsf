@@ -168,6 +168,7 @@ AccessControlInfo:
    - ndm:u
    - news:u
    - nwm::UDS
+   - ps:ps
    - ptm:u
    - pxi:dev
    - soc:U

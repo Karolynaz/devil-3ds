@@ -74,7 +74,8 @@ uint32_t CalculateTextSpeed(SfxID nSFX)
 	const auto numLines = static_cast<uint32_t>(TextLines.size());
 
 #ifndef NOSOUND
-	uint32_t sfxFrames = GetSFXLength(nSFX);
+	const int duration = GetSFXLength(nSFX);
+	uint32_t sfxFrames = duration > 0 ? static_cast<uint32_t>(duration) : std::max<uint32_t>(1, numLines) * 3000;
 #else
 	// Sound is disabled -- estimate length from the number of lines.
 	uint32_t sfxFrames = numLines * 3000;

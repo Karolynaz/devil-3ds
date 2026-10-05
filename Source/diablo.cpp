@@ -103,6 +103,7 @@
 #include "engine/palette.h"
 #include "platform/ctr/ui_background.hpp"
 #include "platform/ctr/keyboard.h"
+#include "platform/ctr/system.h"
 #include "control/control_chat.hpp"
 #include <atomic>
 #include <vector>
@@ -1481,6 +1482,10 @@ void DiabloSplash()
 
 void DiabloDeinit()
 {
+#ifdef __3DS__
+	// Stop consumers before SDL mutexes, archives and SDK services disappear.
+	ctr_sys_shutdown();
+#endif
 	FreeItemGFX();
 
 	LuaShutdown();

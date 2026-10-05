@@ -123,17 +123,19 @@ SoundSample *DuplicateSound(const SoundSample &sound)
 	if (duplicate->DuplicateFrom(sound) != 0)
 		return nullptr;
 	auto *result = duplicate.get();
-	decltype(duplicateSounds.begin()) it;
 	{
 		const std::lock_guard<SdlMutex> lock(*duplicateSoundsMutex);
 		duplicateSounds.push_back(std::move(duplicate));
-		it = duplicateSounds.end();
-		--it;
 	}
 #ifndef USE_SDL3
-	result->SetFinishCallback([it]([[maybe_unused]] Aulib::Stream &stream) {
+	result->SetFinishCallback([result]([[maybe_unused]] Aulib::Stream &stream) {
 		const std::lock_guard<SdlMutex> lock(*duplicateSoundsMutex);
-		duplicateSounds.erase(it);
+		// Cleanup may have moved this sample to its drain list. An iterator
+		// stays valid after that move, but cannot be erased from the old list.
+		const auto it = std::find_if(duplicateSounds.begin(), duplicateSounds.end(),
+		    [result](const auto &sample) { return sample.get() == result; });
+		if (it != duplicateSounds.end())
+			duplicateSounds.erase(it);
 	});
 #endif
 	return result;
@@ -292,6 +294,8 @@ void snd_init()
 
 void snd_deinit()
 {
+	// Release the global stream before the audio device and archives close.
+	music_stop();
 	if (gbSndInited) {
 		ClearDuplicateSounds();
 #ifdef USE_SDL3

@@ -85,7 +85,7 @@ bool WaitForZeroTierStartup()
 		UiPollAndRender();
 		state = net::zerotier_startup_state();
 		if (net::zerotier_network_ready() || net::zerotier_network_error() != 0
-		    || state == net::CtrZeroTierStartup::NoWifi || state == net::CtrZeroTierStartup::Failed
+		    || state == net::CtrZeroTierStartup::NoWifi || state == net::CtrZeroTierStartup::SecureRandomFailed || state == net::CtrZeroTierStartup::Failed
 		    || SDL_GetTicks() - start >= 45000)
 			break;
 	}
@@ -96,12 +96,14 @@ bool WaitForZeroTierStartup()
 	if (net::zerotier_network_ready())
 		return true;
 	std::string error;
-	if (state == net::CtrZeroTierStartup::NoWifi)
-		error = _("No Wi-Fi connection. Connect in System Settings.");
+	if (state == net::CtrZeroTierStartup::NoWifi || state == net::CtrZeroTierStartup::SecureRandomFailed)
+		error = n3ds_networkError();
 	else if (net::zerotier_network_error() != 0)
 		error = FormatRuntime(_("ZeroTier network connection failed (error {})."), net::zerotier_network_error());
 	else if (state == net::CtrZeroTierStartup::Starting || state == net::CtrZeroTierStartup::Started)
-		error = _("ZeroTier connection timed out. Check Wi-Fi and try again.");
+		error = net::zerotier_node_online()
+		    ? _("ZeroTier is online, but the game network did not respond. Try again.")
+		    : _("ZeroTier did not respond. Check internet access or try another network.");
 	else
 		error = FormatRuntime(_("Unable to start ZeroTier (error {})."), net::zerotier_startup_error());
 	UiSelOkDialog(_("Multiplayer").data(), error.c_str(), false);
@@ -237,7 +239,7 @@ void SelconnSelect(size_t value)
 	provider = vecConnItems[value]->m_value;
 #ifdef __3DS__
 	if (provider == SELCONN_TCP && !n3ds_socInit()) {
-		UiSelOkDialog(_("Multiplayer").data(), _("No Wi-Fi connection. Connect in System Settings.").data(), false);
+		UiSelOkDialog(_("Multiplayer").data(), n3ds_networkError().c_str(), false);
 		return;
 	}
 #endif

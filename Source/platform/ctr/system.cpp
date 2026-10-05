@@ -6,6 +6,12 @@
 #include "platform/ctr/random.hpp"
 #include "platform/ctr/sockets.hpp"
 #include "platform/ctr/system.h"
+#include "platform/ctr/update.hpp"
+#include "multi.h"
+#include "storm/storm_net.hpp"
+#if !defined(NONET) && !defined(DISABLE_ZERO_TIER)
+#include "dvlnet/zerotier_native.h"
+#endif
 
 // ZeroTier sends multicast frames synchronously on the calling UI thread.
 // Its nested send path exceeds libctru's default 32 KiB main stack.
@@ -36,7 +42,6 @@ void aptHookFunc(APT_HookType hookType, void *param)
 		break;
 	case APTHOOK_ONEXIT:
 		ctr_lcd_backlight_on();
-		aptUnhook(&cookie);
 		break;
 	default:
 		break;
@@ -83,6 +88,20 @@ bool ctr_should_disable_backlight()
 	return false;
 }
 
+void ctr_sys_shutdown()
+{
+	static bool stopped = false;
+	if (stopped)
+		return;
+	stopped = true;
+	NetClose();
+	SNetDestroy();
+	CtrStopUpdateCheck();
+#if !defined(NONET) && !defined(DISABLE_ZERO_TIER)
+	net::zerotier_network_shutdown();
+#endif
+}
+
 void ctr_sys_init()
 {
 	if (ctr_check_dsp() == false)
@@ -102,18 +121,18 @@ void ctr_sys_init()
 	romfsInit();
 	atexit([]() { romfsExit(); });
 
-	acInit();
-	atexit([]() { acExit(); });
-
 	// Multiplayer and the update checker initialize SOC when needed. Avoid a
 	// five-second Wi-Fi wait and a 1 MiB socket buffer in single player.
 	atexit([]() { n3ds_socExit(); });
 
 #ifdef PACKET_ENCRYPTION
 	randombytes_ctrrandom_init();
+#endif
+	// ZeroTier also uses ps:ps when packet encryption is disabled.
 	atexit([]() {
 		if (psGetSessionHandle())
 			psExit();
 	});
-#endif
+	// Runs before SOC/RomFS exit and global destructors, including early exits.
+	atexit(ctr_sys_shutdown);
 }

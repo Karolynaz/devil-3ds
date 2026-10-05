@@ -110,3 +110,145 @@ for name in ['ext/lwip/src/include/lwip/inet.h', 'ext/lwip/src/include/lwip/sock
              'ext/lwip/src/api/sockets.c', 'ext/lwip/src/api/netdb.c']:
     names = {n: 'ctr_lwip_' + n for n in ['in6_addr', 'sockaddr_in6']}
     edit(name, lambda s: re.sub(r'\b(?:' + '|'.join(names) + r')\b', lambda m: names[m[0]], s))
+
+# libctru unmaps the entire application heap before svcExitProcess. Detached
+# ZeroTier/lwIP threads would continue running on freed heap-backed stacks.
+# Keep joinable handles and provide one application-exit-only shutdown entry.
+def port_node_shutdown(s):
+    s = s.replace('NodeService* zts_service;',
+                  'static ::Thread ctr_node_thread = NULL;\nstatic ::Thread ctr_callback_thread = NULL;\nNodeService* zts_service;')
+    s = s.replace('ctr_zt_thread_t callback_thread = NULL;', 'ctr_callback_thread = NULL;')
+    s = s.replace('&callback_thread, &callback_stack', '&ctr_callback_thread, &callback_stack')
+    s = s.replace('ctr_zt_thread_t service_thread;', 'ctr_zt_attr_t service_stack = 1024 * 1024;')
+    s = s.replace('&service_thread, NULL, _runNodeService', '&ctr_node_thread, &service_stack, _runNodeService')
+    s = s.replace('ctr_zt_join(callback_thread, NULL);',
+                  'ctr_zt_join(ctr_callback_thread, NULL);\n        ctr_callback_thread = NULL;')
+    s = s.replace('    if (callback_thread)\n        threadDetach(callback_thread);\n', '')
+    start = s.index('int zts_node_free()\n')
+    s = s[:start] + '''// This private entry is called only when the application is exiting.
+void zts_ctr_shutdown()
+{
+    {
+        Mutex::Lock lock(service_m);
+        if (zts_service)
+            zts_service->terminate();
+    }
+    // The service destroys taps; tap destructors need a live TCP/IP core.
+    ctr_zt_join(ctr_node_thread, NULL);
+    ctr_node_thread = NULL;
+    if (zts_events) {
+        zts_lwip_driver_shutdown();
+        ctr_tcpip_shutdown();
+        ctr_zt_join_sys_threads();
+        zts_events->clrState(ZTS_STATE_CALLBACKS_RUNNING);
+    }
+    // Callbacks can still own queued event data and application references.
+    ctr_zt_join(ctr_callback_thread, NULL);
+    ctr_callback_thread = NULL;
+    delete zts_service; // Handles initialization/service-start failure too.
+    zts_service = NULL;
+    delete zts_events;
+    zts_events = NULL;
+}
+
+''' + s[start:]
+    return s
+edit('src/Controls.cpp', port_node_shutdown)
+
+# Closing HOME immediately after startup must not let run() re-enable a node
+# already asked to stop. Avoid clearing strings/identity fields concurrently
+# with the service thread; it owns those fields until joined.
+edit('src/NodeService.hpp', lambda s: s.replace('volatile bool _run;',
+     'volatile bool _run;\n#ifdef __3DS__\n    bool _ctrStopping = false;\n#endif'))
+edit('src/NodeService.cpp', lambda s: s.replace('    _run = true;\n    try {',
+     '''    {
+        Mutex::Lock lock(_run_m);
+        if (_ctrStopping)
+            return ONE_NORMAL_TERMINATION;
+        _run = true;
+    }
+    try {''', 1).replace('void NodeService::terminate()\n{',
+     '''void NodeService::terminate()
+{
+#ifdef __3DS__
+    {
+        Mutex::Lock lock(_run_m);
+        _ctrStopping = true;
+        _run = false;
+    }
+    _phy.whack();
+    return;
+#endif''', 1))
+
+# lwIP's stock TCP/IP thread runs forever. Queue a final callback, release its
+# core lock and return normally; never kill a thread while it owns a mutex.
+def port_tcpip_shutdown(s):
+    s = s.replace('static sys_mbox_t tcpip_mbox;',
+                  'static sys_mbox_t tcpip_mbox;\nstatic int ctr_tcpip_initialized;\nstatic int ctr_tcpip_stopping;')
+    s = s.replace('    tcpip_thread_handle_msg(msg);\n  }',
+                  '''    tcpip_thread_handle_msg(msg);
+    if (ctr_tcpip_stopping) {
+      UNLOCK_TCPIP_CORE();
+      return;
+    }
+  }''', 1)
+    s = s.replace('  sys_thread_new(TCPIP_THREAD_NAME,',
+                  '  ctr_tcpip_initialized = 1;\n  sys_thread_new(TCPIP_THREAD_NAME,', 1)
+    s += '''
+static void ctr_tcpip_stop_callback(void *arg)
+{
+  LWIP_UNUSED_ARG(arg);
+  ctr_tcpip_stopping = 1;
+}
+
+void ctr_tcpip_shutdown(void)
+{
+  static struct tcpip_msg shutdown_message;
+  if (ctr_tcpip_initialized) {
+    ctr_tcpip_initialized = 0;
+    // No allocation: application exit must work even when memory is full.
+    shutdown_message.type = TCPIP_MSG_CALLBACK_STATIC;
+    shutdown_message.msg.cb.function = ctr_tcpip_stop_callback;
+    shutdown_message.msg.cb.ctx = NULL;
+    sys_mbox_post(&tcpip_mbox, &shutdown_message);
+  }
+}
+'''
+    return s
+edit('ext/lwip/src/api/tcpip.c', port_tcpip_shutdown)
+
+# The sys_arch list contains the driver and TCP/IP workers. Retain ownership
+# until both have returned; freeing detached handles would be a use-after-free.
+def port_sys_thread_shutdown(s):
+    s = s.replace('  code = ctr_zt_create(&tmp,\n                        NULL,',
+                  '  ctr_zt_attr_t stack = 1024 * 1024;\n  code = ctr_zt_create(&tmp,\n                        &stack,', 1)
+    s += '''
+void ctr_zt_join_sys_threads(void)
+{
+  struct sys_thread *thread;
+  ctr_zt_mutex_lock(&threads_mutex);
+  thread = threads;
+  threads = NULL;
+  ctr_zt_mutex_unlock(&threads_mutex);
+  while (thread) {
+    struct sys_thread *next = thread->next;
+    ctr_zt_join(thread->pthread, NULL);
+    free(thread);
+    thread = next;
+  }
+}
+'''
+    return s
+edit('ext/lwip-contrib/ports/unix/port/sys_arch.c', port_sys_thread_shutdown)
+edit('src/Controls.cpp', lambda s: s.replace('#include "zt_ctr_threads.h"',
+     '#include "zt_ctr_threads.h"\nextern "C" void ctr_tcpip_shutdown(void);\nextern "C" void ctr_zt_join_sys_threads(void);', 1))
+
+# Wait for lwIP startup before publishing node startup success. Otherwise
+# shutdown can clear STACK_RUNNING before its init callback sets it again.
+edit('src/VirtualTap.cpp', lambda s: '#include <atomic>\n' + s.replace(
+    'bool _has_exited = false;\nbool _has_started = false;',
+    'std::atomic_bool _has_exited(false);\nstd::atomic_bool _has_started(false);').replace(
+    '    sys_sem_wait(&sem);\n    // Main loop',
+    '    sys_sem_wait(&sem);\n    sys_sem_free(&sem);\n    // Main loop').replace(
+    '        DEFAULT_THREAD_PRIO);\n}',
+    '        DEFAULT_THREAD_PRIO);\n    while (!_has_started)\n        zts_util_delay(1);\n}', 1))
