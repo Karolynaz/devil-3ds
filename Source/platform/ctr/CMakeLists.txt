@@ -32,6 +32,8 @@ target_link_dependencies(libdevilutionx_ctr
   3ds::citro3d
   3ds::ctrulib
   PRIVATE
+  magic_enum::magic_enum
+  unordered_dense::unordered_dense
   tl
   libdevilutionx_utf8
   libdevilutionx_strings
