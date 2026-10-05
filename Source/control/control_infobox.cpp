@@ -192,7 +192,7 @@ Rectangle GetFloatingInfoRect(std::string_view text, const int lineHeight, const
 #ifdef __3DS__
 	// Use the same native slots as the inventory/stash artwork, not the
 	// original 320x352 desktop panel. Belt tooltips belong to the lower screen.
-	Rectangle anchor;
+	Rectangle anchor {};
 	const Player &player = *InspectPlayer;
 	if (pcursinvitem >= INVITEM_HEAD && pcursinvitem < INVITEM_INV_FIRST) {
 		anchor = CtrInventorySlotRect(pcursinvitem - INVITEM_HEAD, IsStashOpen);
