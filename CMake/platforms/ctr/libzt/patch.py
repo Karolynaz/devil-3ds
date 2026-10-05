@@ -62,6 +62,14 @@ def port_node_start(s):
 edit('src/Controls.cpp', port_node_start)
 edit('ext/ZeroTierOne/node/Constants.hpp', lambda s: s.replace('// __LINUX__', '#ifdef __3DS__\n#define __UNIX_LIKE__\n#endif\n\n// __LINUX__', 1))
 edit('ext/ZeroTierOne/osdep/Binder.hpp', lambda s: s.replace('#include <ifaddrs.h>', '#ifndef __3DS__\n#include <ifaddrs.h>\n#endif').replace('#if ! defined(ZT_SDK) || ! defined(__ANDROID__)', '#if !defined(__3DS__) && (!defined(ZT_SDK) || !defined(__ANDROID__))'))
+# Without getifaddrs, Binder must take its wildcard fallback. Leaving the
+# flag true creates zero physical sockets, so the node never reaches ONLINE.
+edit('ext/ZeroTierOne/osdep/Binder.hpp', lambda s: s.replace(
+    'bool interfacesEnumerated = true;',
+    '#ifdef __3DS__\n\t\tbool interfacesEnumerated = false;\n#else\n\t\tbool interfacesEnumerated = true;\n#endif')
+    .replace('localIfAddrs.insert(std::pair<InetAddress, std::string>(InetAddress((const void*)',
+             '#ifndef __3DS__\n\t\t\t\tlocalIfAddrs.insert(std::pair<InetAddress, std::string>(InetAddress((const void*)')
+    .replace('16, ports[x]), std::string()));', '16, ports[x]), std::string()));\n#endif'))
 # SOC supports sockets, not POSIX pipes. Bound the wait instead of allocating a pipe.
 edit('ext/ZeroTierOne/osdep/Phy.hpp', lambda s: s.replace('inline void whack()\n\t{', 'inline void whack()\n\t{\n#ifdef __3DS__\n\t\treturn;\n#endif').replace('if (::pipe(pipes))', 'pipes[0] = pipes[1] = -1;\n#ifndef __3DS__\n\t\tif (::pipe(pipes))').replace('throw std::runtime_error("unable to create pipes for select() abort");\n#endif // Windows', 'throw std::runtime_error("unable to create pipes for select() abort");\n#endif\n#endif // Windows')
      .replace('inline void poll(unsigned long timeout)\n\t{', 'inline void poll(unsigned long timeout)\n\t{\n#ifdef __3DS__\n\t\ttimeout = (timeout == 0 || timeout > 10) ? 10 : timeout;\n#endif')

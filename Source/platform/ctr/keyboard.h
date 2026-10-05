@@ -12,7 +12,9 @@
  * @param inText Optional text to prefil the input field
  * @param textInputFn Callback to handle text input
  */
-void ctr_vkbdInput(std::string_view title, std::string_view inText, void (*textInputFn)(std::string_view));
+void ctr_vkbdInput(std::string_view title, std::string_view inText, void (*textInputFn)(std::string_view),
+    void (*cancelFn)(), int maxBytes, bool allowEmpty);
+void ctr_vkbdClear();
 
 /**
  * @brief Processes pending requests for user input

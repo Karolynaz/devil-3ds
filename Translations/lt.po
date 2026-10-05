@@ -11024,3 +11024,27 @@ msgstr "Žaidimo aplanko klaida"
 #, c++-format
 msgid "Please create {:s}\nand put game data there."
 msgstr "Sukurkite {:s}\nir įkelkite ten žaidimo duomenis."
+
+msgid "Joining ZeroTier network..."
+msgstr "Jungiamasi prie ZeroTier tinklo..."
+
+msgid "ZeroTier network connection failed (error {})."
+msgstr "Prisijungti prie ZeroTier tinklo nepavyko (klaida {})."
+
+msgid "ZeroTier connection timed out. Check Wi-Fi and try again."
+msgstr "Prisijungimo prie ZeroTier laikas baigėsi. Patikrinkite Wi-Fi ir bandykite dar kartą."
+
+msgid "ZeroTier disconnected. Retry Multiplayer."
+msgstr "ZeroTier ryšys nutrūko. Bandykite jungtis dar kartą."
+
+msgid "Text is too long."
+msgstr "Tekstas per ilgas."
+
+msgid "Version: "
+msgstr "Versija: "
+
+msgid "Unable to initialize secure network service."
+msgstr "Nepavyko paleisti saugaus ryšio tarnybos."
+
+msgid "Unable to request public games."
+msgstr "Nepavyko gauti viešų žaidimų sąrašo."

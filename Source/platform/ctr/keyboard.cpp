@@ -16,12 +16,16 @@ struct vkbdEvent {
 	std::string hintText;
 	std::string inText;
 	void (*textInputFn)(std::string_view);
+	void (*cancelFn)();
+	int maxBytes;
+	bool allowEmpty;
 };
 
 static vkbdEvent events[16];
 static int eventCount = 0;
 
-void ctr_vkbdInput(std::string_view hintText, std::string_view inText, void (*textInputFn)(std::string_view))
+void ctr_vkbdInput(std::string_view hintText, std::string_view inText, void (*textInputFn)(std::string_view),
+    void (*cancelFn)(), int maxBytes, bool allowEmpty)
 {
 	if (eventCount >= static_cast<int>(std::size(events)))
 		return;
@@ -30,17 +34,37 @@ void ctr_vkbdInput(std::string_view hintText, std::string_view inText, void (*te
 	event.hintText = hintText;
 	event.inText = inText;
 	event.textInputFn = textInputFn;
+	event.cancelFn = cancelFn;
+	event.maxBytes = std::clamp(maxBytes, 1, static_cast<int>(MAX_TEXT_LENGTH));
+	event.allowEmpty = allowEmpty;
 	eventCount++;
 }
 
+void ctr_vkbdClear() { eventCount = 0; }
+
 void ctr_vkbdFlush()
 {
-	for (int i = 0; i < eventCount; i++) {
-		vkbdEvent &event = events[i];
+	if (eventCount == 0) return;
+	// Remove the request before invoking callbacks. A callback may replace the
+	// menu and queue its next keyboard, which must wait for that menu to render.
+	vkbdEvent event = std::move(events[0]);
+	for (int i = 1; i < eventCount; ++i) events[i - 1] = std::move(events[i]);
+	--eventCount;
+	{
 		SwkbdState swkbd;
 
-		swkbdInit(&swkbd, SWKBD_TYPE_WESTERN, 2, MAX_TEXT_LENGTH);
-		swkbdSetValidation(&swkbd, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+		swkbdInit(&swkbd, SWKBD_TYPE_WESTERN, 2, event.maxBytes);
+		swkbdSetValidation(&swkbd, event.allowEmpty ? SWKBD_ANYTHING : SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+		const std::string tooLong { _("Text is too long.") };
+		struct Limit { int bytes; const char *message; } limit { event.maxBytes, tooLong.c_str() };
+		swkbdSetFilterCallback(&swkbd, [](void *user, const char **message, const char *, size_t length) {
+			const auto &limit = *static_cast<const Limit *>(user);
+			if (length > static_cast<size_t>(limit.bytes)) {
+				*message = limit.message;
+				return SWKBD_CALLBACK_CONTINUE;
+			}
+			return SWKBD_CALLBACK_OK;
+		}, &limit);
 
 		// swkbdSetInitialText stores the pointer to the c-string, only copying it when swkbdInputText is called. Need to
 		//  ensure it has a valid null-terminated string until that point.
@@ -57,10 +81,11 @@ void ctr_vkbdFlush()
 
 		if (button == SWKBD_BUTTON_CONFIRM) {
 			event.textInputFn(mybuf);
+		} else if (event.cancelFn) {
+			event.cancelFn();
 		}
 	}
 
-	eventCount = 0;
 }
 
 std::optional<int> ctr_vkbdNumberInput(std::string_view hint, int maximum)

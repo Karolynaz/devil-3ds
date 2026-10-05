@@ -29,6 +29,9 @@
 #include "engine/render/text_render.hpp"
 #include "levels/gendung.h"
 #include "menu.h"
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+#include "dvlnet/zerotier_native.h"
+#endif
 #include "multi.h"
 #include "options.h"
 #include "storm/storm_net.hpp"
@@ -70,6 +73,9 @@ std::vector<std::unique_ptr<UiListItem>> vecSelGameDlgItems;
 std::vector<std::unique_ptr<UiItemBase>> vecSelGameDialog;
 std::vector<GameInfo> Gamelist;
 uint32_t firstPublicGameInfoRequestSend = 0;
+uint32_t lastPublicGameRequest = 0;
+uint32_t lastPublicGameUpdate = 0;
+uint32_t publicGameSearchStart = 0;
 size_t HighlightedItem;
 
 void selgame_FreeVectors()
@@ -184,7 +190,14 @@ void UiInitGameSelectionList(std::string_view search)
 
 		if (Gamelist.empty()) {
 			// We expect the game list to be received after 3 seconds
-			if (firstPublicGameInfoRequestSend == 0 || (SDL_GetTicks() - firstPublicGameInfoRequestSend) < 2000)
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+			if (!net::zerotier_network_ready())
+				vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("ZeroTier disconnected. Retry Multiplayer."), -1, UiFlags::ElementDisabled | UiFlags::ColorUiSilver));
+			else
+#endif
+			if (firstPublicGameInfoRequestSend == 0 && SDL_GetTicks() - publicGameSearchStart >= 10000)
+				vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Unable to request public games."), -1, UiFlags::ElementDisabled | UiFlags::ColorUiSilver));
+			else if (firstPublicGameInfoRequestSend == 0 || (SDL_GetTicks() - firstPublicGameInfoRequestSend) < 2000)
 				vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Loading..."), -1, UiFlags::ElementDisabled | UiFlags::ColorUiSilver));
 			else
 				vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("None"), -1, UiFlags::ElementDisabled | UiFlags::ColorUiSilver));
@@ -390,7 +403,7 @@ void selgame_GameSelection_Select(size_t value)
 		const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 20), 248, 600, 26 };
 		vecSelGameDialog.push_back(std::make_unique<UiArtText>(inputHint, rect4, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
 
-		const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 160), 310, 320, 33 };
+		const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 48), 310, 544, 33 };
 		vecSelGameDialog.push_back(std::make_unique<UiEdit>(inputHint, selgame_Ip, 128, false, rect5, UiFlags::FontSize24 | UiFlags::ColorUiGold));
 
 		HighlightedItem = 0;
@@ -691,8 +704,8 @@ void selgame_Password_Init(size_t /*value*/)
 
 	// Allow password to be empty only when joining games
 	const bool allowEmpty = selgame_selectedGame == 2;
-	const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 160), 310, 320, 33 };
-	vecSelGameDialog.push_back(std::make_unique<UiEdit>(_("Enter Password"), selgame_Password, 15, allowEmpty, rect5, UiFlags::FontSize24 | UiFlags::ColorUiGold));
+	const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 48), 310, 544, 33 };
+	vecSelGameDialog.push_back(std::make_unique<UiEdit>(_("Enter Password"), selgame_Password, 15, allowEmpty, rect5, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 #else
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), (Sint16)(uiPosition.y + 161), 590, 35 };
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_(ConnectionNames[provider]).data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
@@ -822,22 +835,19 @@ void selgame_Password_Esc()
 
 void RefreshGameList()
 {
-	static uint32_t lastRequest = 0;
-	static uint32_t lastUpdate = 0;
-
 	if (selgame_enteringGame)
 		return;
 
 	const uint32_t currentTime = SDL_GetTicks();
 
-	if ((lastRequest == 0 || currentTime - lastRequest > 30000) && DvlNet_SendInfoRequest()) {
-		lastRequest = currentTime;
-		lastUpdate = currentTime - 3000; // Give 2 sec for responses, but don't wait 5
+	if ((lastPublicGameRequest == 0 || currentTime - lastPublicGameRequest > 30000) && DvlNet_SendInfoRequest()) {
+		lastPublicGameRequest = currentTime;
+		lastPublicGameUpdate = currentTime - 3000; // Give 2 sec for responses, but don't wait 5
 		if (firstPublicGameInfoRequestSend == 0)
 			firstPublicGameInfoRequestSend = currentTime;
 	}
 
-	if (lastUpdate == 0 || currentTime - lastUpdate > 5000) {
+	if (lastPublicGameUpdate == 0 || currentTime - lastPublicGameUpdate > 5000) {
 		const int gameIndex = vecSelGameDlgItems[HighlightedItem]->m_value - 3;
 		const std::string gameSearch = gameIndex >= 0 ? Gamelist[gameIndex].name : "";
 		std::vector<GameInfo> gamelist = DvlNet_GetGamelist();
@@ -846,13 +856,15 @@ void RefreshGameList()
 			Gamelist.push_back(gamelist[i]);
 		}
 		UiInitGameSelectionList(gameSearch);
-		lastUpdate = currentTime;
+		lastPublicGameUpdate = currentTime;
 	}
 }
 
 bool UiSelectGame(GameData *gameData, int *playerId)
 {
 	firstPublicGameInfoRequestSend = 0;
+	lastPublicGameRequest = lastPublicGameUpdate = 0;
+	publicGameSearchStart = SDL_GetTicks();
 	gdwPlayerId = playerId;
 	m_game_data = gameData;
 	selgame_Init();

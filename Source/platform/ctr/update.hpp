@@ -10,4 +10,5 @@ void CtrCheckForUpdates();
 bool CtrUpdateBusy();
 std::optional<CtrUpdateResult> CtrPollUpdate();
 std::string_view CtrBuildCommit();
+std::string_view CtrPortVersion();
 } // namespace devilution

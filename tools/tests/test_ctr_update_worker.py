@@ -10,6 +10,10 @@ SDK = r'''
 #pragma once
 #include <cstddef>
 #include <cstdint>
+using u8=unsigned char;
+#define R_SUCCEEDED(r) ((r)>=0)
+#define R_FAILED(r) ((r)<0)
+int sslcInit(int); void sslcExit(); int sslcGenerateRandomData(u8 *,size_t);
 struct FakeThread {};
 using Thread = FakeThread *;
 Thread threadCreate(void (*)(void *), void *, size_t, int, int, bool);
@@ -25,7 +29,8 @@ constexpr int CURLE_OK=0, CURLE_WRITE_ERROR=23, CURLE_COULDNT_CONNECT=7;
 constexpr int CURL_GLOBAL_DEFAULT=3, CURL_ERROR_SIZE=256, CURLINFO_RESPONSE_CODE=100;
 enum { CURLOPT_URL, CURLOPT_USERAGENT, CURLOPT_CAINFO, CURLOPT_PROTOCOLS_STR,
     CURLOPT_CONNECTTIMEOUT, CURLOPT_TIMEOUT, CURLOPT_NOSIGNAL, CURLOPT_ERRORBUFFER,
-    CURLOPT_WRITEFUNCTION, CURLOPT_WRITEDATA };
+    CURLOPT_WRITEFUNCTION, CURLOPT_WRITEDATA, CURLOPT_IPRESOLVE, CURLOPT_SSLVERSION, CURLOPT_HTTP_VERSION };
+constexpr long CURL_IPRESOLVE_V4=1, CURL_SSLVERSION_TLSv1_2=6, CURL_SSLVERSION_MAX_TLSv1_2=6<<16, CURL_HTTP_VERSION_1_1=2;
 struct CURL {
     std::string url;
     size_t (*writer)(char *,size_t,size_t,void *)=nullptr;
@@ -53,6 +58,8 @@ HARNESS = r'''
 #include <string>
 #include <3ds.h>
 #include <curl/curl.h>
+bool sslWorks=true, rngWorks=true, sslActive=false;
+int sslInit=0, sslExit=0;
 bool wifi=true, globalWorks=true, easyWorks=true, threadWorks=true;
 int priority=0, joins=0, frees=0, liveHandles=0, globalInit=0, globalCleanup=0;
 struct Response { std::string body; long status=200; int code=CURLE_OK; int fault=0; };
@@ -64,7 +71,10 @@ Thread threadCreate(void (*fn)(void *),void *arg,size_t stack,int p,int core,boo
 }
 void threadJoin(Thread,uint64_t) { ++joins; }
 void threadFree(Thread thread) { ++frees; delete thread; }
-CURLcode curl_global_init(long) { if (!globalWorks) return 1; ++globalInit; return CURLE_OK; }
+int sslcInit(int session) { assert(session==0 && !sslActive); if (!sslWorks) return -1; ++sslInit; sslActive=true; return 0; }
+void sslcExit() { assert(sslActive); sslActive=false; ++sslExit; }
+int sslcGenerateRandomData(u8 *,size_t size) { assert(sslActive && size==32); return rngWorks ? 0 : -1; }
+CURLcode curl_global_init(long) { assert(sslActive); if (!globalWorks) return 1; ++globalInit; return CURLE_OK; }
 void curl_global_cleanup() { ++globalCleanup; }
 CURL *curl_easy_init() { if (!easyWorks) return nullptr; ++liveHandles; return new CURL; }
 void curl_easy_cleanup(CURL *curl) { assert(liveHandles>0); --liveHandles; delete curl; }
@@ -74,6 +84,9 @@ void curl_easy_setopt(CURL *curl,int option,const char *value) {
     if (option==CURLOPT_PROTOCOLS_STR) assert(std::string(value)=="https");
 }
 void curl_easy_setopt(CURL *,int option,long value) {
+    if (option==CURLOPT_IPRESOLVE) assert(value==CURL_IPRESOLVE_V4);
+    if (option==CURLOPT_SSLVERSION) assert(value==(CURL_SSLVERSION_TLSv1_2 | CURL_SSLVERSION_MAX_TLSv1_2));
+    if (option==CURLOPT_HTTP_VERSION) assert(value==CURL_HTTP_VERSION_1_1);
     if (option==CURLOPT_TIMEOUT) assert(value==20);
     if (option==CURLOPT_CONNECTTIMEOUT) assert(value==10);
 }
@@ -82,6 +95,7 @@ void curl_easy_setopt(CURL *curl,int option,size_t (*writer)(char *,size_t,size_
     assert(option==CURLOPT_WRITEFUNCTION); curl->writer=writer;
 }
 CURLcode curl_easy_perform(CURL *curl) {
+    assert(sslActive);
     assert(!responses.empty()); auto response=std::move(responses.front()); responses.pop_front();
     assert(curl->url.starts_with("https://api.github.com/repos/Karolynaz/devil-3ds/"));
 #ifdef __cpp_exceptions
@@ -102,7 +116,7 @@ CtrUpdateResult run() {
     CtrCheckForUpdates(); assert(!CtrUpdateBusy());
     auto result=CtrPollUpdate(); assert(result && !CtrPollUpdate());
     assert(liveHandles==0 && globalInit==globalCleanup && joins==frees);
-    assert(responses.empty()); return *result;
+    assert(responses.empty() && !sslActive && sslInit==sslExit); return *result;
 }
 int main() {
     for (auto status : {"ahead", "identical", "behind", "diverged"}) {
@@ -112,6 +126,9 @@ int main() {
         assert(result.state==(std::string(status)=="ahead" ? CtrUpdateState::Available
             : std::string(status)=="diverged" ? CtrUpdateState::Different : CtrUpdateState::Current));
     }
+    assert(CtrPortVersion()=="3.01");
+    sslWorks=false; assert(run().detail=="Unable to initialize secure network service."); sslWorks=true;
+    rngWorks=false; assert(run().detail=="Unable to initialize secure network service."); rngWorks=true;
     wifi=false; assert(run().state==CtrUpdateState::Error); wifi=true;
     globalWorks=false; assert(run().state==CtrUpdateState::Error); globalWorks=true;
     easyWorks=false; assert(run().state==CtrUpdateState::Error); easyWorks=true;
@@ -141,7 +158,7 @@ with tempfile.TemporaryDirectory() as directory:
     for exceptions in (True, False):
         exe = temp / ('worker' if exceptions else 'worker-no-exceptions')
         command = [os.environ.get('CXX', 'c++'), '-std=c++20', '-Wall', '-Wextra', '-Werror',
-            '-fsanitize=address,undefined', '-DCTR_BUILD_COMMIT="test-commit"',
+            '-fsanitize=address,undefined', '-DCTR_BUILD_COMMIT="test-commit"', '-DCTR_PORT_VERSION="3.01"',
             '-I'+str(temp), '-I'+str(ROOT/'Source'), '-I'+str(ROOT/'3rdParty/jsmn')]
         if not exceptions:
             command.append('-fno-exceptions')

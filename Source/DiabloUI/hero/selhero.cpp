@@ -377,8 +377,8 @@ void SelheroClassSelectorSelect(size_t value)
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 20), 250, 600, 30 };
 	vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Enter Name").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
-	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 160), 330, 320, 33 };
-	vecSelDlgItems.push_back(std::make_unique<UiEdit>(_("Enter Name"), selhero_heroInfo.name, 15, false, rect2, UiFlags::FontSize24 | UiFlags::ColorUiGold));
+	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 48), 330, 544, 33 };
+	vecSelDlgItems.push_back(std::make_unique<UiEdit>(_("Enter Name"), selhero_heroInfo.name, 15, false, rect2, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 #else
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), (Sint16)(uiPosition.y + 211), 365, 33 };
 	vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Enter Name").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
@@ -588,7 +588,7 @@ void selhero_Init()
 	vecSelHeroDialog.push_back(std::move(heroImg));
 
 	const size_t statsStart = vecSelHeroDialog.size();
-	const UiFlags labelFlags = UiFlags::FontSize24 | UiFlags::ColorUiSilverDark | UiFlags::AlignRight;
+	const UiFlags labelFlags = UiFlags::FontSize12 | UiFlags::ColorUiSilverDark | UiFlags::AlignRight | UiFlags::VerticalCenter;
 	const UiFlags valueFlags = UiFlags::FontSize24 | UiFlags::ColorUiGold | UiFlags::AlignCenter;
 	const int labelX = uiPosition.x + 295;
 	const int valueX = uiPosition.x + 540;

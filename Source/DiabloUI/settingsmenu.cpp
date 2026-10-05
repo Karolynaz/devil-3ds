@@ -772,11 +772,11 @@ void UiSettingsMenu()
 					case CtrUpdateState::Available: updateStatus = std::string(_("A newer release is available.")); break;
 					case CtrUpdateState::Current: updateStatus = std::string(_("No newer release. This build is up to date.")); break;
 					case CtrUpdateState::Different: updateStatus = std::string(_("Different release branch. Check GitHub for details.")); break;
-					case CtrUpdateState::Error: updateStatus = std::string(_("Update check failed.")) + "\n" + result->detail; break;
+					case CtrUpdateState::Error: updateStatus = std::string(_("Update check failed.")) + "\n" + std::string(_(result->detail)); break;
 					}
 					if (!result->version.empty()) updateStatus += "\n" + std::string(_("Latest release: ")) + result->version;
 				}
-				const std::string status = std::string(_("Build: ")) + std::string(CtrBuildCommit().substr(0, 7)) + "\n\n" + (updateStatus.empty() ? std::string(_("Press A to check for updates.")) : updateStatus);
+				const std::string status = std::string(_("Version: ")) + std::string(CtrPortVersion()) + " (" + std::string(CtrBuildCommit().substr(0, 7)) + ")" + "\n\n" + (updateStatus.empty() ? std::string(_("Press A to check for updates.")) : updateStatus);
 				CopyUtf8(optionDescription, WordWrapString(status, rectDescription.size.width, GameFont12, 1, true), sizeof(optionDescription));
 			}
 #endif

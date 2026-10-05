@@ -57,6 +57,12 @@ constexpr uint64_t ZtNetwork = 0xa84ac5c10a7ebb5f;
 #ifdef __3DS__
 std::atomic<CtrZeroTierStartup> StartupState { CtrZeroTierStartup::Idle };
 std::atomic_int StartupError { ZTS_ERR_OK };
+std::atomic_int NetworkError { 0 };
+LightLock PeerEventLock = 1;
+struct PeerEventGuard {
+	PeerEventGuard() { LightLock_Lock(&PeerEventLock); }
+	~PeerEventGuard() { LightLock_Unlock(&PeerEventLock); }
+};
 #endif
 
 std::atomic_bool zt_network_ready(false);
@@ -150,14 +156,20 @@ std::string ToZTCompliantPath(std::string_view configPath)
 void Callback(void *ptr)
 {
 	auto *msg = reinterpret_cast<zts_event_msg_t *>(ptr);
+#ifdef __3DS__
+	Log("ZeroTier event: {}", msg->event_code);
+#endif
 
 	switch (msg->event_code) {
 	case ZTS_EVENT_NODE_ONLINE:
 		Log("ZeroTier: ZTS_EVENT_NODE_ONLINE, nodeId={:x}", (unsigned long long)msg->node->node_id);
 		zt_node_online = true;
 		if (!zt_joined) {
-			zts_net_join(ZtNetwork);
-			zt_joined = true;
+			const int result = zts_net_join(ZtNetwork);
+			zt_joined = result == ZTS_ERR_OK;
+#ifdef __3DS__
+			if (!zt_joined) NetworkError = result;
+#endif
 		}
 		break;
 
@@ -170,6 +182,9 @@ void Callback(void *ptr)
 		Log("ZeroTier: ZTS_EVENT_NETWORK_READY_IP6, networkId={:x}", (unsigned long long)msg->network->net_id);
 		zt_ip6setup();
 		zt_network_ready = true;
+#ifdef __3DS__
+		NetworkError = 0;
+#endif
 		zt_peers_ready = SDL_GetTicks();
 		break;
 
@@ -177,16 +192,35 @@ void Callback(void *ptr)
 		print_ip6_addr(&(msg->addr->addr));
 		break;
 
+#ifdef __3DS__
+	case ZTS_EVENT_NETWORK_NOT_FOUND:
+	case ZTS_EVENT_NETWORK_ACCESS_DENIED:
+	case ZTS_EVENT_NETWORK_CLIENT_TOO_OLD:
+	case ZTS_EVENT_NODE_FATAL_ERROR:
+		NetworkError = msg->event_code;
+		zt_network_ready = false;
+		break;
+	case ZTS_EVENT_NETWORK_DOWN:
+		zt_network_ready = false;
+		break;
+#endif
 	case ZTS_EVENT_PEER_DIRECT:
-	case ZTS_EVENT_PEER_RELAY:
+	case ZTS_EVENT_PEER_RELAY: {
+#ifdef __3DS__
+		PeerEventGuard guard;
+#endif
 		ztPeerEvents[msg->peer->peer_id] = static_cast<zts_event_t>(msg->event_code);
 		if (!zerotier_peers_ready())
 			zt_peers_ready = SDL_GetTicks();
 		break;
-
-	case ZTS_EVENT_PEER_PATH_DEAD:
+	}
+	case ZTS_EVENT_PEER_PATH_DEAD: {
+#ifdef __3DS__
+		PeerEventGuard guard;
+#endif
 		ztPeerEvents.erase(msg->peer->peer_id);
 		break;
+	}
 	}
 }
 
@@ -207,6 +241,9 @@ CtrZeroTierStartup zerotier_startup_state()
 {
 	return StartupState.load(std::memory_order_acquire);
 }
+
+bool zerotier_node_online() { return zt_node_online; }
+int zerotier_network_error() { return NetworkError; }
 
 int zerotier_startup_error()
 {
@@ -268,6 +305,9 @@ bool zerotier_is_relayed(uint64_t mac)
 		return isRelayed;
 	zts_peer_info_t peerInfo;
 	if (zts_core_query_peer_info(ZtNetwork, mac, &peerInfo) == ZTS_ERR_OK) {
+#ifdef __3DS__
+		PeerEventGuard guard;
+#endif
 		auto peerEvent = ztPeerEvents.find(peerInfo.peer_id);
 		if (peerEvent != ztPeerEvents.end())
 			isRelayed = (peerEvent->second == ZTS_EVENT_PEER_RELAY);

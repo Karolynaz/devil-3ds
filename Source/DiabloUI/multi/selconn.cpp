@@ -70,7 +70,8 @@ bool WaitForZeroTierStartup()
 	UiLoadBlackBackground();
 	UiAddBackground(&dialog, false);
 	dialog.push_back(std::make_unique<UiArtText>("ZeroTier", MakeSdlRect(24, 24, 592, 36), UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver));
-	dialog.push_back(std::make_unique<UiArtText>(_("Connecting to ZeroTier...").data(), MakeSdlRect(50, 90, 540, 96), UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+	char status[256] {};
+	dialog.push_back(std::make_unique<UiArtText>(status, MakeSdlRect(50, 90, 540, 110), UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold, 1, 26));
 	actions.push_back(std::make_unique<UiListItem>(_("Cancel"), 0));
 	dialog.push_back(std::make_unique<UiList>(actions, 1, 160, 330, 320, 36, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 	UiInitList(nullptr, [](size_t) { StartupCancelled = true; }, []() { StartupCancelled = true; }, dialog, true);
@@ -79,23 +80,28 @@ bool WaitForZeroTierStartup()
 	const uint32_t start = SDL_GetTicks();
 	net::CtrZeroTierStartup state = net::CtrZeroTierStartup::Starting;
 	while (!StartupCancelled) {
+		CopyUtf8(status, WordWrapString(net::zerotier_node_online() ? _("Joining ZeroTier network...") : _("Connecting to ZeroTier..."), 540, GameFont24, 1, CtrTextScale::TopScreen), sizeof(status));
 		UiClearScreen();
 		UiPollAndRender();
 		state = net::zerotier_startup_state();
-		if (state != net::CtrZeroTierStartup::Starting || SDL_GetTicks() - start >= 30000)
+		if (net::zerotier_network_ready() || net::zerotier_network_error() != 0
+		    || state == net::CtrZeroTierStartup::NoWifi || state == net::CtrZeroTierStartup::Failed
+		    || SDL_GetTicks() - start >= 45000)
 			break;
 	}
 	UiInitList_clear();
 	ArtBackground = std::nullopt;
 	if (StartupCancelled)
 		return false;
-	if (state == net::CtrZeroTierStartup::Started)
+	if (net::zerotier_network_ready())
 		return true;
 	std::string error;
 	if (state == net::CtrZeroTierStartup::NoWifi)
 		error = _("No Wi-Fi connection. Connect in System Settings.");
-	else if (state == net::CtrZeroTierStartup::Starting)
-		error = _("ZeroTier initialization timed out. Please try again.");
+	else if (net::zerotier_network_error() != 0)
+		error = FormatRuntime(_("ZeroTier network connection failed (error {})."), net::zerotier_network_error());
+	else if (state == net::CtrZeroTierStartup::Starting || state == net::CtrZeroTierStartup::Started)
+		error = _("ZeroTier connection timed out. Check Wi-Fi and try again.");
 	else
 		error = FormatRuntime(_("Unable to start ZeroTier (error {})."), net::zerotier_startup_error());
 	UiSelOkDialog(_("Multiplayer").data(), error.c_str(), false);

@@ -187,7 +187,9 @@ void UiUpdateFadePalette()
 #ifdef __3DS__
 void HandleCtrTextInput(std::string_view textInput)
 {
+	if (!UiTextInputState) return;
 	UiTextInputState->assign(textInput);
+	UiFocusNavigationSelect();
 }
 #endif
 
@@ -200,6 +202,9 @@ bool IsTextInputActive()
 
 void UiInitList(void (*fnFocus)(size_t value), void (*fnSelect)(size_t value), void (*fnEsc)(), const std::vector<std::unique_ptr<UiItemBase>> &items, bool itemsWraps, void (*fnFullscreen)(), bool (*fnYesNo)(), size_t selectedItem /*= 0*/)
 {
+#ifdef __3DS__
+	ctr_vkbdClear();
+#endif
 	SelectedItem = selectedItem;
 	SelectedItemMax = 0;
 	ListViewportSize = 0;
@@ -230,7 +235,8 @@ void UiInitList(void (*fnFocus)(size_t value), void (*fnSelect)(size_t value), v
 #elif defined(__vita__)
 			vita_start_text_input(pItemUIEdit->m_hint, pItemUIEdit->m_value, pItemUIEdit->m_max_length);
 #elif defined(__3DS__)
-			ctr_vkbdInput(pItemUIEdit->m_hint, pItemUIEdit->m_value, &HandleCtrTextInput);
+			ctr_vkbdInput(pItemUIEdit->m_hint, pItemUIEdit->m_value, &HandleCtrTextInput, &UiFocusNavigationEsc,
+			    pItemUIEdit->m_max_length, pItemUIEdit->m_allowEmpty);
 #else
 			SDLC_StartTextInput(ghMainWnd);
 #endif
@@ -275,6 +281,9 @@ void UiRenderListItems()
 
 void UiInitList_clear()
 {
+#ifdef __3DS__
+	ctr_vkbdClear();
+#endif
 	SelectedItem = 0;
 	SelectedItemMax = 0;
 	ListViewportSize = 1;
@@ -990,7 +999,7 @@ void UiPollAndRender(std::optional<tl::function_ref<bool(SDL_Event &)>> eventHan
 #ifdef __3DS__
 	// Keyboard blocks until input is finished
 	// so defer until after render and fade-in
-	ctr_vkbdFlush();
+	if (fadeValue == 256) ctr_vkbdFlush();
 #endif
 
 	discord_manager::UpdateMenu();
@@ -1008,8 +1017,25 @@ void Render(const UiText &uiText)
 void Render(const UiArtText &uiArtText)
 {
 	const Surface &out = Surface(DiabloUiSurface());
+	UiFlags flags = uiArtText.GetFlags();
+	int spacing = uiArtText.GetSpacing();
+#ifdef __3DS__
+	const std::string_view text = uiArtText.GetText();
+	if (uiArtText.m_rect.h <= 40 && text.find('\n') == std::string_view::npos) {
+		const CtrTextScale scale = uiArtText.m_rect.y >= 240 ? CtrTextScale::BottomScreen : CtrTextScale::TopScreen;
+		constexpr UiFlags fonts = UiFlags::FontSize12 | UiFlags::FontSize24 | UiFlags::FontSize30 | UiFlags::FontSize42 | UiFlags::FontSize46 | UiFlags::FontSizeDialog;
+		if (GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) > uiArtText.m_rect.w) {
+			spacing = 0;
+			if (GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) > uiArtText.m_rect.w) {
+				flags = (flags & ~fonts) | UiFlags::FontSize24;
+				if (GetLineWidth(text, GameFont24, spacing, nullptr, scale) > uiArtText.m_rect.w)
+					flags = (flags & ~fonts) | UiFlags::FontSize12;
+			}
+		}
+	}
+#endif
 	DrawString(out, uiArtText.GetText(), MakeRectangle(uiArtText.m_rect),
-	    { .flags = uiArtText.GetFlags(), .spacing = uiArtText.GetSpacing(), .lineHeight = uiArtText.GetLineHeight() });
+	    { .flags = flags, .spacing = spacing, .lineHeight = uiArtText.GetLineHeight() });
 }
 
 #ifdef __3DS__
@@ -1136,7 +1162,14 @@ void Render(const UiList &uiList)
 #else
 		    false;
 #endif
-		const int selectorWidth = GetListSelectorSprites(rect.h)[0].width() * (doubleWidth ? 2 : 1);
+		#ifdef __3DS__
+		const CtrTextScale textScale = rect.y >= 240 ? CtrTextScale::BottomScreen : CtrTextScale::TopScreen;
+		const int screenWidth = rect.y >= 240 ? 320 : 400;
+		const int selectorWidth = (GetListSelectorSprites(rect.h)[0].width() * 640 + screenWidth - 1) / screenWidth + 8;
+#else
+		const bool textScale = doubleWidth;
+		const int selectorWidth = GetListSelectorSprites(rect.h)[0].width();
+#endif
 		const Rectangle rectangle = MakeRectangle(rect).inset(
 		    Displacement(selectorWidth, 0));
 
@@ -1155,7 +1188,7 @@ void Render(const UiList &uiList)
 #endif
 		const GameFontTables fontSize = GetFontSizeFromUiFlags(uiFlags);
 		std::string_view text = item.m_text.str();
-		while (GetLineWidth(text, fontSize, 1, nullptr, doubleWidth) > rectangle.size.width) {
+		while (GetLineWidth(text, fontSize, uiList.GetSpacing(), nullptr, textScale) > rectangle.size.width) {
 			text = std::string_view(text.data(), FindLastUtf8Symbols(text));
 		}
 
@@ -1207,7 +1240,13 @@ void Render(const UiEdit &uiEdit)
 	DrawSelector(uiEdit.m_rect);
 
 	// To simulate padding we inset the region used to draw text in an edit control
-	const Rectangle rect = MakeRectangle(uiEdit.m_rect).inset({ 43, 1 });
+	#ifdef __3DS__
+	const int screenWidth = uiEdit.m_rect.y >= 240 ? 320 : 400;
+	const int padding = (GetListSelectorSprites(uiEdit.m_rect.h)[0].width() * 640 + screenWidth - 1) / screenWidth + 12;
+#else
+	const int padding = 43;
+#endif
+	const Rectangle rect = MakeRectangle(uiEdit.m_rect).inset({ padding, 1 });
 
 	const Surface &out = Surface(DiabloUiSurface());
 	DrawString(out, uiEdit.m_value, rect,
