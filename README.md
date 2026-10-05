@@ -8,7 +8,9 @@ Nintendo 3DS already had a Diablo port, but its desktop-style interface made it 
 
 - **Redesigned lower-screen UI:** the belt, health, mana, experience and item information share a dedicated 320 × 240 display, with touch support and animated health/mana bars.
 - **Panels drawn for the upper screen:** inventory, stash, character, quest and spell screens have redesigned backgrounds and layouts for 400 × 240, with readable text and appropriately sized items.
-- **Reviewed and optimized code:** screen copying and scaling do less repeated work; controls, spell selection and interaction targeting have been revised. This version runs in 2D.
+- **Reviewed and optimized code:** screen copying and scaling do less repeated work; controls, spell selection and interaction targeting have been revised. The game and scenery remain 2D; the console’s 3D slider adds optional depth to characters and NPCs.
+
+Multiplayer goes straight to ZeroTier: choose your hero, then create or join a game. The in-game options include a small map, and **Settings → Update** checks for newer releases. Hellfire support is included but has not yet been tested on a console.
 
 Maintained by **Karolynaz**. [Download the latest build](https://github.com/Karolynaz/devil-3ds/releases/latest) · [Report an issue](https://github.com/Karolynaz/devil-3ds/issues)
 

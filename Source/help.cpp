@@ -3,6 +3,7 @@
  *
  * Implementation of the in-game help text.
  */
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -99,10 +100,15 @@ const char *const HelpText[] = {
 
 std::vector<std::string> HelpTextLines;
 
+#ifdef __3DS__
+constexpr int PaddingTop = 8;
+constexpr int PanelHeight = 214; // Reserve the footer inside the 240-pixel upper screen.
+#else
 constexpr int PaddingTop = 32;
+constexpr int PanelHeight = 297;
+#endif
 constexpr int PaddingLeft = 32;
 
-constexpr int PanelHeight = 297;
 constexpr int ContentTextWidth = 565;
 
 int LineHeight()
@@ -112,7 +118,11 @@ int LineHeight()
 
 int BlankLineHeight()
 {
+#ifdef __3DS__
+	return 6;
+#else
 	return 12;
+#endif
 }
 
 int DividerLineMarginY()
@@ -155,7 +165,7 @@ void DrawHelpSlider(const Surface &out)
 	ClxDraw(out, { sliderXPos, sliderCurrent }, (*pSTextSlidCels)[10]);
 	// Subtract visible lines from the total number of lines to get the actual
 	// scroll range
-	const int scrollRange = static_cast<int>(HelpTextLines.size()) - NumVisibleLines();
+	const int scrollRange = std::max(1, static_cast<int>(HelpTextLines.size()) - NumVisibleLines());
 	// Subtract the size of the arrow buttons to get the length of the interior
 	// part of the slider
 	const int sliderLength = sliderCurrent - 12 - sliderStart;
@@ -173,7 +183,11 @@ void InitHelp()
 	HelpFlag = false;
 
 	for (const auto *text : HelpText) {
+#ifdef __3DS__
+		const std::string paragraph = WordWrapString(_(text), ContentTextWidth, GameFont12, 1, CtrTextScale::TopScreen);
+#else
 		const std::string paragraph = WordWrapString(_(text), ContentTextWidth);
+#endif
 
 		size_t previous = 0;
 		while (true) {
@@ -208,14 +222,14 @@ void DrawHelp(const Surface &out)
 
 	DrawString(out, title,
 	    { { sx, sy + PaddingTop + blankLineHeight }, { ContentTextWidth, lineHeight } },
-	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter });
+	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter | UiFlags::KerningFitSpacing });
 
 	const int titleBottom = sy + HeaderHeight();
 	DrawSLine(out, titleBottom);
 
 	const int numLines = NumVisibleLines();
 	const int contentY = titleBottom + DividerLineMarginY() + ContentPaddingY();
-	for (int i = 0; i < numLines; i++) {
+	for (int i = 0; i < numLines && i + SkipLines < HelpTextLines.size(); i++) {
 		const std::string_view line = HelpTextLines[i + SkipLines];
 		if (line.empty()) {
 			continue;
@@ -234,7 +248,7 @@ void DrawHelp(const Surface &out)
 
 	DrawString(out, _("Press ESC to end or the arrow keys to scroll."),
 	    { { sx, contentY + ContentsTextHeight() + ContentPaddingY() + blankLineHeight }, { ContentTextWidth, lineHeight } },
-	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter });
+	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter | UiFlags::KerningFitSpacing });
 
 	DrawHelpSlider(out);
 }

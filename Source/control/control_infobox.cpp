@@ -177,13 +177,52 @@ Rectangle GetFloatingInfoRect(std::string_view text, const int lineHeight, const
 	int lineCount = 0;
 
 	for (const auto &line : lines) {
+#ifdef __3DS__
+		const bool belt = pcursinvitem >= INVITEM_BELT_FIRST && pcursinvitem < INVITEM_BELT_FIRST + MaxBeltItems;
+		const int w = GetLineWidth(line, font, textSpacing, nullptr, belt ? CtrTextScale::BottomScreen : CtrTextScale::TopScreen);
+#else
 		const int w = GetLineWidth(line, font, textSpacing, nullptr);
+#endif
 		maxW = std::max(maxW, w);
 		++lineCount;
 	}
 
 	const int totalH = std::max(1, lineCount) * lineHeight;
 
+#ifdef __3DS__
+	// Use the same native slots as the inventory/stash artwork, not the
+	// original 320x352 desktop panel. Belt tooltips belong to the lower screen.
+	Rectangle anchor;
+	const Player &player = *InspectPlayer;
+	if (pcursinvitem >= INVITEM_HEAD && pcursinvitem < INVITEM_INV_FIRST) {
+		anchor = CtrInventorySlotRect(pcursinvitem - INVITEM_HEAD, IsStashOpen);
+	} else if (pcursinvitem >= INVITEM_INV_FIRST && pcursinvitem <= INVITEM_INV_LAST) {
+		const int itemIdx = pcursinvitem - INVITEM_INV_FIRST;
+		for (int j = 0; j < InventoryGridCells; ++j) {
+			if (player.InvGrid[j] > 0 && player.InvGrid[j] - 1 == itemIdx) {
+				anchor = CtrInventorySlotRect(j + INVITEM_INV_FIRST, IsStashOpen);
+				break;
+			}
+		}
+	} else if (pcursinvitem >= INVITEM_BELT_FIRST && pcursinvitem < INVITEM_BELT_FIRST + MaxBeltItems) {
+		anchor = CtrBottomBeltSlot(pcursinvitem - INVITEM_BELT_FIRST);
+		return { { (anchor.position.x + anchor.size.width / 2) * 2 - maxW / 2,
+		             240 + anchor.position.y + anchor.size.height }, { maxW, totalH } };
+	} else if (pcursstashitem != StashStruct::EmptyCell) {
+		for (auto slot : StashGridRange) {
+			if (Stash.GetItemIdAtPosition(slot) == pcursstashitem) {
+				anchor = CtrStashSlotRect(slot);
+				break;
+			}
+		}
+	}
+	if (anchor.size.width > 0) {
+		Point position = CtrTopToScreen({ anchor.position.x + anchor.size.width / 2,
+		    anchor.position.y + anchor.size.height }, GetScreenWidth());
+		return { { position.x - maxW / 2, position.y }, { maxW, totalH } };
+	}
+	return { { MousePosition.x - maxW / 2, std::clamp(MousePosition.y, 0, 239) }, { maxW, totalH } };
+#else
 	const Player &player = *InspectPlayer;
 
 	// 1) Equipment (Rect position)
@@ -313,10 +352,16 @@ Rectangle GetFloatingInfoRect(std::string_view text, const int lineHeight, const
 	}
 
 	return { { 0, 0 }, { 0, 0 } };
+#endif
 }
 
 int GetHoverSpriteHeight()
 {
+#ifdef __3DS__
+	if (pcursinvitem >= INVITEM_BELT_FIRST && pcursinvitem < INVITEM_BELT_FIRST + MaxBeltItems)
+		return 21;
+	return CtrItemSlotPixels;
+#else
 	if (pcursinvitem >= INVITEM_HEAD && pcursinvitem < INVITEM_INV_FIRST) {
 		auto &it = (*InspectPlayer).InvBody[pcursinvitem - INVITEM_HEAD];
 		return GetInvItemSize(it._iCurs + CURSOR_FIRSTITEM).height + 1;
@@ -345,6 +390,7 @@ int GetHoverSpriteHeight()
 		return GetInventorySize(it).height * (INV_SLOT_SIZE_PX + 1);
 	}
 	return InventorySlotSizeInPixels.height;
+#endif
 }
 
 int ClampAboveOrBelow(int anchorY, int spriteH, int boxH, int pad, int linePad)
@@ -367,13 +413,23 @@ void PrintFloatingInfo(const Surface &out)
 	const int hPadding = 5;
 	const int vPadding = 4;
 
+#ifdef __3DS__
+	const bool belt = pcursinvitem >= INVITEM_BELT_FIRST && pcursinvitem < INVITEM_BELT_FIRST + MaxBeltItems;
+	const int screenTop = belt ? 240 : 0;
+	const int screenBottom = screenTop + 240;
+	const int maxFloatingWidth = GetScreenWidth() - 40;
+	const std::string wrappedFloating = WordWrapString(FloatingInfoString.str(), maxFloatingWidth, GameFont12, textSpacing,
+	    belt ? CtrTextScale::BottomScreen : CtrTextScale::TopScreen);
+#else
 	const int maxFloatingWidth = std::max(100, std::min(260, GetScreenWidth() - 20));
 	const std::string wrappedFloating = WordWrapString(FloatingInfoString.str(), maxFloatingWidth, GameFont12, textSpacing);
+#endif
 
 	Rectangle floatingInfoBox = GetFloatingInfoRect(wrappedFloating, lineHeight, textSpacing);
 
 	// Prevent the floating info box from going off-screen horizontally
-	floatingInfoBox.position.x = std::clamp(floatingInfoBox.position.x, hPadding, GetScreenWidth() - (floatingInfoBox.size.width + hPadding));
+	floatingInfoBox.position.x = std::clamp(floatingInfoBox.position.x, hPadding,
+	    std::max(hPadding, GetScreenWidth() - (floatingInfoBox.size.width + hPadding)));
 
 	const int spriteH = GetHoverSpriteHeight();
 	const int anchorY = floatingInfoBox.position.y;
@@ -381,6 +437,24 @@ void PrintFloatingInfo(const Surface &out)
 	// Prevent the floating info box from going off-screen vertically
 	floatingInfoBox.position.y = ClampAboveOrBelow(anchorY, spriteH, floatingInfoBox.size.height, vPadding, verticalSpacing);
 
+#ifdef __3DS__
+	const int textHeight = floatingInfoBox.size.height;
+	floatingInfoBox.size.height = std::min(textHeight, 240 - 2 * (vPadding + 1));
+	floatingInfoBox.position.y = std::clamp(floatingInfoBox.position.y, screenTop + vPadding + 1,
+	    screenBottom - floatingInfoBox.size.height - vPadding - 1);
+	static std::string lastFloatingText;
+	static uint32_t floatingScrollStart = 0;
+	const uint32_t now = SDL_GetTicks();
+	if (lastFloatingText != FloatingInfoString.str()) {
+		lastFloatingText = std::string(FloatingInfoString.str());
+		floatingScrollStart = now;
+	}
+	const int overflow = textHeight - floatingInfoBox.size.height;
+	const uint32_t duration = std::max(1000, overflow * 1000 / 22);
+	const uint32_t elapsed = (now - floatingScrollStart) % (1500 + duration + 2300);
+	const int scroll = elapsed <= 1500 ? 0 : elapsed < 1500 + duration
+	    ? static_cast<int>((static_cast<uint64_t>(elapsed - 1500) * overflow) / duration) : overflow;
+#endif
 	SpeakText(FloatingInfoString);
 
 	for (int i = 0; i < 3; i++)
@@ -390,12 +464,19 @@ void PrintFloatingInfo(const Surface &out)
 	DrawHalfTransparentHorizontalLine(out, { floatingInfoBox.position.x - hPadding, floatingInfoBox.position.y - vPadding - 1 }, floatingInfoBox.size.width + (hPadding * 2), PAL16_GRAY + 10);
 	DrawHalfTransparentHorizontalLine(out, { floatingInfoBox.position.x - hPadding, floatingInfoBox.position.y + vPadding + floatingInfoBox.size.height }, floatingInfoBox.size.width + (hPadding * 2), PAL16_GRAY + 10);
 
+#ifdef __3DS__
+	const Surface boxSurface = out.subregion(floatingInfoBox.position.x, floatingInfoBox.position.y,
+	    floatingInfoBox.size.width, floatingInfoBox.size.height);
+	DrawString(boxSurface, wrappedFloating, { { 0, -scroll }, { floatingInfoBox.size.width, textHeight } },
+	    { .flags = InfoColor | UiFlags::AlignCenter, .spacing = textSpacing, .lineHeight = lineHeight });
+#else
 	DrawString(out, wrappedFloating, floatingInfoBox,
 	    {
 	        .flags = InfoColor | UiFlags::AlignCenter | UiFlags::VerticalCenter,
 	        .spacing = textSpacing,
 	        .lineHeight = lineHeight,
 	    });
+#endif
 }
 
 } // namespace

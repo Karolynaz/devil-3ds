@@ -4186,8 +4186,22 @@ void PrintItemDetails(const Item &item)
 	}
 	if (item._iMagical == ITEM_QUALITY_UNIQUE) {
 		AddItemInfoBoxString(_("unique item"));
+#ifdef __3DS__
+		// The lower screen has room for wrapped, scrolling item details. The
+		// desktop unique popup uses side-panel coordinates outside the 3DS view.
+		if (static_cast<size_t>(item._iUid) < UniqueItems.size()) {
+			for (const auto &power : UniqueItems[item._iUid].powers) {
+				if (power.type == IPL_INVALID)
+					break;
+				// Keep unique powers readable below the inventory even when the
+				// optional floating box is used for the item's other details.
+				AddInfoBoxString(PrintItemPower(power.type, item));
+			}
+		}
+#else
 		ShowUniqueItemInfoBox = true;
 		curruitem = item;
+#endif
 	}
 	PrintItemInfo(item);
 }

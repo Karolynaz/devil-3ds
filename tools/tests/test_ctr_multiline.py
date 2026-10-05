@@ -38,7 +38,7 @@ int ScaleSpacing(int w,CtrTextScale s) { return s==CtrTextScale::BottomScreen?w*
 int GetLineWidth(std::string_view s,int,int spacing,int *count=nullptr,CtrTextScale scale=CtrTextScale::None) {
     auto end=s.find('\n'); if(end!=std::string_view::npos) s=s.substr(0,end);
     if(count) *count=s.size();
-    return s.empty()?0:s.size()*ScaleCharWidth(7,scale)+(s.size()-1)*spacing;
+    return s.empty()?0:s.size()*ScaleCharWidth(7,scale)+(s.size()-1)*ScaleSpacing(spacing,scale);
 }
 struct Line { std::string_view text; int width; int y; };
 std::vector<Line> lines;
@@ -58,7 +58,7 @@ int main() {
         std::string_view s=text;
         const int effective=ScaleSpacing(spacing,scale);
         int count=0;
-        int width=GetLineWidth(s,0,effective,&count,scale);
+        int width=GetLineWidth(s,0,spacing,&count,scale);
         Rectangle rect{{20,240},{600,240}};
         Point p{GetLineStartX(flags,rect,width),240};
         DoDrawString({},s,rect,p,width,count,620,480,0,0,false,opts,scale);
@@ -67,7 +67,7 @@ int main() {
             const auto end=s.find('\n');
             const auto line=s.substr(0,end);
             check(n<lines.size() && lines[n].text==line);
-            const int expectedWidth=GetLineWidth(line,0,effective,nullptr,scale);
+            const int expectedWidth=GetLineWidth(line,0,spacing,nullptr,scale);
             check(lines[n].width==expectedWidth);
             const int x=GetLineStartX(flags,rect,lines[n].width);
             check(x==(HasAnyOf(flags,UiFlags::AlignRight)?620-expectedWidth:20+(600-expectedWidth)/2));
@@ -82,7 +82,7 @@ int main() {
 '''
 with tempfile.TemporaryDirectory() as directory:
     cpp=Path(directory)/'text.cpp'; exe=Path(directory)/'text'
-    cpp.write_text(STUBS+'\n'+function('int AdjustSpacingToFitHorizontally(')+'\n'+function('int GetLineStartX(')+'\n'+function('uint32_t DoDrawString(')+'\n'+TEST)
+    cpp.write_text(STUBS+'\n'+function('int AdjustSpacingToFitHorizontally(')+'\n'+function('int GetLineStartX(')+'\n'+function('int GetLineWidthWithScaledSpacing(std::string_view text,')+'\n'+function('uint32_t DoDrawString(')+'\n'+TEST)
     subprocess.run([os.environ.get('CXX','c++'),'-std=c++17','-D__3DS__','-I'+str(ROOT/'Source'),str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
-print('PASS: production multiline layout centers each line independently')
+print('PASS: multiline centering uses screen spacing once on both 3DS screens')

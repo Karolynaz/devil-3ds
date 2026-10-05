@@ -62,7 +62,15 @@ public:
 				indexFirstNotTab++;
 			}
 
+#ifdef __3DS__
+			// These lines span both screens. Use the narrower lower-screen grid
+			// and the same -1 native spacing as Render() so no names are clipped.
+			offset = std::min<uint16_t>(offset, 480);
+			const std::string paragraphs = WordWrapString(orgText.substr(indexFirstNotTab), 580 - offset,
+			    FontSizeDialog, -1, CtrTextScale::BottomScreen);
+#else
 			const std::string paragraphs = WordWrapString(orgText.substr(indexFirstNotTab), 580 - offset, FontSizeDialog);
+#endif
 
 			size_t previous = 0;
 			while (true) {

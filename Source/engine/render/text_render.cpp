@@ -698,6 +698,29 @@ void DrawLine(
 	maybeDrawCursor();
 }
 
+#ifdef __3DS__
+// Layout already converted spacing to canvas pixels. Measure glyphs at the
+// screen scale without converting that spacing a second time.
+int GetLineWidthWithScaledSpacing(std::string_view text, GameFontTables size, int spacing, int *charactersInLine, CtrTextScale scale)
+{
+	int count = 0;
+	const int width = GetLineWidth(text, size, 0, &count, scale);
+	if (charactersInLine != nullptr)
+		*charactersInLine = count;
+	return width + std::max(0, count - 1) * spacing;
+}
+
+int GetLineWidthWithScaledSpacing(std::string_view fmt, DrawStringFormatArg *args, size_t argsLen, size_t argsOffset,
+    GameFontTables size, int spacing, int *charactersInLine, std::optional<size_t> firstArgOffset, CtrTextScale scale)
+{
+	int count = 0;
+	const int width = GetLineWidth(fmt, args, argsLen, argsOffset, size, 0, &count, firstArgOffset, scale);
+	if (charactersInLine != nullptr)
+		*charactersInLine = count;
+	return width + std::max(0, count - 1) * spacing;
+}
+#endif
+
 uint32_t DoDrawString(const Surface &out, std::string_view text, Rectangle rect, Point &characterPosition,
     int lineWidth, int charactersInLine, int rightMargin, int bottomMargin, GameFontTables size, text_color color, bool outline,
     TextRenderOptions &opts,
@@ -719,7 +742,7 @@ uint32_t DoDrawString(const Surface &out, std::string_view text, Rectangle rect,
 		curSpacing = AdjustSpacingToFitHorizontally(lineWidth, effectiveBaseSpacing, charactersInLine, rect.size.width);
 		if (curSpacing != effectiveBaseSpacing && HasAnyOf(opts.flags, UiFlags::AlignCenter | UiFlags::AlignRight)) {
 #ifdef __3DS__
-			const int adjustedLineWidth = GetLineWidth(text, size, curSpacing, &charactersInLine, scale);
+			const int adjustedLineWidth = GetLineWidthWithScaledSpacing(text, size, curSpacing, &charactersInLine, scale);
 #else
 			const int adjustedLineWidth = GetLineWidth(text, size, curSpacing, &charactersInLine, doubleWidth);
 #endif
@@ -792,7 +815,7 @@ uint32_t DoDrawString(const Surface &out, std::string_view text, Rectangle rect,
 
 			if (HasAnyOf(opts.flags, UiFlags::KerningFitSpacing)) {
 #ifdef __3DS__
-				int nextLineWidth = GetLineWidth(remaining.substr(cpLen), size, effectiveBaseSpacing, &charactersInLine, scale);
+				int nextLineWidth = GetLineWidthWithScaledSpacing(remaining.substr(cpLen), size, effectiveBaseSpacing, &charactersInLine, scale);
 #else
 				int nextLineWidth = GetLineWidth(remaining.substr(cpLen), size, effectiveBaseSpacing, &charactersInLine, doubleWidth);
 #endif
@@ -804,7 +827,7 @@ uint32_t DoDrawString(const Surface &out, std::string_view text, Rectangle rect,
 				lineWidth = next == U'\n' ? 0 : width;
 				if (remaining.size() > cpLen) {
 #ifdef __3DS__
-					lineWidth += (next == U'\n' ? 0 : curSpacing) + GetLineWidth(remaining.substr(cpLen), size, curSpacing, nullptr, scale);
+					lineWidth += (next == U'\n' ? 0 : curSpacing) + GetLineWidthWithScaledSpacing(remaining.substr(cpLen), size, curSpacing, nullptr, scale);
 #else
 					lineWidth += (next == U'\n' ? 0 : curSpacing) + GetLineWidth(remaining.substr(cpLen), size, curSpacing, nullptr, doubleWidth);
 #endif
@@ -1265,7 +1288,7 @@ uint32_t DrawString(const Surface &out, std::string_view text, const Rectangle &
 #ifdef __3DS__
 	CtrTextScale scale = CtrTextScale::None;
 	if (out.surface != nullptr && out.surface->w >= 640) {
-		if ((out.region.y + rect.position.y) >= 240) {
+		if (out.region.y >= 240 || (out.region.y + rect.position.y) >= 240) {
 			scale = CtrTextScale::BottomScreen;
 		} else {
 			scale = CtrTextScale::TopScreen;
@@ -1354,7 +1377,7 @@ void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFo
 #ifdef __3DS__
 	CtrTextScale scale = CtrTextScale::None;
 	if (out.surface != nullptr && out.surface->w >= 640) {
-		if ((out.region.y + rect.position.y) >= 240) {
+		if (out.region.y >= 240 || (out.region.y + rect.position.y) >= 240) {
 			scale = CtrTextScale::BottomScreen;
 		} else {
 			scale = CtrTextScale::TopScreen;
@@ -1404,7 +1427,7 @@ void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFo
 		curSpacing = AdjustSpacingToFitHorizontally(lineWidth, effectiveBaseSpacing, charactersInLine, rect.size.width);
 		if (curSpacing != effectiveBaseSpacing && HasAnyOf(opts.flags, UiFlags::AlignCenter | UiFlags::AlignRight)) {
 #ifdef __3DS__
-			const int adjustedLineWidth = GetLineWidth(fmt, args, argsLen, 0, size, curSpacing, &charactersInLine, std::nullopt, scale);
+			const int adjustedLineWidth = GetLineWidthWithScaledSpacing(fmt, args, argsLen, 0, size, curSpacing, &charactersInLine, std::nullopt, scale);
 #else
 			const int adjustedLineWidth = GetLineWidth(fmt, args, argsLen, 0, size, curSpacing, &charactersInLine, std::nullopt, doubleWidth);
 #endif
@@ -1478,9 +1501,9 @@ void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFo
 			if (HasAnyOf(opts.flags, UiFlags::KerningFitSpacing)) {
 #ifdef __3DS__
 				int nextLineWidth = isProcessingFormatArgValue
-				    ? GetLineWidth(remaining, args, argsLen, fmtArgParser.offset(), size, effectiveBaseSpacing, &charactersInLine,
+				    ? GetLineWidthWithScaledSpacing(remaining, args, argsLen, fmtArgParser.offset(), size, effectiveBaseSpacing, &charactersInLine,
 				          /*firstArgOffset=*/args[fmtArgParser.offset() - 1].GetFormatted().size() - (curFormatted.size() - cpLen), scale)
-				    : GetLineWidth(remaining.substr(cpLen), args, argsLen, fmtArgParser.offset(), size, effectiveBaseSpacing, &charactersInLine, std::nullopt, scale);
+				    : GetLineWidthWithScaledSpacing(remaining.substr(cpLen), args, argsLen, fmtArgParser.offset(), size, effectiveBaseSpacing, &charactersInLine, std::nullopt, scale);
 #else
 				int nextLineWidth = isProcessingFormatArgValue
 				    ? GetLineWidth(remaining, args, argsLen, fmtArgParser.offset(), size, effectiveBaseSpacing, &charactersInLine,
@@ -1497,9 +1520,9 @@ void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFo
 #ifdef __3DS__
 					lineWidth += (next == U'\n' ? 0 : curSpacing)
 					    + (isProcessingFormatArgValue
-					            ? GetLineWidth(remaining, args, argsLen, fmtArgParser.offset(), size, curSpacing, &charactersInLine,
+					            ? GetLineWidthWithScaledSpacing(remaining, args, argsLen, fmtArgParser.offset(), size, curSpacing, &charactersInLine,
 					                  /*firstArgOffset=*/args[fmtArgParser.offset() - 1].GetFormatted().size() - (curFormatted.size() - cpLen), scale)
-					            : GetLineWidth(remaining.substr(cpLen), args, argsLen, fmtArgParser.offset(), size, curSpacing, &charactersInLine, std::nullopt, scale));
+					            : GetLineWidthWithScaledSpacing(remaining.substr(cpLen), args, argsLen, fmtArgParser.offset(), size, curSpacing, &charactersInLine, std::nullopt, scale));
 #else
 					lineWidth += (next == U'\n' ? 0 : curSpacing)
 					    + (isProcessingFormatArgValue

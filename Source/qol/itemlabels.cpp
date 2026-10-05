@@ -13,6 +13,9 @@
 #include "engine/render/clx_render.hpp"
 #include "engine/render/primitive_render.hpp"
 #include "gmenu.h"
+#ifdef __3DS__
+#include "platform/ctr/ui_geometry.hpp"
+#endif
 #include "inv.h"
 #include "options.h"
 #include "qol/stash.h"
@@ -21,13 +24,14 @@
 #include "utils/format.hpp"
 #include "utils/format_int.hpp"
 #include "utils/language.h"
+#include "utils/str_split.hpp"
 
 namespace devilution {
 
 namespace {
 
 struct ItemLabel {
-	int id, width;
+	int id, width, height;
 	Point pos;
 	StringOrView text;
 };
@@ -114,7 +118,22 @@ void AddItemToLabelQueue(int id, Point position)
 		textOnGround = item.getName();
 	}
 
+	int labelHeight = LabelHeight();
+#ifdef __3DS__
+	// DrawString expands top-screen glyphs onto the 640-wide canvas. Use
+	// those same metrics for wrapping, the label box and its hit target.
+	textOnGround = WordWrapString(textOnGround.str(), GetScreenWidth() - MarginX * 2,
+	    GameFont12, 1, CtrTextScale::TopScreen);
+	int nameWidth = 0;
+	int lines = 0;
+	for (const std::string_view line : SplitByChar(textOnGround.str(), '\n')) {
+		nameWidth = std::max(nameWidth, GetLineWidth(line, GameFont12, 1, nullptr, CtrTextScale::TopScreen));
+		++lines;
+	}
+	labelHeight += (lines - 1) * GetLineHeight(textOnGround.str(), GameFont12);
+#else
 	int nameWidth = GetLineWidth(textOnGround);
+#endif
 	nameWidth += MarginX * 2;
 	const int index = ItemCAnimTbl[item._iCurs];
 	if (!labelCenterOffsets[index]) {
@@ -128,8 +147,8 @@ void AddItemToLabelQueue(int id, Point position)
 		position *= 2;
 	}
 	position.x -= nameWidth / 2;
-	position.y -= LabelHeight();
-	labelQueue.push_back(ItemLabel { id, nameWidth, position, std::move(textOnGround) });
+	position.y -= labelHeight;
+	labelQueue.push_back(ItemLabel { id, nameWidth, labelHeight, position, std::move(textOnGround) });
 }
 
 bool IsMouseOverGameArea()
@@ -150,6 +169,41 @@ void DrawItemNameLabels(const Surface &out)
 	isLabelHighlighted = false;
 	if (labelQueue.empty())
 		return;
+#ifdef __3DS__
+	// Keep complete names inside the upper screen, including labels near an
+	// edge. Move overlapping names to another row instead of off-screen.
+	std::stable_partition(labelQueue.begin(), labelQueue.end(), [](const ItemLabel &label) { return label.id == pcursitem; });
+	for (size_t i = 0; i < labelQueue.size(); ++i) {
+		ItemLabel &label = labelQueue[i];
+		label.pos.x = std::clamp(label.pos.x, 0, std::max(0, out.w() - label.width));
+		label.pos.y = std::clamp(label.pos.y, 0, std::max(0, clippedOut.h() - label.height));
+		const int anchorY = label.pos.y;
+		bool placed = false;
+		for (int row = 0; row <= clippedOut.h() / (label.height + BorderY) && !placed; ++row) {
+			for (int direction : { -1, 1 }) {
+				label.pos.y = anchorY + direction * row * (label.height + BorderY);
+				if (label.pos.y < 0 || label.pos.y + label.height > clippedOut.h())
+					continue;
+				placed = true;
+				for (size_t j = 0; j < i; ++j) {
+					const ItemLabel &other = labelQueue[j];
+					if (other.height > 0 && label.pos.x < other.pos.x + other.width + BorderX
+					    && other.pos.x < label.pos.x + label.width + BorderX
+					    && label.pos.y < other.pos.y + other.height + BorderY
+					    && other.pos.y < label.pos.y + label.height + BorderY) {
+						placed = false;
+						break;
+					}
+				}
+				if (placed)
+					break;
+			}
+		}
+		if (!placed)
+			label.height = 0; // A full screen cannot hold every label; selected item has priority.
+	}
+	const int labelMarginTop = TextMarginTop();
+#else
 	UsedX usedX;
 	const int labelHeight = LabelHeight();
 	const int labelMarginTop = TextMarginTop();
@@ -185,8 +239,12 @@ void DrawItemNameLabels(const Surface &out)
 		} while (!canShow);
 	}
 
+#endif
 	const Point worldMouse = GetWorldMousePosition();
 	for (const ItemLabel &label : labelQueue) {
+		if (label.height == 0)
+			continue;
+		const int labelHeight = label.height;
 		const Item &item = Items[label.id];
 
 		if (worldMouse.x >= label.pos.x && worldMouse.x < label.pos.x + label.width
