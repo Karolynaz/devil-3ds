@@ -31,7 +31,7 @@ for block in (ROOT / 'Translations/lt.po').read_text().split('\n\n'):
             elif target == 'value': value += ast.literal_eval(line)
     if key and value: translations[key] = value
 
-labels = ['Single Player', 'Multi Player', 'Settings', 'Credits', 'Exit Diablo', 'Exit Hellfire']
+labels = ['Single Player', 'Multi Player', 'Settings', 'Credits', 'Exit Diablo', 'Exit Hellfire', 'ZeroTier', 'TCP/IP (LAN)', 'Select Connection', 'Multiplayer']
 cases = labels + [translations.get(label, label) for label in labels]
 chars = set(''.join(cases))
 widths = []
