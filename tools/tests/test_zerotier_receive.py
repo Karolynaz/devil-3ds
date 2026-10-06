@@ -72,7 +72,7 @@ public:
         std::array<unsigned char,16> addr{};
         bool operator<(const endpoint &other) const { return addr<other.addr; }
     };
-    struct peer_state { int fd=-1; Queue recv_queue; };
+    struct peer_state { int fd=-1; bool connecting=false; Queue recv_queue; std::deque<buffer_t> send_queue; };
 ''' + constant + "\n" + member + r'''
     int fd_tcp=-1, fd_udp=-1;
     std::map<endpoint,peer_state> peer_list;
@@ -81,7 +81,7 @@ public:
     bool accept_all(); bool recv_peer(const endpoint &); bool recv_from_peers();
     bool recv_from_udp(); bool recv(endpoint &,buffer_t &);
     bool send_queued_all() { return true; }
-    static void set_nonblock(int) {} static void set_nodelay(int) {}
+    static bool set_nonblock(int) {return true;} static void set_nodelay(int) {}
 };
 '''
 test = r'''
@@ -115,6 +115,11 @@ int main() {
     tcpResults={0};
     assert(!protocol.recv_peer(tcpPeer)); // Closed TCP stream must stop receiving.
     assert(state.recv_queue.packets.empty());
+    state.connecting=true;int before=tcpCalls;
+    protocol.recv_from_peers();assert(tcpCalls==before && protocol.disconnect_queue.empty());
+    state.connecting=false;tcpResults={0};
+    protocol.recv_from_peers();assert(state.fd==-1 && protocol.disconnect_queue.size()==1);
+    protocol.recv_from_peers();assert(protocol.disconnect_queue.size()==1); // No repeat event.
 }
 '''
 with tempfile.TemporaryDirectory() as directory:

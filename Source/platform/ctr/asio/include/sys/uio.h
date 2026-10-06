@@ -8,7 +8,15 @@ struct iovec {
 	size_t iov_len;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ssize_t readv(int __fd, const struct iovec *__iovec, int __count);
 ssize_t writev(int __fd, const struct iovec *__iovec, int __count);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

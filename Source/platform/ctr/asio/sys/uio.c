@@ -4,10 +4,12 @@
 
 ssize_t readv(int __fd, const struct iovec *__iovec, int __count)
 {
-	return ENOTSUP;
+	errno = ENOTSUP;
+	return -1;
 }
 
 ssize_t writev(int __fd, const struct iovec *__iovec, int __count)
 {
-	return ENOTSUP;
+	errno = ENOTSUP;
+	return -1;
 }

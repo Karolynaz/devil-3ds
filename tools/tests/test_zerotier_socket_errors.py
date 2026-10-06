@@ -51,7 +51,7 @@ public:
  int fd_udp=-1,fd_tcp=-1;unsigned default_port=6112;
  void close_all() {if(fd_udp!=-1) lwip_close(fd_udp);if(fd_tcp!=-1) lwip_close(fd_tcp);fd_udp=fd_tcp=-1;}
  static void set_reuseaddr(int fd) {assert(fd>=0);}
- static void set_nonblock(int fd) {assert(fd>=0);}
+ static bool set_nonblock(int fd) {assert(fd>=0);return failure!=fd+5;}
  static void set_nodelay(int fd) {assert(fd>=0);}
  std::expected<bool,PacketError> network_online();
  bool send_oob(const endpoint &,const buffer_t &) const;
@@ -76,6 +76,11 @@ int main() {
  status=protocol.network_online();assert(status && *status && sockets==2); // Reuse.
  for(int result: {-1,0,2,3}) {
   sentBytes=result;assert(protocol.send_oob({}, {1,2,3})==(result==3));
+ }
+ protocol.close_all();
+ for(int fail: {6,7}) {
+  failure=fail;sockets=binds=closes=0;
+  status=protocol.network_online();assert(!status && protocol.fd_tcp==-1 && protocol.fd_udp==-1);
  }
 }
 '''

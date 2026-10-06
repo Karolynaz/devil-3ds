@@ -1,7 +1,35 @@
 #include <errno.h>
+#include <limits.h>
+#include <stddef.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+
+static int validate_iov(const struct msghdr *message)
+{
+	if (message == NULL || (message->msg_iovlen != 0 && message->msg_iov == NULL)) {
+		errno = EFAULT;
+		return -1;
+	}
+	if (message->msg_iovlen < 0) {
+		errno = EINVAL;
+		return -1;
+	}
+	size_t total = 0;
+	for (int i = 0; i < message->msg_iovlen; ++i) {
+		const struct iovec *iov = &message->msg_iov[i];
+		if (iov->iov_len > (size_t)SSIZE_MAX - total) {
+			errno = EINVAL;
+			return -1;
+		}
+		if (iov->iov_len != 0 && iov->iov_base == NULL) {
+			errno = EFAULT;
+			return -1;
+		}
+		total += iov->iov_len;
+	}
+	return 0;
+}
 
 ssize_t stream_recvmsg(int socket, struct msghdr *message, int flags)
 {
@@ -11,23 +39,21 @@ ssize_t stream_recvmsg(int socket, struct msghdr *message, int flags)
 	ssize_t total = 0;
 	for (int i = 0; i < iovcount; ++i, ++next) {
 		struct iovec *iov = next;
-		void *base = iov->iov_base;
+		char *base = iov->iov_base;
 		size_t length = iov->iov_len;
 
 		while (length > 0) {
 			ssize_t bytesReceived = recv(socket, base, length, flags);
-			if (bytesReceived == -1) {
-				if (total > 0 && errno == EAGAIN)
-					return total;
-				if (total > 0 && errno == EWOULDBLOCK)
-					return total;
-				return -1;
-			}
+			// EOF must also end MSG_WAITALL. Preserve data already received
+			// if the peer closes or a later receive fails.
+			if (bytesReceived <= 0)
+				return total > 0 ? total : (bytesReceived < 0 ? -1 : 0);
 			base += bytesReceived;
 			length -= bytesReceived;
 			total += bytesReceived;
 
-			if ((flags & MSG_WAITALL) == 0)
+			// A second peek would copy the same bytes again.
+			if ((flags & MSG_WAITALL) == 0 || (flags & MSG_PEEK) != 0)
 				return total;
 		}
 	}
@@ -36,18 +62,25 @@ ssize_t stream_recvmsg(int socket, struct msghdr *message, int flags)
 
 ssize_t dgram_recvmsg(int socket, struct msghdr *message, int flags)
 {
-	return ENOTSUP;
+	errno = ENOTSUP;
+	return -1;
 }
 
 ssize_t recvmsg(int socket, struct msghdr *message, int flags)
 {
+	if (validate_iov(message) < 0)
+		return -1;
 	int type;
 	socklen_t length = sizeof(int);
-	if (getsockopt(socket, SOL_SOCKET, SO_TYPE, &type, &length) == -1)
+	if (getsockopt(socket, SOL_SOCKET, SO_TYPE, &type, &length) < 0)
 		return -1;
 
-	if (type == SOCK_STREAM)
+	if (type == SOCK_STREAM) {
+		message->msg_flags = 0;
+		message->msg_namelen = 0;
+		message->msg_controllen = 0;
 		return stream_recvmsg(socket, message, flags);
+	}
 	if (type == SOCK_DGRAM)
 		return dgram_recvmsg(socket, message, flags);
 
@@ -69,28 +102,34 @@ ssize_t stream_sendmsg(int socket, const struct msghdr *message, int flags)
 			continue;
 
 		ssize_t bytesSent = send(socket, base, length, flags);
-		if (bytesSent == -1) {
-			if (total > 0 && errno == EAGAIN)
-				return total;
-			if (total > 0 && errno == EWOULDBLOCK)
-				return total;
-			return -1;
-		}
+		if (bytesSent < 0)
+			return total > 0 ? total : -1;
 		total += bytesSent;
+		// The caller advances its buffers by the returned byte count.
+		// Sending the next vector now would skip this vector's unsent tail.
+		if ((size_t)bytesSent < length)
+			return total;
 	}
 	return total;
 }
 
 ssize_t dgram_sendmsg(int socket, const struct msghdr *message, int flags)
 {
-	return ENOTSUP;
+	errno = ENOTSUP;
+	return -1;
 }
 
 ssize_t sendmsg(int socket, const struct msghdr *message, int flags)
 {
+	if (validate_iov(message) < 0)
+		return -1;
+	if (message->msg_controllen != 0) {
+		errno = ENOTSUP;
+		return -1;
+	}
 	int type;
 	socklen_t length = sizeof(int);
-	if (getsockopt(socket, SOL_SOCKET, SO_TYPE, &type, &length) == -1)
+	if (getsockopt(socket, SOL_SOCKET, SO_TYPE, &type, &length) < 0)
 		return -1;
 
 	if (type == SOCK_STREAM)
@@ -104,5 +143,6 @@ ssize_t sendmsg(int socket, const struct msghdr *message, int flags)
 
 int socketpair(int domain, int type, int protocol, int socket_vector[2])
 {
-	return ENOTSUP;
+	errno = ENOTSUP;
+	return -1;
 }

@@ -106,6 +106,8 @@ private:
 
 	struct peer_state {
 		int fd = -1;
+		bool connecting = false;
+		uint32_t connectStarted = 0;
 		std::deque<buffer_t> send_queue;
 		frame_queue recv_queue;
 	};
@@ -120,7 +122,7 @@ private:
 	static uint64_t current_ms();
 	void close_all();
 
-	static void set_nonblock(int fd);
+	static bool set_nonblock(int fd);
 	static void set_nodelay(int fd);
 	static void set_reuseaddr(int fd);
 
