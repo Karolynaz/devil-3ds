@@ -65,7 +65,7 @@ int main(void) {
     socket_type=SOCK_STREAM;
     assert(ctr_sendmsg(7,NULL,0)==-1 && errno==EFAULT);
     message.msg_iov=NULL;assert(ctr_recvmsg(7,&message,0)==-1 && errno==EFAULT);
-    message.msg_iov=vectors;vectors[0].iov_len=(size_t)SSIZE_MAX;
+    message.msg_iov=vectors;vectors[0].iov_len=((size_t)-1)>>1;
     assert(ctr_sendmsg(7,&message,0)==-1 && errno==EINVAL);
     vectors[0].iov_len=4;vectors[0].iov_base=NULL;
     assert(ctr_recvmsg(7,&message,0)==-1 && errno==EFAULT);

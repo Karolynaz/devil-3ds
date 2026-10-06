@@ -1,5 +1,4 @@
 #include <errno.h>
-#include <limits.h>
 #include <stddef.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -16,9 +15,13 @@ static int validate_iov(const struct msghdr *message)
 		return -1;
 	}
 	size_t total = 0;
+	// devkitARM newlib omits SSIZE_MAX. On SOC, ssize_t is the signed
+	// counterpart of size_t; derive its bound without that optional macro.
+	_Static_assert(sizeof(ssize_t) == sizeof(size_t), "socket size types must match");
+	const size_t maxTransfer = ((size_t)-1) >> 1;
 	for (int i = 0; i < message->msg_iovlen; ++i) {
 		const struct iovec *iov = &message->msg_iov[i];
-		if (iov->iov_len > (size_t)SSIZE_MAX - total) {
+		if (iov->iov_len > maxTransfer - total) {
 			errno = EINVAL;
 			return -1;
 		}
