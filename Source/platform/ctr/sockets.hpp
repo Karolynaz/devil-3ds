@@ -8,5 +8,6 @@ bool n3ds_socInit();
 void n3ds_socExit();
 bool n3ds_initSecureRandom();
 std::string n3ds_networkError();
+std::string n3ds_localAddress();
 
 } // namespace devilution

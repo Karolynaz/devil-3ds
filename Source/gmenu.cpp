@@ -4,6 +4,9 @@
  * Implementation of the in-game navigation and interaction.
  */
 #include "gmenu.h"
+#ifdef __3DS__
+#include "gamemenu.h"
+#endif
 
 #include <algorithm>
 #include <cstdint>
@@ -347,6 +350,14 @@ void gmenu_draw(const Surface &out)
 		const ClxSprite sprite = (*sgpLogo)[LogoAnim_frame];
 		ClxDraw(out, { (gnScreenWidth - sprite.width()) / 2, 102 + uiPositionY }, sprite);
 		int y = 110 + uiPositionY;
+#endif
+#ifdef __3DS__
+		const char *address = gamemenu_network_address();
+		if (address[0] != '\0') {
+			const int width = GetLineWidth(address, GameFont12, 1, nullptr, CtrTextScale::TopScreen);
+			DrawString(out, address, Point { (gnScreenWidth - width) / 2, 220 },
+			    { .flags = UiFlags::FontSize12 | UiFlags::ColorWhite, .spacing = 1 });
+		}
 #endif
 		TMenuItem *i = sgpCurrentMenu;
 		if (sgpCurrentMenu->fnMenu != nullptr) {

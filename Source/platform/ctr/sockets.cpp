@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <cstdio>
 #include <malloc.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 
 #include <3ds.h>
 
@@ -131,6 +134,18 @@ bool n3ds_initSecureRandom()
 	const Result result = PS_GenerateRandomBytes(probe, sizeof(probe));
 	if (R_FAILED(result)) return serviceFailed("ps:ps random generation", result);
 	return true;
+}
+
+std::string n3ds_localAddress()
+{
+	SocketGuard guard;
+	if (!initialized) return {};
+	in_addr address {}, netmask {}, broadcast {};
+	if (SOCU_GetIPInfo(&address, &netmask, &broadcast) != 0) return {};
+	if (address.s_addr == 0) return {};
+	char text[INET_ADDRSTRLEN];
+	if (inet_ntop(AF_INET, &address, text, sizeof(text)) == nullptr) return {};
+	return text;
 }
 
 std::string n3ds_networkError()

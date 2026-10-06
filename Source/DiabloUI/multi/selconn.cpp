@@ -137,49 +137,42 @@ bool WaitForZeroTierStartup()
 
 void SelconnLoad()
 {
+#ifdef __3DS__
+	UiLoadBlackBackground();
+#else
 	LoadBackgroundArt("ui_art\\selconn");
+#endif
 
 #ifndef NONET
 #ifndef DISABLE_ZERO_TIER
 	vecConnItems.push_back(std::make_unique<UiListItem>(std::string_view(ConnectionNames[SELCONN_ZT]), SELCONN_ZT));
 #endif
 #ifndef DISABLE_TCP
+#ifdef __3DS__
+	vecConnItems.push_back(std::make_unique<UiListItem>("TCP/IP (LAN)", SELCONN_TCP));
+#else
 	vecConnItems.push_back(std::make_unique<UiListItem>(_(ConnectionNames[SELCONN_TCP]), SELCONN_TCP));
 #endif
 #endif
+#endif
+#ifndef __3DS__
 	vecConnItems.push_back(std::make_unique<UiListItem>(_(ConnectionNames[SELCONN_LOOPBACK]), SELCONN_LOOPBACK));
+#endif
 
 	UiAddBackground(&vecSelConnDlg);
+#ifndef __3DS__
 	UiAddLogo(&vecSelConnDlg);
+#endif
 
+#ifndef __3DS__
 	const Point uiPosition = GetUIRectangle().position;
+#endif
 
 #ifdef __3DS__
-	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), 175, 590, 35 };
-	vecSelConnDlg.push_back(std::make_unique<UiArtText>(_("Multi Player Game").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
-
-	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 35), 245, DESCRIPTION_WIDTH, 20 };
-	vecSelConnDlg.push_back(std::make_unique<UiArtText>(selconn_MaxPlayers, rect2, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark));
-
-	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 35), 265, DESCRIPTION_WIDTH, 20 };
-	vecSelConnDlg.push_back(std::make_unique<UiArtText>(_("Requirements:").data(), rect3, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark));
-
-	const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 35), 285, DESCRIPTION_WIDTH, 60 };
-	vecSelConnDlg.push_back(std::make_unique<UiArtText>(selconn_Description, rect4, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark, 1, 16));
-
-	const SDL_Rect rect5 = { (Sint16)(uiPosition.x + 30), 350, 220, 25 };
-	vecSelConnDlg.push_back(std::make_unique<UiArtText>(_("no gateway needed").data(), rect5, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 0));
-
-	const SDL_Rect rect6 = { (Sint16)(uiPosition.x + 35), 380, DESCRIPTION_WIDTH, 20 };
-	vecSelConnDlg.push_back(std::make_unique<UiArtText>(selconn_Gateway, rect6, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilverDark));
-
-	const SDL_Rect rect7 = { (Sint16)(uiPosition.x + 300), 245, 295, 26 };
-	vecSelConnDlg.push_back(std::make_unique<UiArtText>(_("Select Connection").data(), rect7, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
-
-	const SDL_Rect rect8 = { (Sint16)(uiPosition.x + 16), 435, 250, 35 };
-	vecSelConnDlg.push_back(std::make_unique<UiArtTextButton>(_("Change Gateway"), nullptr, rect8, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold | UiFlags::ElementHidden));
-
-	vecSelConnDlg.push_back(std::make_unique<UiList>(vecConnItems, vecConnItems.size(), uiPosition.x + 305, 275, 285, 26, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::VerticalCenter | UiFlags::ColorUiGoldDark));
+	vecSelConnDlg.push_back(std::make_unique<UiArtText>(_("Multiplayer").data(), MakeSdlRect(24, 24, 592, 36), UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver));
+	vecSelConnDlg.push_back(std::make_unique<UiArtText>(selconn_Description, MakeSdlRect(50, 85, 540, 110), UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 1, 26));
+	vecSelConnDlg.push_back(std::make_unique<UiArtText>(_("Select Connection").data(), MakeSdlRect(50, 255, 540, 36), UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver));
+	vecSelConnDlg.push_back(std::make_unique<UiList>(vecConnItems, vecConnItems.size(), 65, 320, 510, 36, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::VerticalCenter | UiFlags::ColorUiGold));
 #else
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), ((Sint16)(uiPosition.y + 161)), 590, 35 };
 	vecSelConnDlg.push_back(std::make_unique<UiArtText>(_("Multi Player Game").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
@@ -252,7 +245,7 @@ void SelconnFocus(size_t value)
 
 	CopyUtf8(selconn_MaxPlayers, FormatRuntime(_("Players Supported: {:d}"), players), sizeof(selconn_MaxPlayers));
 #ifdef __3DS__
-	CopyUtf8(selconn_Description, WordWrapString(selconn_Description, DESCRIPTION_WIDTH, GameFont12, 1, /*doubleWidth=*/true), sizeof(selconn_Description));
+	CopyUtf8(selconn_Description, WordWrapString(selconn_Description, 540, GameFont24, 1, CtrTextScale::TopScreen), sizeof(selconn_Description));
 #else
 	CopyUtf8(selconn_Description, WordWrapString(selconn_Description, DESCRIPTION_WIDTH), sizeof(selconn_Description));
 #endif
@@ -269,20 +262,22 @@ void SelconnSelect(size_t value)
 #endif
 
 	SelconnFree();
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+	if (provider == SELCONN_ZT && !WaitForZeroTierStartup()) {
+		SelconnLoad();
+		return;
+	}
+#endif
 	selconn_EndMenu = SNetInitializeProvider(provider, selconn_GameData);
-	SelconnLoad();
+	if (!selconn_EndMenu)
+		SelconnLoad();
 }
 
 } // namespace
 
 bool UiSelectProvider(GameData *gameData)
 {
-#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
-	if (!WaitForZeroTierStartup())
-		return false;
-	provider = SELCONN_ZT;
-	return SNetInitializeProvider(provider, gameData);
-#endif
+
 	selconn_GameData = gameData;
 	SelconnLoad();
 

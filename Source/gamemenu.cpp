@@ -12,6 +12,8 @@
 #include "cursor.h"
 #ifdef __3DS__
 #include "control/control_chat.hpp"
+#include "platform/ctr/sockets.hpp"
+#include "storm/storm_net.hpp"
 #endif
 #include "automap.h"
 #include "diablo_msg.hpp"
@@ -37,6 +39,10 @@
 namespace devilution {
 
 bool isGameMenuOpen = false;
+#ifdef __3DS__
+namespace { std::string MenuNetworkAddress; }
+const char *gamemenu_network_address() { return MenuNetworkAddress.c_str(); }
+#endif
 
 namespace {
 
@@ -424,6 +430,13 @@ void gamemenu_save_game(bool /*bActivate*/)
 void gamemenu_on()
 {
 	isGameMenuOpen = true;
+#ifdef __3DS__
+	MenuNetworkAddress.clear();
+	if (gbIsMultiplayer && provider == SELCONN_TCP) {
+		const std::string ip = n3ds_localAddress();
+		MenuNetworkAddress = ip.empty() ? "IP: unavailable" : "IP: " + ip;
+	}
+#endif
 	if (!gbIsMultiplayer) {
 		gmenu_set_items(sgSingleMenu, GamemenuUpdateSingle);
 	} else {
