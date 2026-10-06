@@ -19,6 +19,7 @@ def function(signature):
 
 
 HARNESS = r'''
+#define __3DS__ 1
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -104,7 +105,8 @@ int main() {
     connectError=EINPROGRESS;peerReady=false;protocol.disconnect_queue.clear();
     now=0xfffffff0;state.send_queue.push_back({1});protocol.send_queued_all();
     now=10;protocol.send_queued_all();assert(state.connecting && state.fd==7); // Clock wraps safely.
-    now=31000;protocol.send_queued_all();assert(state.fd==-1 && closes==4 && protocol.disconnect_queue.size()==1);
+    now=31000;protocol.send_queued_all();assert(state.connecting && state.fd==7);
+    now=61000;protocol.send_queued_all();assert(state.fd==-1 && closes==4 && protocol.disconnect_queue.size()==1);
     protocol.disconnect_queue.clear();now=0;state.send_queue.push_back({1});protocol.send_queued_all();
     socketError=ECONNREFUSED;protocol.send_queued_all();
     assert(state.fd==-1 && closes==5 && protocol.disconnect_queue.size()==1);

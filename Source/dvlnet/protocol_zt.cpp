@@ -234,7 +234,11 @@ std::expected<bool, PacketError> protocol_zt::send_queued_peer(const endpoint &p
 				return std::unexpected(ProtocolError("ZeroTier peer connection: {}", strerror(errno)));
 			// A pending nonblocking connect must not be received from or
 			// mistaken for a dropped peer. Bound it so retries cannot hang.
+#ifdef __3DS__
+			return SDL_GetTicks() - state.connectStarted < 60000;
+#else
 			return SDL_GetTicks() - state.connectStarted < 30000;
+#endif
 		}
 		state.connecting = false;
 	}

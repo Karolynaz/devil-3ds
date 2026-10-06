@@ -77,6 +77,13 @@ uint32_t lastPublicGameRequest = 0;
 uint32_t lastPublicGameUpdate = 0;
 uint32_t publicGameSearchStart = 0;
 size_t HighlightedItem;
+#ifdef __3DS__
+constexpr uint32_t PublicRequestStartupTimeout = 30000;
+constexpr uint32_t PublicDiscoveryWait = 5000;
+#else
+constexpr uint32_t PublicRequestStartupTimeout = 10000;
+constexpr uint32_t PublicDiscoveryWait = 2000;
+#endif
 
 void selgame_FreeVectors()
 {
@@ -195,9 +202,9 @@ void UiInitGameSelectionList(std::string_view search)
 				vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("ZeroTier disconnected. Retry Multiplayer."), -1, UiFlags::ElementDisabled | UiFlags::ColorUiSilver));
 			else
 #endif
-			if (firstPublicGameInfoRequestSend == 0 && SDL_GetTicks() - publicGameSearchStart >= 10000)
+			if (firstPublicGameInfoRequestSend == 0 && SDL_GetTicks() - publicGameSearchStart >= PublicRequestStartupTimeout)
 				vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Unable to request public games."), -1, UiFlags::ElementDisabled | UiFlags::ColorUiSilver));
-			else if (firstPublicGameInfoRequestSend == 0 || (SDL_GetTicks() - firstPublicGameInfoRequestSend) < 2000)
+			else if (firstPublicGameInfoRequestSend == 0 || (SDL_GetTicks() - firstPublicGameInfoRequestSend) < PublicDiscoveryWait)
 				vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Loading..."), -1, UiFlags::ElementDisabled | UiFlags::ColorUiSilver));
 			else
 				vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("None"), -1, UiFlags::ElementDisabled | UiFlags::ColorUiSilver));
@@ -881,6 +888,11 @@ bool UiSelectGame(GameData *gameData, int *playerId)
 		UiPollAndRender();
 		if (provider == SELCONN_ZT)
 			RefreshGameList();
+#ifdef __3DS__
+		// Keep the lobby responsive while reserving CPU for ZeroTier's
+		// lower-priority workers. Gameplay uses its normal frame pacing.
+		if (provider == SELCONN_ZT) SDL_Delay(25);
+#endif
 	}
 	selgame_Free();
 

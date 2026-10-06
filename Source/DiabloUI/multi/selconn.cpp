@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <memory>
 #include <optional>
 #include <string>
@@ -23,6 +24,7 @@
 #include "storm/storm_net.hpp"
 #include "utils/format.hpp"
 #include "utils/language.h"
+#include "utils/paths.h"
 #include "utils/ui_fwd.h"
 #include "utils/utf8.hpp"
 #ifdef __3DS__
@@ -78,21 +80,41 @@ bool WaitForZeroTierStartup()
 
 	net::zerotier_network_start();
 	const uint32_t start = SDL_GetTicks();
+	const std::unique_ptr<FILE, decltype(&std::fclose)> log(std::fopen((paths::ConfigPath() + "network-zerotier.log").c_str(), "wb"), std::fclose);
+	uint32_t lastLog = start;
+	int previousState = -1, previousOnline = -1, previousReady = -1, previousError = 0;
 	net::CtrZeroTierStartup state = net::CtrZeroTierStartup::Starting;
 	while (!StartupCancelled) {
 		CopyUtf8(status, WordWrapString(net::zerotier_node_online() ? _("Joining ZeroTier network...") : _("Connecting to ZeroTier..."), 540, GameFont24, 1, CtrTextScale::TopScreen), sizeof(status));
 		UiClearScreen();
 		UiPollAndRender();
+		// Identity generation and node/lwIP workers have lower priority than
+		// this menu. Reserve CPU time for them on real hardware.
+		SDL_Delay(50);
 		state = net::zerotier_startup_state();
+		const uint32_t elapsed = SDL_GetTicks() - start;
+		const int online = net::zerotier_node_online();
+		const int ready = net::zerotier_network_ready();
+		const int error = net::zerotier_network_error();
+		if (log && (static_cast<int>(state) != previousState || online != previousOnline || ready != previousReady
+		    || error != previousError || SDL_GetTicks() - lastLog >= 5000)) {
+			std::fprintf(log.get(), "%.3fs: startup %d; online %d; network ready %d; network error %d; startup error %d\n",
+			    elapsed / 1000.0, static_cast<int>(state), online, ready, error, net::zerotier_startup_error());
+			std::fflush(log.get());
+			lastLog = SDL_GetTicks();
+			previousState = static_cast<int>(state); previousOnline = online; previousReady = ready; previousError = error;
+		}
 		if (net::zerotier_network_ready() || net::zerotier_network_error() != 0
 		    || state == net::CtrZeroTierStartup::NoWifi || state == net::CtrZeroTierStartup::SecureRandomFailed || state == net::CtrZeroTierStartup::Failed
-		    || SDL_GetTicks() - start >= 45000)
+		    || elapsed >= 120000)
 			break;
 	}
 	UiInitList_clear();
 	ArtBackground = std::nullopt;
-	if (StartupCancelled)
+	if (StartupCancelled) {
+		if (log) std::fprintf(log.get(), "Cancelled by user.\n");
 		return false;
+	}
 	if (net::zerotier_network_ready())
 		return true;
 	std::string error;
@@ -106,6 +128,7 @@ bool WaitForZeroTierStartup()
 		    : _("ZeroTier did not respond. Check internet access or try another network.");
 	else
 		error = FormatRuntime(_("Unable to start ZeroTier (error {})."), net::zerotier_startup_error());
+	if (log) std::fprintf(log.get(), "%s\n", error.c_str());
 	UiSelOkDialog(_("Multiplayer").data(), error.c_str(), false);
 	return false;
 }
