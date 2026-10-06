@@ -11,6 +11,9 @@ SDK = r'''
 #include <cstddef>
 #include <cstdint>
 using u8=unsigned char;
+using u64=uint64_t;
+constexpr u64 SYSCLOCK_ARM11=1000;
+inline u64 svcGetSystemTick() {static u64 tick=0;return tick+=100;}
 using Result=int;
 #define R_SUCCEEDED(r) ((r)>=0)
 #define R_FAILED(r) ((r)<0)
@@ -78,7 +81,12 @@ inline void mbedtls_ssl_conf_curves(mbedtls_ssl_config *,const mbedtls_ecp_group
 inline void mbedtls_debug_set_threshold(int level) {assert(level==2);}
 inline void mbedtls_ssl_conf_dbg(mbedtls_ssl_config *,void (*fn)(void *,int,const char *,int,const char *),void *user) {
     fn(user,2,"ssl_cli.c",1,"client state: 4\n");
+    fn(user,2,"ssl_cli.c",1,"client state: 4\n");
     fn(user,2,"ssl_cli.c",1,"ECDH curve: x25519\n");
+    fn(user,2,"ssl_msg.c",1,"ssl->f_send() returned 100 (-0x0064)\n");
+    fn(user,2,"ssl_msg.c",1,"ssl->f_send() returned -26880 (-0x6900)\n");
+    fn(user,2,"ssl_msg.c",1,"ssl->f_recv(_timeout)() returned 200 (-0x00c8)\n");
+    fn(user,2,"ssl_msg.c",1,"ssl->f_recv(_timeout)() returned 0 (-0x0000)\n");
     fn(user,2,"ssl_cli.c",1,"irrelevant debug data");
 }
 '''
@@ -201,6 +209,9 @@ int main() {
         std::ifstream file(paths::ConfigPath()+"network-update.log");
         const std::string log((std::istreambuf_iterator<char>(file)),std::istreambuf_iterator<char>());
         assert(log.find("TLS state 4; curve x25519")!=std::string::npos && log.find("curl 7")!=std::string::npos);
+        assert(log.find("TLS phase 4 at 0.100s")!=std::string::npos);
+        assert(log.find("TLS phase 4",log.find("TLS phase 4")+1)==std::string::npos);
+        assert(log.find("TLS bytes sent 100; received 200; last send -26880; last receive 0")!=std::string::npos);
     }
     responses.push_back({"",200,CURLE_OPERATION_TIMEDOUT,0,0,0}); assert(run().detail.starts_with("GitHub connection timed out."));
     responses.push_back({"",200,CURLE_OPERATION_TIMEDOUT,0,0.1,0}); assert(run().detail.starts_with("TLS handshake timed out."));

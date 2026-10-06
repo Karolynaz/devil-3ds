@@ -783,6 +783,12 @@ void UiSettingsMenu()
 			UiClearScreen();
 			UpdatePadEntryTimerText();
 			UiPollAndRender(eventHandler);
+#ifdef __3DS__
+			// The TLS worker has lower priority than the UI. Give it a real
+			// CPU window so cryptography can finish before the server closes
+			// a slow handshake. Restore normal menu speed when it completes.
+			if (CtrUpdateBusy()) SDL_Delay(25);
+#endif
 		}
 
 		CleanUpSettingsUI();

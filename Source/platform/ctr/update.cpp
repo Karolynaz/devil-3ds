@@ -27,17 +27,35 @@ struct TlsTrace {
 	int state = -1;
 	char curve[32] {};
 	char errorBuffer[CURL_ERROR_SIZE] {};
+	struct Event { int state; u64 tick; } events[32] {};
+	size_t eventCount = 0;
+	u64 started = 0;
+	u64 sent = 0, received = 0;
+	int lastSend = 0, lastReceive = 0;
 };
 
 // Keep only negotiation metadata, never raw packets or key material.
 void TlsDebug(void *user, int, const char *, int, const char *message)
 {
 	auto &trace = *static_cast<TlsTrace *>(user);
-	if (std::strncmp(message, "client state: ", 14) == 0)
-		trace.state = std::atoi(message + 14);
-	else if (std::strncmp(message, "ECDH curve: ", 12) == 0) {
+	if (std::strncmp(message, "client state: ", 14) == 0) {
+		const int state = std::atoi(message + 14);
+		if (state != trace.state && trace.eventCount < 32)
+			trace.events[trace.eventCount++] = { state, svcGetSystemTick() };
+		trace.state = state;
+	} else if (std::strncmp(message, "ECDH curve: ", 12) == 0) {
 		std::snprintf(trace.curve, sizeof(trace.curve), "%s", message + 12);
 		trace.curve[std::strcspn(trace.curve, "\r\n")] = '\0';
+	} else {
+		constexpr char SendPrefix[] = "ssl->f_send() returned ";
+		constexpr char ReceivePrefix[] = "ssl->f_recv(_timeout)() returned ";
+		if (std::strncmp(message, SendPrefix, sizeof(SendPrefix) - 1) == 0) {
+			trace.lastSend = std::atoi(message + sizeof(SendPrefix) - 1);
+			if (trace.lastSend > 0) trace.sent += trace.lastSend;
+		} else if (std::strncmp(message, ReceivePrefix, sizeof(ReceivePrefix) - 1) == 0) {
+			trace.lastReceive = std::atoi(message + sizeof(ReceivePrefix) - 1);
+			if (trace.lastReceive > 0) trace.received += trace.lastReceive;
+		}
 	}
 }
 
@@ -97,6 +115,10 @@ bool Get(CURL *curl, TlsTrace &trace, std::string_view url, std::string &body, s
 {
 	if (!curl) { error = "HTTP initialization failed."; return false; }
 	trace.state = -1;
+	trace.eventCount = 0;
+	trace.started = svcGetSystemTick();
+	trace.sent = trace.received = 0;
+	trace.lastSend = trace.lastReceive = 0;
 	trace.curve[0] = '\0';
 	char *errorBuffer = trace.errorBuffer;
 	errorBuffer[0] = '\0';
@@ -140,6 +162,11 @@ bool Get(CURL *curl, TlsTrace &trace, std::string_view url, std::string &body, s
 		std::fprintf(trace.log.get(), "Version %s; URL %s\nHTTP %ld; curl %d; TCP %.3fs; TLS %.3fs; total %.3fs; TLS state %d; curve %s\n%s\n",
 		    CTR_PORT_VERSION, address.c_str(), status, static_cast<int>(code), connected, secured, elapsed, trace.state, trace.curve,
 		    errorBuffer[0] ? errorBuffer : curl_easy_strerror(code));
+		for (size_t i = 0; i < trace.eventCount; ++i)
+			std::fprintf(trace.log.get(), "TLS phase %d at %.3fs\n", trace.events[i].state,
+			    static_cast<double>(trace.events[i].tick - trace.started) / SYSCLOCK_ARM11);
+		std::fprintf(trace.log.get(), "TLS bytes sent %llu; received %llu; last send %d; last receive %d\n",
+		    static_cast<unsigned long long>(trace.sent), static_cast<unsigned long long>(trace.received), trace.lastSend, trace.lastReceive);
 		std::fflush(trace.log.get());
 	}
 	if (code != CURLE_OK) {
