@@ -149,7 +149,7 @@ void SelconnLoad()
 #endif
 #ifndef DISABLE_TCP
 #ifdef __3DS__
-	vecConnItems.push_back(std::make_unique<UiListItem>("TCP/IP (LAN)", SELCONN_TCP));
+	vecConnItems.push_back(std::make_unique<UiListItem>(std::string_view("TCP/IP (LAN)"), SELCONN_TCP));
 #else
 	vecConnItems.push_back(std::make_unique<UiListItem>(_(ConnectionNames[SELCONN_TCP]), SELCONN_TCP));
 #endif
