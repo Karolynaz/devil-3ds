@@ -1,12 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdio>
 
 namespace devilution {
 namespace net {
 
 #ifdef __3DS__
 enum class CtrZeroTierStartup { Idle, Starting, Started, NoWifi, SecureRandomFailed, Failed };
+void zerotier_log_diagnostics(FILE *file);
 CtrZeroTierStartup zerotier_startup_state();
 int zerotier_startup_error();
 bool zerotier_node_online();

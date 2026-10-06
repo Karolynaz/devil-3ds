@@ -47,6 +47,20 @@ extern "C" void zts_ctr_shutdown();
 
 #include "dvlnet/zerotier_lwip.h"
 
+#ifdef __3DS__
+namespace {
+std::atomic_int CtrZtDiagnostics[8] {};
+}
+extern "C" void ctr_zt_trace(unsigned kind, int value)
+{
+	if (kind >= 8) return;
+	if (kind == 2 || kind == 3 || kind == 4 || kind == 5)
+		CtrZtDiagnostics[kind].fetch_add(1, std::memory_order_relaxed);
+	else
+		CtrZtDiagnostics[kind].store(value, std::memory_order_relaxed);
+}
+#endif
+
 namespace devilution {
 namespace net {
 
@@ -164,6 +178,7 @@ void Callback(void *ptr)
 #endif
 	auto *msg = reinterpret_cast<zts_event_msg_t *>(ptr);
 #ifdef __3DS__
+	ctr_zt_trace(1, msg->event_code);
 	Log("ZeroTier event: {}", msg->event_code);
 #endif
 
@@ -244,6 +259,13 @@ bool zerotier_peers_ready()
 }
 
 #ifdef __3DS__
+void zerotier_log_diagnostics(FILE *file)
+{
+	std::fprintf(file, "  phase %d; event %d; UDP binds %d; sends %d; receives %d; polls %d; socket errno %d; worker error %d\n",
+	    CtrZtDiagnostics[0].load(), CtrZtDiagnostics[1].load(), CtrZtDiagnostics[2].load(), CtrZtDiagnostics[3].load(),
+	    CtrZtDiagnostics[4].load(), CtrZtDiagnostics[5].load(), CtrZtDiagnostics[6].load(), CtrZtDiagnostics[7].load());
+}
+
 CtrZeroTierStartup zerotier_startup_state()
 {
 	return StartupState.load(std::memory_order_acquire);

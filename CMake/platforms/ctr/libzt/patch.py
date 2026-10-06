@@ -252,3 +252,32 @@ edit('src/VirtualTap.cpp', lambda s: '#include <atomic>\n' + s.replace(
     '    sys_sem_wait(&sem);\n    sys_sem_free(&sem);\n    // Main loop').replace(
     '        DEFAULT_THREAD_PRIO);\n}',
     '        DEFAULT_THREAD_PRIO);\n    while (!_has_started)\n        zts_util_delay(1);\n}', 1))
+
+# Diagnose the physical transport without storing addresses, identities or packets.
+def diagnostic_replace(s, old, new):
+    if old not in s:
+        raise RuntimeError("Pinned libzt diagnostic location changed: " + old[:70])
+    return s.replace(old, new, 1)
+def trace_node(s):
+    s = diagnostic_replace(s, '_node = new Node(this, (void*)0, &cb, OSUtils::now());',
+        '#ifdef __3DS__\n            ctr_zt_trace(0, 1);\n#endif\n            _node = new Node(this, (void*)0, &cb, OSUtils::now());\n#ifdef __3DS__\n            ctr_zt_trace(0, 2);\n#endif')
+    s = diagnostic_replace(s, '_binder.refresh(_phy, p, pc, explicitBind, *this);',
+        '#ifdef __3DS__\n                ctr_zt_trace(0, 3);\n#endif\n                _binder.refresh(_phy, p, pc, explicitBind, *this);\n#ifdef __3DS__\n                ctr_zt_trace(0, 4);\n#endif')
+    return s
+edit('src/NodeService.cpp', trace_node)
+def trace_phy(s):
+    s = '#ifdef __3DS__\n#include "zt_ctr_threads.h"\n#endif\n' + s
+    s = diagnostic_replace(s, 'if (!ZT_PHY_SOCKFD_VALID(s))\n\t\t\treturn (PhySocket *)0;',
+        'if (!ZT_PHY_SOCKFD_VALID(s)) {\n#ifdef __3DS__\n            ctr_zt_trace(6, errno);\n#endif\n            return (PhySocket *)0;\n        }')
+    s = diagnostic_replace(s, 'if (::bind(s,localAddress,(localAddress->sa_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {',
+        'if (::bind(s,localAddress,(localAddress->sa_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {\n#ifdef __3DS__\n            ctr_zt_trace(6, errno);\n#endif')
+    s = diagnostic_replace(s, 'sws.type = ZT_PHY_SOCKET_UDP;',
+        '#ifdef __3DS__\n        ctr_zt_trace(2, 0);\n#endif\n        sws.type = ZT_PHY_SOCKET_UDP;')
+    old = 'return ((long)::sendto(sws.sock,data,len,0,remoteAddress,(remoteAddress->sa_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in)) == (long)len);'
+    s = diagnostic_replace(s, old, '#ifdef __3DS__\n        long result = (long)::sendto(sws.sock,data,len,0,remoteAddress,(remoteAddress->sa_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));\n        if (result == (long)len) ctr_zt_trace(3, 0); else ctr_zt_trace(6, errno);\n        return result == (long)len;\n#else\n        ' + old + '\n#endif')
+    s = diagnostic_replace(s, 'long n = (long)::recvfrom(s->sock,buf,sizeof(buf),0,(struct sockaddr *)&ss,&slen);',
+        'long n = (long)::recvfrom(s->sock,buf,sizeof(buf),0,(struct sockaddr *)&ss,&slen);\n#ifdef __3DS__\n                            if (n > 0) ctr_zt_trace(4, 0);\n                            else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) ctr_zt_trace(6, errno);\n#endif')
+    s = diagnostic_replace(s, 'if (::select((int)_nfds + 1,&rfds,&wfds,&efds,(timeout > 0) ? &tv : (struct timeval *)0) <= 0)\n\t\t\treturn;',
+        'int selected = ::select((int)_nfds + 1,&rfds,&wfds,&efds,(timeout > 0) ? &tv : (struct timeval *)0);\n#ifdef __3DS__\n        ctr_zt_trace(5, 0);\n        if (selected < 0) ctr_zt_trace(6, errno);\n#endif\n        if (selected <= 0) return;')
+    return s
+edit('ext/ZeroTierOne/osdep/Phy.hpp', trace_phy)

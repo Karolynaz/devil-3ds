@@ -100,6 +100,7 @@ bool WaitForZeroTierStartup()
 		    || error != previousError || SDL_GetTicks() - lastLog >= 5000)) {
 			std::fprintf(log.get(), "%.3fs: startup %d; online %d; network ready %d; network error %d; startup error %d\n",
 			    elapsed / 1000.0, static_cast<int>(state), online, ready, error, net::zerotier_startup_error());
+			net::zerotier_log_diagnostics(log.get());
 			std::fflush(log.get());
 			lastLog = SDL_GetTicks();
 			previousState = static_cast<int>(state); previousOnline = online; previousReady = ready; previousError = error;
