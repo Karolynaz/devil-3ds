@@ -33,6 +33,7 @@
 #include "utils/static_vector.hpp"
 #ifdef __3DS__
 #include "platform/ctr/display.hpp"
+#include "movie.h"
 #include "diablo.h"
 #include "gmenu.h"
 #include "player.h"
@@ -102,6 +103,9 @@ bool CanRenderDirectlyToOutputSurface()
  */
 void LimitFrameRate()
 {
+#ifdef __3DS__
+	if (movie_playing) return;
+#endif
 	if (*GetOptions().Graphics.frameRateControl != FrameRateControl::CPUSleep)
 		return;
 	static uint32_t frameDeadline;

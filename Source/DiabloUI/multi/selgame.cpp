@@ -164,7 +164,7 @@ void UiInitGameSelectionList(std::string_view search)
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Description:").data(), rect2, UiFlags::FontSize24 | UiFlags::ColorUiSilver));
 
 	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 50), 80, DESCRIPTION_WIDTH, 145 };
-	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::FontSize24 | UiFlags::ColorUiSilverDark, 1, 24));
+	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark, 1, 18));
 
 	const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 20), 248, 600, 26 };
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Action").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
@@ -331,7 +331,11 @@ void selgame_GameSelection_Focus(size_t value)
 		break;
 	}
 #ifdef __3DS__
-	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont24, 1, CtrTextScale::TopScreen), sizeof(selgame_Description));
+	if (provider == SELCONN_TCP) {
+		const std::string description = std::string(_("Both players must be connected to the same Wi-Fi network.")) + "\n\n" + selgame_Description;
+		CopyUtf8(selgame_Description, description, sizeof(selgame_Description));
+	}
+	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont12, 1, CtrTextScale::TopScreen), sizeof(selgame_Description));
 #else
 	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH), sizeof(selgame_Description));
 #endif
@@ -473,7 +477,12 @@ void selgame_GameSelection_Select(size_t value)
 		HighlightedItem = 0;
 #endif
 
-#ifdef PACKET_ENCRYPTION
+#if defined(__3DS__) && defined(PACKET_ENCRYPTION)
+		UiInitList(nullptr, [](size_t value) {
+			selgame_Password[0] = '\0';
+			selgame_Password_Select(value);
+		}, selgame_GameSelection_Init, vecSelGameDialog);
+#elif defined(PACKET_ENCRYPTION)
 		UiInitList(nullptr, selgame_Password_Init, selgame_GameSelection_Init, vecSelGameDialog);
 #else
 		UiInitList(nullptr, selgame_Password_Select, selgame_GameSelection_Init, vecSelGameDialog);
@@ -791,6 +800,13 @@ void selgame_Password_Select(size_t /*value*/)
 			UiInitList_clear();
 			selgame_endMenu = true;
 		} else {
+#ifdef __3DS__
+			if (allowJoin && provider == SELCONN_TCP && DvlNet_JoinRequiresPassword()) {
+				InitGameInfo();
+				selgame_Password_Init(selgame_selectedGame);
+				return;
+			}
+#endif
 			InitGameInfo();
 			selgame_Free();
 			std::string error;
@@ -803,7 +819,11 @@ void selgame_Password_Select(size_t /*value*/)
 			UiSelOkDialog(_("Multi Player Game").data(), error.c_str(), false);
 			selgame_Init();
 			if (selgame_selectedGame == 2)
+#ifdef __3DS__
+				selgame_GameSelection_Select(2);
+#else
 				selgame_Password_Init(selgame_selectedGame);
+#endif
 			else
 				UiInitGameSelectionList("");
 		}

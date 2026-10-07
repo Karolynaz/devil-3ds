@@ -1,5 +1,6 @@
 #include "storm/storm_svid.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -226,20 +227,40 @@ void UpdatePalette()
 #endif
 }
 
+#ifdef __3DS__
+void BlitCtrMoviePixels(SDL_Surface *source, SDL_Surface *output, Size fit)
+{
+	// Compose the source-to-400px and 400-to-640px mappings once. The
+	// presenter then samples exactly the same native pixels as before.
+	std::array<int, 640> columns;
+	const int left = (400 - fit.width) / 2;
+	const int top = (240 - fit.height) / 2;
+	for (int x = 0; x < 640; ++x) {
+		const int nativeX = ((x + 1) * 400 + 639) / 640 - 1;
+		columns[x] = nativeX < left || nativeX >= left + fit.width
+		    ? -1 : (nativeX - left) * source->w / fit.width;
+	}
+	for (int y = 0; y < 240; ++y) {
+		auto *dst = static_cast<uint8_t *>(output->pixels) + y * output->pitch;
+		if (y < top || y >= top + fit.height) {
+			std::memset(dst, 0, 640);
+			continue;
+		}
+		const auto *src = static_cast<const uint8_t *>(source->pixels)
+		    + ((y - top) * source->h / fit.height) * source->pitch;
+		for (int x = 0; x < 640; ++x)
+			dst[x] = columns[x] < 0 ? 0 : src[columns[x]];
+	}
+}
+#endif
+
 bool BlitFrame()
 {
 #ifdef __3DS__
 	SDL_Surface *output = GetOutputSurface();
 	if (output->w == 640 && output->h == 480 && output->format->BitsPerPixel == 8) {
-		static OwnedSurface nativeFrame(400, 240);
-		SDL_FillSurfaceRect(nativeFrame.surface, nullptr, 0);
 		const Size fit = CtrFitImage({ static_cast<int>(SVidWidth), static_cast<int>(SVidHeight) }, { 400, 240 });
-		nativeFrame.ScaleBlitFrom(Surface(SVidSurface.get()), MakeSdlRect(0, 0, SVidWidth, SVidHeight),
-			MakeSdlRect((400 - fit.width) / 2, (240 - fit.height) / 2, fit.width, fit.height));
-		SDL_FillSurfaceRect(output, nullptr, 0);
-		Surface(output).ScaleBlitFromPreservingDownscale(nativeFrame,
-			MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, 640, 240));
-		CTR_UpdateBottomPalette(SVidPalette->colors);
+		BlitCtrMoviePixels(SVidSurface.get(), output, fit);
 		RenderPresent();
 		return true;
 	}

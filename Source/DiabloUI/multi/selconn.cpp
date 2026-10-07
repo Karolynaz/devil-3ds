@@ -39,7 +39,11 @@ namespace devilution {
 int provider;
 const char *ConnectionNames[] {
 	"ZeroTier",
+#ifdef __3DS__
+	"TCP/IP (LAN)",
+#else
 	N_("Client-Server (TCP)"),
+#endif
 	N_("Offline"),
 };
 

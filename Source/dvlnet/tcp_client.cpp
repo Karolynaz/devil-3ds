@@ -33,6 +33,7 @@ int tcp_client::create(std::string_view addrstr)
 
 int tcp_client::join(std::string_view addrstr)
 {
+	passwordRequired = false;
 	constexpr int MsSleep = 10;
 	constexpr int NoSleep = 250;
 
@@ -214,7 +215,7 @@ void tcp_client::HandleTcpErrorCode()
 
 	auto code = static_cast<PacketError::ErrorCode>(pktData[0]);
 	if (code == PacketError::ErrorCode::DecryptionFailed)
-		RaiseIoHandlerError(_("Server failed to decrypt your packet. Check if you typed the password correctly."));
+		RaiseIoHandlerError(PacketError(code, _("Server failed to decrypt your packet. Check if you typed the password correctly.")));
 	else
 		RaiseIoHandlerError(std::format("Unknown error code received from server: {:#04x}", pktData[0]));
 }
@@ -255,6 +256,8 @@ std::string tcp_client::make_default_gamename()
 
 void tcp_client::RaiseIoHandlerError(const PacketError &error)
 {
+	if (error.code() == PacketError::ErrorCode::DecryptionFailed)
+		passwordRequired = true;
 	ioHandlerResult.emplace(error);
 }
 

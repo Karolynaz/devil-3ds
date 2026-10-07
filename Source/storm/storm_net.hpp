@@ -82,6 +82,7 @@ bool SNetDropPlayer(uint8_t playerid, leaveinfo_t flags);
 bool SNetGetTurnsInTransit(uint32_t *turns);
 
 bool SNetJoinGame(char *gameName, char *gamePassword, int *playerid);
+bool DvlNet_JoinRequiresPassword();
 
 /*  SNetLeaveGame @ 119
  *

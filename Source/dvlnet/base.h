@@ -37,6 +37,7 @@ public:
 	void process_network_packets() override;
 
 	void setup_gameinfo(buffer_t info) override;
+	void copy_session_configuration_to(abstract_net &target) const override;
 
 	void setup_password(std::string pw) override;
 	void clear_password() override;

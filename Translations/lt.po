@@ -11048,3 +11048,9 @@ msgstr "Nepavyko paleisti saugaus ryšio tarnybos."
 
 msgid "Unable to request public games."
 msgstr "Nepavyko gauti viešų žaidimų sąrašo."
+
+msgid "Both players must be connected to the same Wi-Fi network."
+msgstr "Abu žaidėjai turi būti prisijungę prie to paties Wi-Fi tinklo."
+
+msgid "Joining game..."
+msgstr "Jungiamasi prie žaidimo..."

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -105,6 +106,31 @@ void ProgressRenderForeground(int progress)
 
 bool UiProgressDialog(int (*fnfunc)())
 {
+#ifdef __3DS__
+	UiLoadBlackBackground();
+	UiAddBackground(&vecProgress, false);
+	vecProgress.push_back(std::make_unique<UiArtText>(_("Joining game...").data(), MakeSdlRect(50, 60, 540, 40), UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver));
+	std::vector<std::unique_ptr<UiListItem>> actions;
+	actions.push_back(std::make_unique<UiListItem>(_("Cancel"), 0));
+	vecProgress.push_back(std::make_unique<UiList>(actions, 1, 65, 330, 510, 36, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+	UiInitList(nullptr, [](size_t) { DialogActionCancel(); }, DialogActionCancel, vecProgress, true);
+	endMenu = false;
+	int progress = 0;
+	while (!endMenu && progress < 100) {
+		progress = fnfunc();
+		UiClearScreen();
+		SDL_Rect track = MakeSdlRect(80, 135, 480, 12);
+		SDL_FillSurfaceRect(DiabloUiSurface(), &track, 205);
+		SDL_Rect fill = MakeSdlRect(82, 137, 476 * std::clamp(progress, 0, 100) / 100, 8);
+		SDL_FillSurfaceRect(DiabloUiSurface(), &fill, 144);
+		UiPollAndRender();
+		SDL_Delay(10);
+	}
+	UiInitList_clear();
+	vecProgress.clear();
+	ArtBackground = std::nullopt;
+	return progress == 100;
+#else
 	// Blit the background once and then free it.
 	ProgressLoadBackground();
 
@@ -170,6 +196,7 @@ bool UiProgressDialog(int (*fnfunc)())
 	ProgressFreeForeground();
 
 	return progress == 100;
+#endif
 }
 
 } // namespace devilution

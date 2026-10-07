@@ -25,6 +25,13 @@ void base::process_network_packets()
 	}
 }
 
+void base::copy_session_configuration_to(abstract_net &target) const
+{
+	target.setup_gameinfo(game_init_info);
+	for (const auto &[event, handler] : registered_handlers)
+		target.SNetRegisterEventHandler(event, handler);
+}
+
 void base::setup_gameinfo(buffer_t info)
 {
 	game_init_info = std::move(info);
