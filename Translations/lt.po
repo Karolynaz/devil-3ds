@@ -11054,3 +11054,6 @@ msgstr "Abu žaidėjai turi būti prisijungę prie to paties Wi-Fi tinklo."
 
 msgid "Joining game..."
 msgstr "Jungiamasi prie žaidimo..."
+
+msgid "Host Game"
+msgstr "Sukurti žaidimą"

@@ -185,10 +185,14 @@ void UiInitGameSelectionList(std::string_view search)
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Action").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 #endif
 
-#ifdef PACKET_ENCRYPTION
+#if defined(PACKET_ENCRYPTION) && !defined(__3DS__)
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Game"), 0, UiFlags::ColorUiGold));
 #endif
+#ifdef __3DS__
+	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Host Game"), 1, UiFlags::ColorUiGold));
+#else
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Public Game"), 1, UiFlags::ColorUiGold));
+#endif
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Join Game"), 2, UiFlags::ColorUiGold));
 
 	if (provider == SELCONN_ZT) {
