@@ -261,6 +261,7 @@ bool BlitFrame()
 	if (output->w == 640 && output->h == 480 && output->format->BitsPerPixel == 8) {
 		const Size fit = CtrFitImage({ static_cast<int>(SVidWidth), static_cast<int>(SVidHeight) }, { 400, 240 });
 		BlitCtrMoviePixels(SVidSurface.get(), output, fit);
+		CTR_UpdateBottomPalette(SVidPalette->colors);
 		RenderPresent();
 		return true;
 	}
