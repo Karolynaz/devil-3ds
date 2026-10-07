@@ -220,7 +220,10 @@ void UiInitGameSelectionList(std::string_view search)
 	}
 
 #ifdef __3DS__
-	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 24, 280, 592, 24, UiFlags::AlignCenter | UiFlags::FontSize12));
+	const int actionHeight = 36;
+	const int actionCount = static_cast<int>(std::min<size_t>(6, vecSelGameDlgItems.size()));
+	const int actionTop = 240 + (240 - actionCount * actionHeight) / 2;
+	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 65, actionTop, 510, actionHeight, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize24));
 #else
 	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 305, (uiPosition.y + 255), 285, 26, UiFlags::AlignCenter | UiFlags::FontSize24));
 
