@@ -185,10 +185,14 @@ void UiInitGameSelectionList(std::string_view search)
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Action").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 #endif
 
-#ifdef PACKET_ENCRYPTION
+#if defined(PACKET_ENCRYPTION) && !defined(__3DS__)
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Game"), 0, UiFlags::ColorUiGold));
 #endif
+#ifdef __3DS__
+	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Host Game"), 1, UiFlags::ColorUiGold));
+#else
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Public Game"), 1, UiFlags::ColorUiGold));
+#endif
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Join Game"), 2, UiFlags::ColorUiGold));
 
 	if (provider == SELCONN_ZT) {
@@ -216,7 +220,10 @@ void UiInitGameSelectionList(std::string_view search)
 	}
 
 #ifdef __3DS__
-	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 24, 280, 592, 24, UiFlags::AlignCenter | UiFlags::FontSize12));
+	const int actionHeight = 36;
+	const int actionCount = static_cast<int>(std::min<size_t>(6, vecSelGameDlgItems.size()));
+	const int actionTop = 240 + (240 - actionCount * actionHeight) / 2;
+	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 65, actionTop, 510, actionHeight, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize24));
 #else
 	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 305, (uiPosition.y + 255), 285, 26, UiFlags::AlignCenter | UiFlags::FontSize24));
 
