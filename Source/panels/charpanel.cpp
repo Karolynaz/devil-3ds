@@ -294,12 +294,12 @@ void DrawChr3DS(const Surface &out)
 	value(17, { { 291, 42 }, { 97, 16 } });
 	label(_("Experience"), { { 12, 59 }, { 89, 16 } });
 	value(3, { { 102, 59 }, { 91, 16 } });
-	label(_("Next level"), { { 216, 59 }, { 85, 16 } });
-	value(4, { { 302, 59 }, { 86, 16 } });
+	label(_("Next level"), { { 216, 59 }, { 79, 16 } });
+	value(4, { { 296, 59 }, { 92, 16 } });
 	DrawHorizontalLine(out, { 12, 78 }, 376, PAL16_BEIGE + 8);
-	label(_("Life"), { { 12, 86 }, { 58, 17 } });
+	label(_("Life"), { { 12, 86 }, { 52, 17 } });
 	const StyledText maxLife = (*panelEntries[21].statDisplayFunc)();
-	DrawString(out, maxLife.text, { { 70, 86 }, { 34, 17 } },
+	DrawString(out, maxLife.text, { { 65, 86 }, { 40, 17 } },
 	    { .flags = maxLife.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
 	label(_("Mana"), { { 108, 86 }, { 56, 17 } });
 	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
@@ -309,9 +309,15 @@ void DrawChr3DS(const Surface &out)
 		const unsigned index = 7 + i * 2;
 		const int y = 110 + i * 24;
 		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 120, 18 } });
-		const StyledText base = (*panelEntries[index].statDisplayFunc)();
-		DrawString(out, base.text, { { 132, y - 4 }, { 42, 22 } },
-		    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorDialogWhite | UiFlags::AlignRight });
+		// The compact panel has one value column: show the effective attribute,
+		// including equipment bonuses, rather than the base allocation value.
+		const StyledText current = (*panelEntries[index + 1].statDisplayFunc)();
+		// Dialog glyphs use a different palette from the small stat font.
+		const UiFlags color = current.style == UiFlags::ColorBlue ? UiFlags::ColorDialogYellow
+		    : current.style == UiFlags::ColorRed ? UiFlags::ColorDialogRed
+		                                        : UiFlags::ColorDialogWhite;
+		DrawString(out, current.text, { { 132, y - 4 }, { 42, 22 } },
+		    { .flags = UiFlags::FontSizeDialog | color | UiFlags::AlignRight });
 		const auto attr = static_cast<CharacterAttribute>(i);
 		if (!IsInspectingPlayer() && InspectPlayer->_pStatPts > 0
 		    && InspectPlayer->GetBaseAttributeValue(attr) < InspectPlayer->GetMaximumAttributeValue(attr)) {
@@ -328,8 +334,12 @@ void DrawChr3DS(const Surface &out)
 	constexpr unsigned combat[] = { 18, 19, 20, 25, 26, 27 };
 	for (unsigned i = 0; i < 6; ++i) {
 		const int y = 87 + i * 23;
-		label(LanguageTranslate(panelEntries[combat[i]].label), { { 216, y }, { 134, 18 } });
-		value(combat[i], { { 350, y }, { 38, 18 } });
+		const StyledText text = (*panelEntries[combat[i]].statDisplayFunc)();
+		// Damage ranges need more room than a single armor/resistance value.
+		const int valueWidth = std::clamp(GetLineWidth(text.text, GameFont12, 0), 38, 100);
+		label(LanguageTranslate(panelEntries[combat[i]].label), { { 216, y }, { 172 - valueWidth - 4, 18 } });
+		DrawString(out, text.text, { { 388 - valueWidth, y }, { valueWidth, 18 } },
+		    { .flags = text.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
 	}
 }
 #endif
