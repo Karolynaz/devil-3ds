@@ -79,7 +79,7 @@ SUFFIX=r'''
 int main() {
     system_palette[2]={200,100,50,0}; system_palette[10]={10,180,20,0};
     SystemPaletteUpdated(); CTR_ConfigureFramePresenter(true);
-    CtrWorldBeginFrame(canvas,false);
+    CtrWorldBeginFrame(canvas);
     std::memset(CtrWorldSurface().at(0,0),10,640*240);
     RenderPresent(); // Consumes the initial one-shot scene.
     const int initial=presents;

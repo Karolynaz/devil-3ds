@@ -551,17 +551,11 @@ void DrawPlayer(const Surface &out, const Player &player, Point tilePosition, Po
  */
 void DrawDeadPlayer(const Surface &out, Point tilePosition, Point targetBufferPosition, int lightTableIndex)
 {
-#ifdef __3DS__
-	if (!CtrRenderingRightEye())
-#endif
-		dFlags[tilePosition.x][tilePosition.y] &= ~DungeonFlag::DeadPlayer;
+	dFlags[tilePosition.x][tilePosition.y] &= ~DungeonFlag::DeadPlayer;
 
 	for (const Player &player : Players) {
 		if (player.plractive && player.hasNoLife() && player.isOnActiveLevel() && player.position.tile == tilePosition) {
-#ifdef __3DS__
-			if (!CtrRenderingRightEye())
-#endif
-				dFlags[tilePosition.x][tilePosition.y] |= DungeonFlag::DeadPlayer;
+			dFlags[tilePosition.x][tilePosition.y] |= DungeonFlag::DeadPlayer;
 			const Point playerRenderPosition { targetBufferPosition };
 			DrawPlayer(out, player, tilePosition, playerRenderPosition, lightTableIndex);
 		}
@@ -782,10 +776,7 @@ void DrawItem(const Surface &out, int8_t itemIndex, Point targetBufferPosition, 
 	}
 	ClxDrawLight(out, position, sprite, lightTableIndex);
 	if (item.AnimInfo.isLastFrame() || item._iCurs == ICURS_MAGIC_ROCK) {
-#ifdef __3DS__
-		if (!CtrRenderingRightEye())
-#endif
-			AddItemToLabelQueue(itemIndex, position);
+		AddItemToLabelQueue(itemIndex, position);
 	}
 }
 
@@ -1387,7 +1378,7 @@ void DrawView(const Surface &out, Point startPosition)
 	// Preserve the existing 640x240 world view; UI pixels stay independent. The top of
 	// `out` is cleared to the key index, so the presenter shows the world in
 	// every pixel that the UI below does not draw.
-	CtrWorldBeginFrame(out, !AutomapActive && !invflag && !CharFlag && !SpellbookFlag && !QuestLogIsOpen && !IsPlayerInStore() && !qtextflag && !IsStashOpen && PauseMode == 0 && !gmenu_is_active());
+	CtrWorldBeginFrame(out);
 	const Surface &worldOut = CtrWorldSurface();
 #else
 	const Surface &worldOut = out;
@@ -1395,13 +1386,6 @@ void DrawView(const Surface &out, Point startPosition)
 	Displacement offset = {};
 	CalcFirstTilePosition(startPosition, offset);
 	DrawGame(worldOut, startPosition, offset);
-#ifdef __3DS__
-	if (CtrWorldHasRightEye()) {
-		CtrSetRenderingRightEye(true);
-		DrawGame(CtrWorldRightSurface(), startPosition, offset);
-		CtrSetRenderingRightEye(false);
-	}
-#endif
 	if (AutomapActive) {
 		DrawAutomap(worldOut.subregion(0, 0, GetViewportWidth(), GetViewportHeight()));
 	}

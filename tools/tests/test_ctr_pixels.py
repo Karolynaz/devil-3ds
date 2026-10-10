@@ -36,9 +36,6 @@ int main() {
     check(CtrFitImage({180, 76}, {90, 76}) == Size(90, 38));
     check(CtrFitImage({28, 28}, {16, 16}) == Size(16, 16));
     check(CtrFitImage({0, 28}, {16, 16}) == Size(0, 0));
-    check(CtrStereoOffsetFor(0) == 0);
-    check(CtrStereoOffsetFor(0.3f) == -8);
-    check(CtrStereoOffsetFor(1) == -16);
     // Every row of an actor samples the exact same sprite columns in both eyes.
     for (int disparity : {5, 10})
         for (int x = 0; x + disparity < 400; ++x)
@@ -63,4 +60,4 @@ for asset in sorted((ROOT/'assets/data').glob('ctr_inventory_*.pal8')) + [ROOT/'
     presented = bytes(expanded[y*640+x*640//400]
                       for y in range(240) for x in range(400))
     assert presented == image, f'{asset.name}: native pixels changed'
-print('PASS: all six inventory frames and loading art unchanged, native UI grid, aspect fit, fixed camera, stereo phase')
+print('PASS: all six inventory frames and loading art unchanged, native UI grid, aspect fit, fixed camera, sampling phase')

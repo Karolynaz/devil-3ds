@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Execute the production presenter with host mocks for the 3DS framebuffer API.
 
-Checks indexed scene/UI composition, both eyes, native edge pixels, movie-only
+Checks indexed scene/UI composition, 2D output, native edge pixels, movie-only
 frames, GPU suspension and recovery. No emulator or hardware is implied.
 """
 import os
@@ -48,20 +48,21 @@ TEST = r'''
 #include "platform/ctr/pixel_geometry.hpp"
 using namespace devilution;
 bool gpu=true, failBegin=false, stereo=false;
-int beginCalls=0, swaps=0;
+int beginCalls=0, swaps=0, rightRequests=0, vblanks=0;
 GSPGPU_FramebufferFormat format=GSP_BGR8_OES;
 std::array<uint8_t, 400*240*4> left{}, right{}, bottom{};
 bool gspHasGpuRight() { return gpu; }
 void gfxSet3D(bool value) { stereo=value; }
 u8 *gfxGetFramebuffer(gfxScreen_t s, gfx3dSide_t eye, u16 *w, u16 *h) {
+    if (eye==GFX_RIGHT) ++rightRequests;
     if (w) *w=240;
     if (h) *h=s==GFX_TOP?400:320;
     return s==GFX_BOTTOM ? bottom.data() : eye==GFX_RIGHT?right.data():left.data();
 }
 GSPGPU_FramebufferFormat gfxGetScreenFormat(gfxScreen_t) { return format; }
 void gfxFlushBuffers() {}
-void gspWaitForVBlank() {}
-void gfxScreenSwapBuffers(gfxScreen_t, bool) { ++swaps; }
+void gspWaitForVBlank() { ++vblanks; }
+void gfxScreenSwapBuffers(gfxScreen_t, bool is3D) { if(is3D) std::abort(); ++swaps; }
 bool C3D_FrameBegin(int flags) {
     ++beginCalls;
     if (flags!=1) std::abort();
@@ -97,15 +98,15 @@ int main() {
     check(CTR_PresentFrame(&surface)); check(beginCalls==2 && swaps==2 && !stereo);
     for (int y=0;y<240;++y) for (int x=0;x<400;++x)
         checkColor(left,x,y,scene[y*pitch+CtrNativeColumn(x,400)]);
-    // UI survives at the rightmost column; both eyes share the same UI.
+    // UI survives at the rightmost column; 2D output share the same UI.
     ui[50*pitch+638]=240;
     ui[70*pitch+320]=CtrWorldDimKeyIndex;
     CTR_SetWorldFrame({scene.data(),pitch,other.data(),pitch});
-    check(CTR_PresentFrame(&surface)); check(stereo);
-    checkColor(left,399,50,240); checkColor(right,399,50,240);
+    check(CTR_PresentFrame(&surface)); check(!stereo && rightRequests==0);
+    checkColor(left,399,50,240);
     checkColor(left,200,70,scene[70*pitch+320]/2);
-    checkColor(right,200,70,other[70*pitch+320]/2);
-    checkColor(right,0,0,other[0]);
+    check(std::all_of(right.begin(),right.end(),[](uint8_t p){return p==0;}));
+    check(vblanks==swaps/2);
     // A movie/plain UI frame cannot reuse the previous scene or right eye.
     std::fill(ui.begin(),ui.end(),0);
     ui[100*pitch+320]=150;
@@ -143,4 +144,4 @@ with tempfile.TemporaryDirectory() as tmp:
                     '-I'+str(ROOT/'Source'), str(ROOT/'Source/platform/ctr/display.cpp'),
                     str(folder/'test.cpp'), '-o', str(executable)], check=True)
     subprocess.run([str(executable)], check=True)
-print('PASS: production presenter, scene/UI composition, stereo, movie routing, pixel edges, GPU recovery')
+print('PASS: production presenter, scene/UI composition, forced 2D, VBlank, movie routing, pixel edges, GPU recovery')

@@ -16,7 +16,4 @@ constexpr uint8_t CtrWorldDimKeyIndex = 1;
 constexpr int CtrDimShift = 1;
 constexpr uint32_t CtrDimRedBlue(uint32_t c) { return (c >> CtrDimShift) & 0x00FF00FFu; }
 constexpr uint32_t CtrDimChannel(uint32_t c) { return c >> CtrDimShift; }
-// Eight logical columns are exactly five physical columns. Keep sprite sampling
-// in phase between the two eyes instead of changing alternate column widths.
-constexpr int CtrStereoOffsetFor(float slider) { return slider <= 0.01f ? 0 : slider < 0.6f ? -8 : -16; }
 } // namespace devilution

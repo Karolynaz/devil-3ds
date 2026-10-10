@@ -108,14 +108,18 @@ void LimitFrameRate()
 #endif
 	if (*GetOptions().Graphics.frameRateControl != FrameRateControl::CPUSleep)
 		return;
-	static uint32_t frameDeadline;
-	const uint32_t tc = SDL_GetTicks() * 1000;
-	uint32_t v = 0;
-	if (frameDeadline > tc) {
-		v = tc % refreshDelay;
-		SDL_Delay((v / 1000) + 1); // ceil
-	}
-	frameDeadline = tc + v + refreshDelay;
+	if (refreshDelay <= 0)
+		return;
+	static uint64_t frameDeadline;
+	const uint64_t now = static_cast<uint64_t>(SDL_GetTicks()) * 1000;
+	const uint64_t interval = static_cast<uint64_t>(refreshDelay);
+	// Reset after a slow frame or a clock reset; never sleep to catch up
+	// with an obsolete deadline. Keep fractional milliseconds between frames.
+	if (frameDeadline == 0 || now > frameDeadline + interval || now + interval < frameDeadline)
+		frameDeadline = now;
+	if (frameDeadline > now)
+		SDL_Delay(static_cast<uint32_t>((frameDeadline - now + 999) / 1000));
+	frameDeadline += interval;
 }
 
 } // namespace
@@ -353,7 +357,8 @@ void RenderPresent()
 	if (CTR_PresentFrame(surface)) {
 		if (RenderDirectlyToOutputSurface)
 			PalSurface = GetOutputSurface();
-		LimitFrameRate();
+		// The native presenter already waits for VBlank. Sleeping again
+		// can miss the next refresh and create uneven frame pacing.
 		return;
 	}
 #endif

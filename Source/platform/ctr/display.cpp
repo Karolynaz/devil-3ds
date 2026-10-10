@@ -292,8 +292,8 @@ bool CTR_PresentFrame(const SDL_Surface *surface)
 		C3D_FrameEnd(GX_CMDLIST_FLUSH);
 		nativePresenterSynchronized = true;
 	}
-	const bool stereo = hasWorld && worldFrame.rightPixels != nullptr;
-	gfxSet3D(stereo);
+	// Always present a single 2D view, regardless of the hardware slider.
+	gfxSet3D(false);
 
 	u16 fbW = 0, fbH = 0;
 	u8 *fbLeft = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &fbW, &fbH);
@@ -310,18 +310,13 @@ bool CTR_PresentFrame(const SDL_Surface *surface)
 	const int srcPitch = surface->pitch;
 	if (hasWorld) {
 		BlitTopWithWorld(fbLeft, topFormat, srcPixels, srcPitch, worldFrame.pixels, worldFrame.pitch);
-		if (stereo) {
-			u8 *fbRight = gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, nullptr, nullptr);
-			if (fbRight == nullptr) return false;
-			BlitTopWithWorld(fbRight, topFormat, srcPixels, srcPitch, worldFrame.rightPixels, worldFrame.rightPitch);
-		}
 	} else {
 		BlitFramebuffer<400>(fbLeft, topFormat, srcPixels, srcPitch);
 	}
 	BlitFramebuffer<320>(fbBottom, bottomFormat, srcPixels + 240 * srcPitch, srcPitch);
 	gfxFlushBuffers();
 	gspWaitForVBlank();
-	gfxScreenSwapBuffers(GFX_TOP, stereo);
+	gfxScreenSwapBuffers(GFX_TOP, false);
 	gfxScreenSwapBuffers(GFX_BOTTOM, false);
 	return true;
 }
