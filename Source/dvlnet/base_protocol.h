@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cstring>
 #include <memory>
 #include <set>
 #include <string>
@@ -117,11 +119,14 @@ template <class P>
 std::expected<void, PacketError> base_protocol<P>::wait_firstpeer()
 {
 	firstpeer = {};
-	// wait for peer for 5 seconds
-	for (auto i = 0; i < 500; ++i) {
-		auto it = game_list.find(gamename);
+	// wait for peer for up to 10 seconds
+	for (auto i = 0; i < 1000; ++i) {
+		auto it = std::find_if(game_list.begin(), game_list.end(), [&](const auto &entry) {
+			return strcasecmp(entry.first.c_str(), gamename.c_str()) == 0;
+		});
 		if (it != game_list.end()) {
 			firstpeer = it->second.peer;
+			gamename = it->first;
 			break;
 		}
 		send_info_request();
@@ -165,7 +170,7 @@ std::expected<void, PacketError> base_protocol<P>::wait_join()
 	if (!result.has_value()) {
 		return result;
 	}
-	for (auto i = 0; i < 500; ++i) {
+	for (auto i = 0; i < 1000; ++i) {
 		recv();
 		if (plr_self != PLR_BROADCAST)
 			return {}; // join successful

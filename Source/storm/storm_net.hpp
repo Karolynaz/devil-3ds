@@ -147,6 +147,7 @@ std::vector<GameInfo> DvlNet_GetGamelist();
 void DvlNet_SetPassword(std::string pw);
 void DvlNet_ClearPassword();
 bool DvlNet_IsPublicGame();
+void DvlNet_SetGamePrivacy(bool isPublic);
 DvlNetLatencies DvlNet_GetLatencies(uint8_t playerId);
 
 } // namespace devilution

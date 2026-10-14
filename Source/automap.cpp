@@ -30,6 +30,8 @@
 #include "lighting.h"
 #endif
 
+#include "storm/storm_net.hpp"
+
 #ifdef __3DS__
 #include "platform/ctr/world_view.hpp"
 #endif
@@ -1450,22 +1452,36 @@ void DrawAutomapText(const Surface &out)
 	}
 
 	if (gbIsMultiplayer) {
-		if (GameName != "0.0.0.0" && !IsLoopback) {
-			std::string description = std::string(_("Game: "));
-			description.append(GameName);
+		if (provider == SELCONN_ZT) {
+			if (!PublicGame) {
+				std::string description = std::string(_("Game ID: "));
+				description.append(GameName);
+				drawStringAndAdvanceLine(description);
+				drawStringAndAdvanceLine(_("Private Game"));
+			} else {
+				std::string description = std::string(_("Game: "));
+				description.append(GameName);
+				drawStringAndAdvanceLine(description);
+				drawStringAndAdvanceLine(_("Public Game"));
+			}
+		} else {
+			if (GameName != "0.0.0.0" && !IsLoopback) {
+				std::string description = std::string(_("Game: "));
+				description.append(GameName);
+				drawStringAndAdvanceLine(description);
+			}
+
+			std::string description;
+			if (IsLoopback) {
+				description = std::string(_("Offline Game"));
+			} else if (PublicGame) {
+				description = std::string(_("Public Game"));
+			} else {
+				description = std::string(_("Password: "));
+				description.append(GamePassword);
+			}
 			drawStringAndAdvanceLine(description);
 		}
-
-		std::string description;
-		if (IsLoopback) {
-			description = std::string(_("Offline Game"));
-		} else if (PublicGame) {
-			description = std::string(_("Public Game"));
-		} else {
-			description = std::string(_("Password: "));
-			description.append(GamePassword);
-		}
-		drawStringAndAdvanceLine(description);
 	}
 
 	if (setlevel) {
@@ -1564,9 +1580,9 @@ Rectangle MinimapRect {};
 void UpdateMinimapRect()
 {
 #ifdef __3DS__
-	// Logical 640x240 world -> physical 400x240 top screen. Including the
+	// Logical 400x240 world -> physical 400x240 top screen. Including the
 	// border this is about 133x80 pixels, one ninth of the visible area.
-	MinimapRect = Rectangle { { GetViewportWidth() - 213, 4 }, { 207, 76 } };
+	MinimapRect = Rectangle { { GetViewportWidth() - 137, 4 }, { 133, 76 } };
 	return;
 #endif
 	// Set the dimensions and screen position of the minimap relative to the screen dimensions

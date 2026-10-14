@@ -22,7 +22,7 @@ constexpr int TILE_WIDTH=64,TILE_HEIGHT=32,MAXDUNX=112,MAXDUNY=112;
 bool zoom=false;
 struct Options {struct {bool *zoom;} Graphics{&zoom};} options;
 Options &GetOptions() {return options;}
-int GetViewportWidth() {return 640;} int GetViewportHeight() {return 240;}
+int GetViewportWidth() {return 400;} int GetViewportHeight() {return 240;}
 int GetScreenWidth() {return 640;} int GetScreenHeight() {return 480;}
 Rectangle GetMainPanel() {return {{0,240},{640,240}};}
 Size SidePanelSize{320,240};
@@ -56,7 +56,7 @@ int main() {
             Point screen=GetScreenPosition(tile)+Displacement{32,-15};
             // Rendering doubles world coordinates in zoom mode; pointer conversion halves them.
             screen.x*=factor;screen.y*=factor;
-            if(screen.x<0 || screen.x>=640 || screen.y<0 || screen.y>=240) continue;
+            if(screen.x<0 || screen.x>=400 || screen.y<0 || screen.y>=240) continue;
             AlterMousePositionViaZoom(screen);AlterMousePositionViaPlayer(screen,player);
             Point picked=ConvertToTileGrid(screen);bool flip=false;
             ShiftToDiamondGridAlignment(screen,picked,flip);

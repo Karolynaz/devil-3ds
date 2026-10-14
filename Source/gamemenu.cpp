@@ -435,6 +435,8 @@ void gamemenu_on()
 	if (gbIsMultiplayer && provider == SELCONN_TCP) {
 		const std::string ip = n3ds_localAddress();
 		MenuNetworkAddress = ip.empty() ? "IP: unavailable" : "IP: " + ip;
+	} else if (gbIsMultiplayer && provider == SELCONN_ZT && !GameName.empty()) {
+		MenuNetworkAddress = (!PublicGame ? "Game ID: " : "Game: ") + GameName;
 	}
 #endif
 	if (!gbIsMultiplayer) {

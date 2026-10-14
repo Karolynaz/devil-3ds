@@ -97,14 +97,14 @@ int main() {
     CTR_SetWorldFrame({scene.data(),pitch,nullptr,0});
     check(CTR_PresentFrame(&surface)); check(beginCalls==2 && swaps==2 && !stereo);
     for (int y=0;y<240;++y) for (int x=0;x<400;++x)
-        checkColor(left,x,y,scene[y*pitch+CtrNativeColumn(x,400)]);
+        checkColor(left,x,y,scene[y*pitch+x]);
     // UI survives at the rightmost column; 2D output share the same UI.
     ui[50*pitch+638]=240;
     ui[70*pitch+320]=CtrWorldDimKeyIndex;
     CTR_SetWorldFrame({scene.data(),pitch,other.data(),pitch});
     check(CTR_PresentFrame(&surface)); check(!stereo && rightRequests==0);
     checkColor(left,399,50,240);
-    checkColor(left,200,70,scene[70*pitch+320]/2);
+    checkColor(left,200,70,scene[70*pitch+200]/2);
     check(std::all_of(right.begin(),right.end(),[](uint8_t p){return p==0;}));
     check(vblanks==swaps/2);
     // A movie/plain UI frame cannot reuse the previous scene or right eye.

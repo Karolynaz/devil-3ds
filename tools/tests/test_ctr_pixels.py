@@ -18,7 +18,7 @@ int main() {
     check(CtrEnlargeImage({180, 76}, {400, 240}) == Size(360, 152));
     check(CtrEnlargeImage({400, 240}, {400, 240}) == Size(400, 240));
     // No camera size depends on the hardware slider.
-    check(CtrWorldWidth() == 640 && CtrWorldHeight() == 240);
+    check(CtrWorldWidth() == 400 && CtrWorldHeight() == 240);
     for (int width : {320, 400}) {
         std::array<int, 640> logical{};
         for (int x = 0; x < 640; ++x) logical[x] = CtrInverseColumn(x, width);

@@ -553,6 +553,14 @@ msgstr "Sukurti žaidimą"
 msgid "Create Public Game"
 msgstr "Sukurti viešą žaidimą"
 
+#: Source/DiabloUI/multi/selgame.cpp:246
+msgid "Create Private Game"
+msgstr "Sukurti privatų žaidimą"
+
+#: Source/DiabloUI/multi/selgame.cpp:333
+msgid "Create a new private game that players can join with a Game ID."
+msgstr "Sukurkite privatų žaidimą, prie kurio žaidėjai gali prisijungti su žaidimo ID."
+
 #: Source/DiabloUI/multi/selgame.cpp:165
 msgid "Join Game"
 msgstr "Prisijungti prie žaidimo"
@@ -865,6 +873,14 @@ msgstr "Slaptažodis: "
 #: Source/automap.cpp:1429
 msgid "Public Game"
 msgstr "Viešas žaidimas"
+
+#: Source/automap.cpp:1458
+msgid "Private Game"
+msgstr "Privatus žaidimas"
+
+#: Source/automap.cpp:1455
+msgid "Game ID: "
+msgstr "Žaidimo ID: "
 
 #: Source/automap.cpp:1443
 #, c++-format

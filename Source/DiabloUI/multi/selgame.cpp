@@ -1,10 +1,13 @@
 #include "DiabloUI/multi/selgame.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <random>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -84,6 +87,59 @@ constexpr uint32_t PublicDiscoveryWait = 5000;
 constexpr uint32_t PublicRequestStartupTimeout = 10000;
 constexpr uint32_t PublicDiscoveryWait = 2000;
 #endif
+
+std::string GeneratePublicGameName()
+{
+	int maxNum = 0;
+	auto checkName = [&](const std::string &name) {
+		constexpr std::string_view prefix = "Public_";
+		if (name.size() > prefix.size() && strncasecmp(name.c_str(), prefix.data(), prefix.size()) == 0) {
+			char *end = nullptr;
+			long val = std::strtol(name.c_str() + prefix.size(), &end, 10);
+			if (end != nullptr && *end == '\0' && val > maxNum) {
+				maxNum = static_cast<int>(val);
+			}
+		}
+	};
+
+	std::vector<GameInfo> gamelist = DvlNet_GetGamelist();
+	for (const auto &game : gamelist)
+		checkName(game.name);
+	for (const auto &game : Gamelist)
+		checkName(game.name);
+
+	return "Public_" + std::to_string(maxNum + 1);
+}
+
+std::string GeneratePrivateGameId()
+{
+	std::vector<GameInfo> gamelist = DvlNet_GetGamelist();
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<int> dist(1000, 9999);
+
+	for (int attempts = 0; attempts < 1000; ++attempts) {
+		std::string id = "PR" + std::to_string(dist(gen));
+		bool collision = false;
+		for (const auto &game : gamelist) {
+			if (strcasecmp(game.name.c_str(), id.c_str()) == 0) {
+				collision = true;
+				break;
+			}
+		}
+		if (!collision) {
+			for (const auto &game : Gamelist) {
+				if (strcasecmp(game.name.c_str(), id.c_str()) == 0) {
+					collision = true;
+					break;
+				}
+			}
+		}
+		if (!collision)
+			return id;
+	}
+	return "PR" + std::to_string(dist(gen));
+}
 
 void selgame_FreeVectors()
 {
@@ -185,14 +241,16 @@ void UiInitGameSelectionList(std::string_view search)
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Action").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 #endif
 
-#if defined(PACKET_ENCRYPTION) && !defined(__3DS__)
-	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Game"), 0, UiFlags::ColorUiGold));
-#endif
+	if (provider == SELCONN_ZT) {
+		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Public Game"), 1, UiFlags::ColorUiGold));
+		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Private Game"), 0, UiFlags::ColorUiGold));
+	} else {
 #ifdef __3DS__
-	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Host Game"), 1, UiFlags::ColorUiGold));
+		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Host Game"), 1, UiFlags::ColorUiGold));
 #else
-	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Public Game"), 1, UiFlags::ColorUiGold));
+		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Game"), 0, UiFlags::ColorUiGold));
 #endif
+	}
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Join Game"), 2, UiFlags::ColorUiGold));
 
 	if (provider == SELCONN_ZT) {
@@ -271,10 +329,18 @@ void selgame_GameSelection_Focus(size_t value)
 	const UiListItem &item = *vecSelGameDlgItems[value];
 	switch (item.m_value) {
 	case 0:
-		CopyUtf8(selgame_Description, _("Create a new game with a difficulty setting of your choice."), sizeof(selgame_Description));
+		if (provider == SELCONN_ZT) {
+			CopyUtf8(selgame_Description, _("Create a new private game that players can join with a Game ID."), sizeof(selgame_Description));
+		} else {
+			CopyUtf8(selgame_Description, _("Create a new game with a difficulty setting of your choice."), sizeof(selgame_Description));
+		}
 		break;
 	case 1:
-		CopyUtf8(selgame_Description, _("Create a new public game that anyone can join with a difficulty setting of your choice."), sizeof(selgame_Description));
+		if (provider == SELCONN_ZT) {
+			CopyUtf8(selgame_Description, _("Create a new public game that anyone can join with a difficulty setting of your choice."), sizeof(selgame_Description));
+		} else {
+			CopyUtf8(selgame_Description, _("Host a new game on your local network that other players can join."), sizeof(selgame_Description));
+		}
 		break;
 	case 2:
 		if (provider == SELCONN_ZT) {
@@ -393,7 +459,7 @@ void selgame_GameSelection_Select(size_t value)
 	switch (value) {
 	case 0:
 	case 1: {
-		title = _("Create Game").data();
+		title = (value == 0 && provider == SELCONN_ZT) ? _("Create Private Game").data() : _("Create Game").data();
 
 		const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 20), 248, 600, 26 };
 		vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Difficulty").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
@@ -438,7 +504,7 @@ void selgame_GameSelection_Select(size_t value)
 	switch (value) {
 	case 0:
 	case 1: {
-		title = _("Create Game").data();
+		title = (value == 0 && provider == SELCONN_ZT) ? _("Create Private Game").data() : _("Create Game").data();
 
 		const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 299), (Sint16)(uiPosition.y + 211), 295, 35 };
 		vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Difficulty").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
@@ -484,16 +550,10 @@ void selgame_GameSelection_Select(size_t value)
 		HighlightedItem = 0;
 #endif
 
-#if defined(__3DS__) && defined(PACKET_ENCRYPTION)
 		UiInitList(nullptr, [](size_t value) {
 			selgame_Password[0] = '\0';
 			selgame_Password_Select(value);
 		}, selgame_GameSelection_Init, vecSelGameDialog);
-#elif defined(PACKET_ENCRYPTION)
-		UiInitList(nullptr, selgame_Password_Init, selgame_GameSelection_Init, vecSelGameDialog);
-#else
-		UiInitList(nullptr, selgame_Password_Select, selgame_GameSelection_Init, vecSelGameDialog);
-#endif
 		break;
 	}
 	}
@@ -694,7 +754,8 @@ void selgame_Speed_Select(size_t value)
 {
 	nTickRate = vecSelGameDlgItems[value]->m_value;
 
-	if (provider == SELCONN_LOOPBACK || selgame_selectedGame == 1) {
+	if (provider == SELCONN_LOOPBACK || selgame_selectedGame == 1 || (provider == SELCONN_ZT && selgame_selectedGame == 0)) {
+		selgame_Password[0] = '\0';
 		selgame_Password_Select(0);
 		return;
 	}
@@ -775,7 +836,7 @@ static bool IsGameCompatibleWithErrorMessage(const GameData &data)
 void selgame_Password_Select(size_t /*value*/)
 {
 	char *gamePassword = nullptr;
-	if (selgame_selectedGame == 0)
+	if (selgame_selectedGame == 0 && provider != SELCONN_ZT)
 		gamePassword = selgame_Password;
 	if (selgame_selectedGame == 2 && strlen(selgame_Password) > 0)
 		gamePassword = selgame_Password;
@@ -790,10 +851,17 @@ void selgame_Password_Select(size_t /*value*/)
 		if (selgame_selectedGame > 2)
 			allowJoin = IsGameCompatible(Gamelist[selgame_selectedGame - 3].gameData);
 		if (provider == SELCONN_ZT) {
-			for (unsigned int i = 0; i < (sizeof(selgame_Ip) / sizeof(selgame_Ip[0])); i++) {
-				selgame_Ip[i] = (selgame_Ip[i] >= 'A' && selgame_Ip[i] <= 'Z') ? selgame_Ip[i] + 'a' - 'A' : selgame_Ip[i];
+			if (selgame_selectedGame == 2) {
+				if (strlen(selgame_Ip) == 4 && isdigit(static_cast<unsigned char>(selgame_Ip[0])) && isdigit(static_cast<unsigned char>(selgame_Ip[1]))
+				    && isdigit(static_cast<unsigned char>(selgame_Ip[2])) && isdigit(static_cast<unsigned char>(selgame_Ip[3]))) {
+					char temp[128];
+					snprintf(temp, sizeof(temp), "PR%s", selgame_Ip);
+					CopyUtf8(selgame_Ip, temp, sizeof(selgame_Ip));
+				}
 			}
 			strcpy(GetOptions().Network.szPreviousZTGame, selgame_Ip);
+			bool isPublic = (selgame_selectedGame > 2) || (strncasecmp(selgame_Ip, "Public_", 7) == 0);
+			DvlNet_SetGamePrivacy(isPublic);
 		} else {
 			strcpy(GetOptions().Network.szPreviousHost, selgame_Ip);
 		}
@@ -826,11 +894,7 @@ void selgame_Password_Select(size_t /*value*/)
 			UiSelOkDialog(_("Multi Player Game").data(), error.c_str(), false);
 			selgame_Init();
 			if (selgame_selectedGame == 2)
-#ifdef __3DS__
 				selgame_GameSelection_Select(2);
-#else
-				selgame_Password_Init(selgame_selectedGame);
-#endif
 			else
 				UiInitGameSelectionList("");
 		}
@@ -845,7 +909,15 @@ void selgame_Password_Select(size_t /*value*/)
 
 	GameData gameInitInfo = *m_game_data;
 	SwapGameDataLE(gameInitInfo);
-	if (SNetCreateGame(nullptr, gamePassword, reinterpret_cast<char *>(&gameInitInfo), sizeof(gameInitInfo), gdwPlayerId)) {
+	const char *gameName = nullptr;
+	std::string generatedName;
+	if (provider == SELCONN_ZT) {
+		bool isPublic = (selgame_selectedGame == 1);
+		generatedName = isPublic ? GeneratePublicGameName() : GeneratePrivateGameId();
+		gameName = generatedName.c_str();
+		DvlNet_SetGamePrivacy(isPublic);
+	}
+	if (SNetCreateGame(gameName, gamePassword, reinterpret_cast<char *>(&gameInitInfo), sizeof(gameInitInfo), gdwPlayerId)) {
 		UiInitList_clear();
 		selgame_endMenu = true;
 	} else {
@@ -855,7 +927,7 @@ void selgame_Password_Select(size_t /*value*/)
 			error = "Unknown network error";
 		UiSelOkDialog(_("Multi Player Game").data(), error.c_str(), false);
 		selgame_Init();
-		selgame_Password_Init(0);
+		selgame_GameSpeedSelection();
 	}
 }
 
@@ -887,6 +959,8 @@ void RefreshGameList()
 		std::vector<GameInfo> gamelist = DvlNet_GetGamelist();
 		Gamelist.clear();
 		for (unsigned i = 0; i < gamelist.size(); i++) {
+			if (strncasecmp(gamelist[i].name.c_str(), "PR", 2) == 0)
+				continue;
 			Gamelist.push_back(gamelist[i]);
 		}
 		UiInitGameSelectionList(gameSearch);

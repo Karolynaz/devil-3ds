@@ -215,7 +215,7 @@ void BlitTopWithWorld(uint8_t *framebuffer, const uint8_t *source, int pitch, co
 	for (int x = 0; x < CtrScreenWidth; ++x) {
 		const int column = CtrNativeColumn(x, CtrScreenWidth);
 		const uint8_t *ui = source + column + (CtrScreenHeight - 1) * pitch;
-		const uint8_t *scene = world + column + (CtrScreenHeight - 1) * worldPitch;
+		const uint8_t *scene = world + x + (CtrScreenHeight - 1) * worldPitch;
 		uint8_t *dst = framebuffer + x * CtrScreenHeight * BytesPerPixel;
 		for (int y = 0; y < CtrScreenHeight; ++y, dst += BytesPerPixel) {
 			if (*ui == CtrWorldKeyIndex) {

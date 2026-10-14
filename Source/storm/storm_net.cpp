@@ -278,9 +278,13 @@ void DvlNet_SetPassword(std::string pw)
 
 void DvlNet_ClearPassword()
 {
-	GameIsPublic = true;
 	GamePassword.clear();
 	dvlnet_inst->clear_password();
+}
+
+void DvlNet_SetGamePrivacy(bool isPublic)
+{
+	GameIsPublic = isPublic;
 }
 
 bool DvlNet_IsPublicGame()
