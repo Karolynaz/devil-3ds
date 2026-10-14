@@ -30,9 +30,9 @@ struct InetAddress : sockaddr_storage {
 };
 struct PhySocket {};
 template<class H>struct Phy {
- int udpCalls=0,tcpCalls=0,closed=0;bool failUdp=false;PhySocket udp,tcp;
+ int udpCalls=0,tcpCalls=0,closed=0;bool failUdp=false,failTcp=false;PhySocket udp,tcp;
  PhySocket *udpBind(const sockaddr *address,void *,int) { assert(address->sa_family==AF_INET); ++udpCalls; return failUdp?nullptr:&udp; }
- PhySocket *tcpListen(const sockaddr *address,void *) { assert(address->sa_family==AF_INET); ++tcpCalls;return &tcp; }
+ PhySocket *tcpListen(const sockaddr *address,void *) { assert(address->sa_family==AF_INET); ++tcpCalls;return failTcp?nullptr:&tcp; }
  void setIfName(PhySocket *,char *,int) {}
  void close(PhySocket *s,bool) { if(s) ++closed; }
 };
@@ -51,6 +51,9 @@ int main() {
  binder.refresh(phy,ports,1,{},checker);assert(binder._bindingCount==1 && phy.closed==2);
  Binder failed;Phy<int> bad;bad.failUdp=true;failed.refresh(bad,ports,1,{},checker);
  assert(failed._bindingCount==0 && bad.closed==1);
+ Binder udpOnly;Phy<int> noTcp;noTcp.failTcp=true;udpOnly.refresh(noTcp,ports,2,{},checker);
+ assert(udpOnly._bindingCount==2 && noTcp.closed==0);
+ udpOnly.refresh(noTcp,ports,2,{},checker);assert(noTcp.udpCalls==2 && udpOnly._bindingCount==2);
 }
 '''
 with tempfile.TemporaryDirectory() as directory:

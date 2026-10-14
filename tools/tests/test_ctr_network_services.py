@@ -20,6 +20,8 @@ Result acInit(); void acExit(); Result ndmuInit(); void ndmuExit();
 Result NDMU_EnterExclusiveState(int); Result NDMU_LeaveExclusiveState();
 Result ACU_GetWifiStatus(u32 *); void svcSleepThread(s64);
 Result socInit(u32 *,size_t); void socExit();
+struct in_addr;
+int SOCU_GetIPInfo(struct in_addr *, struct in_addr *, struct in_addr *);
 u32 psGetSessionHandle(); Result psInit(); Result PS_GenerateRandomBytes(void *,size_t);
 '''
 HARNESS = r'''
@@ -45,6 +47,7 @@ Result ACU_GetWifiStatus(u32 *out) { assert(ac && reserved);if(failure==4)return
 void svcSleepThread(s64) { ++wifiWait; }
 Result socInit(u32 *buffer,size_t size) { assert(buffer && size==1048576 && reserved && !soc);if(failure==5)return -5;soc=true;++socStarts;return 0; }
 void socExit() { assert(soc);soc=false;order.push_back("soc"); }
+int SOCU_GetIPInfo(struct in_addr *, struct in_addr *, struct in_addr *) { return 0; }
 u32 psGetSessionHandle() { return ps?1:0; }
 Result psInit() { assert(!ps);if(failure==6)return -6;ps=true;return 0; }
 Result PS_GenerateRandomBytes(void *,size_t size) { assert(ps && size==32);return failure==7?-7:0; }

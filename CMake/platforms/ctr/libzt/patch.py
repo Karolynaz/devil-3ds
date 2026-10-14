@@ -281,3 +281,31 @@ def trace_phy(s):
         'int selected = ::select((int)_nfds + 1,&rfds,&wfds,&efds,(timeout > 0) ? &tv : (struct timeval *)0);\n#ifdef __3DS__\n        ctr_zt_trace(5, 0);\n        if (selected < 0) { ctr_zt_trace(6, errno); ctr_zt_trace(10, errno); ctr_zt_trace(11, 0); }\n#endif\n        if (selected <= 0) return;')
     return s
 edit('ext/ZeroTierOne/osdep/Phy.hpp', trace_phy)
+
+# Binder keeps a binding only if both UDP and TCP listen succeed, and closes
+# the UDP socket otherwise. The real SOC service refuses ZeroTier's TCP listen
+# socket (the emulator forwards it to the host, which accepts it), so every UDP
+# socket was closed straight away: select() then got nfds 0 (EINVAL) and nothing
+# was ever sent. TCP listen is only an optional inbound fallback; UDP is enough.
+edit('ext/ZeroTierOne/osdep/Binder.hpp', lambda s: diagnostic_replace(s,
+    '\t\t\t\tif ((udps) && (tcps)) {',
+    '#ifdef __3DS__\n\t\t\t\tif (udps) {\n#else\n\t\t\t\tif ((udps) && (tcps)) {\n#endif'))
+
+# SOC has a small listen backlog limit; 1024 is a desktop value. Trace TCP
+# listen failures with distinct offsets: 1000 socket, 2000 bind, 3000 listen.
+def port_tcp_listen(s):
+    start = s.index('inline PhySocket *tcpListen(')
+    end = s.index('inline PhySocket *tcpConnect(', start)
+    body = s[start:end]
+    def strict(body, old, new):
+        if old not in body:
+            raise RuntimeError("Pinned libzt tcpListen location changed: " + old[:70])
+        return body.replace(old, new, 1)
+    body = strict(body, 'if (!ZT_PHY_SOCKFD_VALID(s))\n\t\t\treturn (PhySocket *)0;',
+        'if (!ZT_PHY_SOCKFD_VALID(s)) {\n#ifdef __3DS__\n            ctr_zt_trace(6, 1000 + errno);\n#endif\n            return (PhySocket *)0;\n        }')
+    body = strict(body, ': sizeof(struct sockaddr_in))) {\n',
+        ': sizeof(struct sockaddr_in))) {\n#ifdef __3DS__\n            ctr_zt_trace(6, 2000 + errno);\n#endif\n')
+    body = strict(body, 'if (::listen(s,1024)) {',
+        '#ifdef __3DS__\n\t\tif (::listen(s,5)) {\n            ctr_zt_trace(6, 3000 + errno);\n#else\n\t\tif (::listen(s,1024)) {\n#endif')
+    return s[:start] + body + s[end:]
+edit('ext/ZeroTierOne/osdep/Phy.hpp', port_tcp_listen)

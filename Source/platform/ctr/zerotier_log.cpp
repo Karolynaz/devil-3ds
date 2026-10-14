@@ -75,7 +75,7 @@ void WriteLog(void *)
 		bool newModel = false;
 		APT_CheckNew3DS(&newModel);
 		std::fprintf(file, "\n=== ZeroTier diagnostic session ZT-1; version %s; build %s; model %s ===\n", CTR_PORT_VERSION, CTR_BUILD_COMMIT, newModel ? "New 3DS" : "original 3DS");
-		std::fprintf(file, "Trace kinds: 0 core phase; 1 SDK event; 2 UDP bind; 6 socket errno; 7 thread error; 10 select error; 14 RNG service result\nNo packet contents, private keys or identity files are recorded.\n");
+		std::fprintf(file, "Trace kinds: 0 core phase; 1 SDK event; 2 UDP bind; 6 socket errno (+1000 TCP listen socket, +2000 TCP listen bind, +3000 TCP listen); 7 thread error; 10 select error; 14 RNG service result\nNo packet contents, private keys or identity files are recorded.\n");
 	}
 	uint32_t snapshotTime = SDL_GetTicks() - 5000;
 	uint32_t flushTime = SDL_GetTicks();
