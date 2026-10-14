@@ -12,6 +12,8 @@ int main() {
  std::thread b([] { for(int i=0;i<10000;++i) ctr_zt_trace(3,0); });
  a.join(); b.join();
  ctr_zt_trace(0,4); ctr_zt_trace(1,200); ctr_zt_trace(6,11); ctr_zt_trace(7,12);
+ ctr_zt_trace(8,511); ctr_zt_trace(8,143); ctr_zt_trace(9,9917);
+ assert(CtrZtDiagnostics[8]==654 && CtrZtDiagnostics[9]==9917);
  ctr_zt_trace(100,999);
  assert(CtrZtDiagnostics[3]==20000);
  FILE *f=tmpfile(); assert(f); zerotier_log_diagnostics(f); rewind(f);

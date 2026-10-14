@@ -75,8 +75,8 @@ edit('ext/ZeroTierOne/osdep/Phy.hpp', lambda s: s.replace('inline void whack()\n
      .replace('inline void poll(unsigned long timeout)\n\t{', 'inline void poll(unsigned long timeout)\n\t{\n#ifdef __3DS__\n\t\ttimeout = (timeout == 0 || timeout > 10) ? 10 : timeout;\n#endif')
      .replace('FD_ISSET(_whackReceiveSocket,&rfds)', '(_whackReceiveSocket >= 0) && FD_ISSET(_whackReceiveSocket,&rfds)'))
 # Strong randomness comes from the console service, never an emulated /dev file.
-edit('ext/ZeroTierOne/node/Utils.cpp', lambda s: s.replace('#else // not __WINDOWS__\n\n\tstatic int devURandomFd', '#elif defined(__3DS__)\n\tif ((!psGetSessionHandle() && R_FAILED(psInit())) || R_FAILED(PS_GenerateRandomBytes(buf, bytes)))\n\t\tthrow std::runtime_error("3DS secure random service failed");\n#else // not __WINDOWS__\n\n\tstatic int devURandomFd'))
-edit('ext/ZeroTierOne/node/Utils.cpp', lambda s: '#include <3ds.h>\n' + s)
+edit('ext/ZeroTierOne/node/Utils.cpp', lambda s: s.replace('#else // not __WINDOWS__\n\n\tstatic int devURandomFd', '#elif defined(__3DS__)\n\tResult randomResult = psGetSessionHandle() ? 0 : psInit();\n\tif (R_SUCCEEDED(randomResult)) randomResult = PS_GenerateRandomBytes(buf, bytes);\n\tctr_zt_trace(12, 0);\n\tctr_zt_trace(13, (int)bytes);\n\tif (R_FAILED(randomResult)) {\n\t\tctr_zt_trace(14, (int)randomResult);\n\t\tthrow std::runtime_error("3DS secure random service failed");\n\t}\n#else // not __WINDOWS__\n\n\tstatic int devURandomFd'))
+edit('ext/ZeroTierOne/node/Utils.cpp', lambda s: '#include <3ds.h>\n#include "zt_ctr_threads.h"\n' + s)
 edit('ext/lwip-contrib/ports/unix/port/sys_arch.c', lambda s: s.replace('clock_gettime(CLOCK_MONOTONIC, ts);', 'ctr_zt_monotonic(ts);'))
 
 # SOC has no IPv6 transport or Unix-domain sockets. The virtual network remains
@@ -274,10 +274,10 @@ def trace_phy(s):
     s = diagnostic_replace(s, 'sws.type = ZT_PHY_SOCKET_UDP;',
         '#ifdef __3DS__\n        ctr_zt_trace(2, 0);\n#endif\n        sws.type = ZT_PHY_SOCKET_UDP;')
     old = 'return ((long)::sendto(sws.sock,data,len,0,remoteAddress,(remoteAddress->sa_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in)) == (long)len);'
-    s = diagnostic_replace(s, old, '#ifdef __3DS__\n        long result = (long)::sendto(sws.sock,data,len,0,remoteAddress,(remoteAddress->sa_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));\n        if (result == (long)len) ctr_zt_trace(3, 0); else ctr_zt_trace(6, errno);\n        return result == (long)len;\n#else\n        ' + old + '\n#endif')
+    s = diagnostic_replace(s, old, '#ifdef __3DS__\n        long result = (long)::sendto(sws.sock,data,len,0,remoteAddress,(remoteAddress->sa_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));\n        if (result == (long)len) { ctr_zt_trace(3, 0); ctr_zt_trace(8, (int)len); } else ctr_zt_trace(6, errno);\n        return result == (long)len;\n#else\n        ' + old + '\n#endif')
     s = diagnostic_replace(s, 'long n = (long)::recvfrom(s->sock,buf,sizeof(buf),0,(struct sockaddr *)&ss,&slen);',
-        'long n = (long)::recvfrom(s->sock,buf,sizeof(buf),0,(struct sockaddr *)&ss,&slen);\n#ifdef __3DS__\n                            if (n > 0) ctr_zt_trace(4, 0);\n                            else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) ctr_zt_trace(6, errno);\n#endif')
+        'long n = (long)::recvfrom(s->sock,buf,sizeof(buf),0,(struct sockaddr *)&ss,&slen);\n#ifdef __3DS__\n                            if (n > 0) { ctr_zt_trace(4, 0); ctr_zt_trace(9, (int)n); }\n                            else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) ctr_zt_trace(6, errno);\n#endif')
     s = diagnostic_replace(s, 'if (::select((int)_nfds + 1,&rfds,&wfds,&efds,(timeout > 0) ? &tv : (struct timeval *)0) <= 0)\n\t\t\treturn;',
-        'int selected = ::select((int)_nfds + 1,&rfds,&wfds,&efds,(timeout > 0) ? &tv : (struct timeval *)0);\n#ifdef __3DS__\n        ctr_zt_trace(5, 0);\n        if (selected < 0) ctr_zt_trace(6, errno);\n#endif\n        if (selected <= 0) return;')
+        'int selected = ::select((int)_nfds + 1,&rfds,&wfds,&efds,(timeout > 0) ? &tv : (struct timeval *)0);\n#ifdef __3DS__\n        ctr_zt_trace(5, 0);\n        if (selected < 0) { ctr_zt_trace(6, errno); ctr_zt_trace(10, errno); ctr_zt_trace(11, 0); }\n#endif\n        if (selected <= 0) return;')
     return s
 edit('ext/ZeroTierOne/osdep/Phy.hpp', trace_phy)

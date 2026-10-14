@@ -17,6 +17,9 @@ add_devilutionx_object_library(libdevilutionx_ctr
 )
 
 if(NOT NONET)
+  if(NOT DISABLE_ZERO_TIER)
+    target_sources(libdevilutionx_ctr PRIVATE zerotier_log.cpp)
+  endif()
   if(NOT DISABLE_TCP)
     target_link_dependencies(libdevilutionx_ctr PUBLIC asio)
   endif()

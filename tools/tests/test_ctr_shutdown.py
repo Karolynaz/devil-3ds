@@ -40,6 +40,7 @@ prefix = r'''
 #include <thread>
 #include <vector>
 #include <cstdlib>
+namespace devilution { void CtrZeroTierLogStage(const char *,int=0) {} }
 using Thread=std::thread *;
 std::atomic_bool stopNode=false,stopDriver=false,stopCore=false;
 std::atomic_int nodeLive=0,driverLive=0,coreLive=0,callbackLive=0;

@@ -31,6 +31,7 @@
 #include "platform/ctr/sockets.hpp"
 #ifndef DISABLE_ZERO_TIER
 #include "dvlnet/zerotier_native.h"
+#include "platform/ctr/zerotier_log.hpp"
 #endif
 #endif
 
@@ -84,9 +85,6 @@ bool WaitForZeroTierStartup()
 
 	net::zerotier_network_start();
 	const uint32_t start = SDL_GetTicks();
-	const std::unique_ptr<FILE, decltype(&std::fclose)> log(std::fopen((paths::ConfigPath() + "network-zerotier.log").c_str(), "wb"), std::fclose);
-	uint32_t lastLog = start;
-	int previousState = -1, previousOnline = -1, previousReady = -1, previousError = 0;
 	net::CtrZeroTierStartup state = net::CtrZeroTierStartup::Starting;
 	while (!StartupCancelled) {
 		CopyUtf8(status, WordWrapString(net::zerotier_node_online() ? _("Joining ZeroTier network...") : _("Connecting to ZeroTier..."), 540, GameFont24, 1, CtrTextScale::TopScreen), sizeof(status));
@@ -97,18 +95,6 @@ bool WaitForZeroTierStartup()
 		SDL_Delay(50);
 		state = net::zerotier_startup_state();
 		const uint32_t elapsed = SDL_GetTicks() - start;
-		const int online = net::zerotier_node_online();
-		const int ready = net::zerotier_network_ready();
-		const int error = net::zerotier_network_error();
-		if (log && (static_cast<int>(state) != previousState || online != previousOnline || ready != previousReady
-		    || error != previousError || SDL_GetTicks() - lastLog >= 5000)) {
-			std::fprintf(log.get(), "%.3fs: startup %d; online %d; network ready %d; network error %d; startup error %d\n",
-			    elapsed / 1000.0, static_cast<int>(state), online, ready, error, net::zerotier_startup_error());
-			net::zerotier_log_diagnostics(log.get());
-			std::fflush(log.get());
-			lastLog = SDL_GetTicks();
-			previousState = static_cast<int>(state); previousOnline = online; previousReady = ready; previousError = error;
-		}
 		if (net::zerotier_network_ready() || net::zerotier_network_error() != 0
 		    || state == net::CtrZeroTierStartup::NoWifi || state == net::CtrZeroTierStartup::SecureRandomFailed || state == net::CtrZeroTierStartup::Failed
 		    || elapsed >= 120000)
@@ -117,11 +103,13 @@ bool WaitForZeroTierStartup()
 	UiInitList_clear();
 	ArtBackground = std::nullopt;
 	if (StartupCancelled) {
-		if (log) std::fprintf(log.get(), "Cancelled by user.\n");
+		CtrZeroTierLogStage("connection cancelled by player");
 		return false;
 	}
-	if (net::zerotier_network_ready())
+	if (net::zerotier_network_ready()) {
+		CtrZeroTierLogStage("game network ready");
 		return true;
+	}
 	std::string error;
 	if (state == net::CtrZeroTierStartup::NoWifi || state == net::CtrZeroTierStartup::SecureRandomFailed)
 		error = n3ds_networkError();
@@ -133,7 +121,7 @@ bool WaitForZeroTierStartup()
 		    : _("ZeroTier did not respond. Check internet access or try another network.");
 	else
 		error = FormatRuntime(_("Unable to start ZeroTier (error {})."), net::zerotier_startup_error());
-	if (log) std::fprintf(log.get(), "%s\n", error.c_str());
+	CtrZeroTierLogStage(error.c_str(), net::zerotier_network_error());
 	UiSelOkDialog(_("Multiplayer").data(), error.c_str(), false);
 	return false;
 }

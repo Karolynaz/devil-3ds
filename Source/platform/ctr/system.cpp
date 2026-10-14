@@ -11,6 +11,7 @@
 #include "storm/storm_net.hpp"
 #if !defined(NONET) && !defined(DISABLE_ZERO_TIER)
 #include "dvlnet/zerotier_native.h"
+#include "platform/ctr/zerotier_log.hpp"
 #endif
 
 // ZeroTier sends multicast frames synchronously on the calling UI thread.
@@ -99,6 +100,7 @@ void ctr_sys_shutdown()
 	CtrStopUpdateCheck();
 #if !defined(NONET) && !defined(DISABLE_ZERO_TIER)
 	net::zerotier_network_shutdown();
+	CtrZeroTierLogStop();
 #endif
 }
 

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cerrno>
 #include <cstdint>
 #include <deque>
 #include <exception>
@@ -15,6 +16,9 @@
 #include "dvlnet/frame_queue.h"
 #include "dvlnet/packet.h"
 #include "utils/log.hpp"
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+#include "platform/ctr/zerotier_log.hpp"
+#endif
 
 namespace devilution {
 namespace net {
@@ -23,6 +27,9 @@ template <typename... Args>
 PacketError ProtocolError(std::string_view fmt, Args &&...args)
 {
 	auto str = detail::format(fmt, std::forward<Args>(args)...);
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+	CtrZeroTierLogStage(str.c_str(), errno);
+#endif
 	return PacketError(str);
 }
 

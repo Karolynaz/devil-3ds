@@ -1,6 +1,7 @@
 #include "dvlnet/zerotier_native.h"
 
 #include <atomic>
+#include <exception>
 
 #ifdef USE_SDL3
 #include <SDL3/SDL_timer.h>
@@ -38,6 +39,7 @@
 #ifdef __3DS__
 #include <3ds.h>
 #include "platform/ctr/sockets.hpp"
+#include "platform/ctr/zerotier_log.hpp"
 extern "C" void zts_ctr_shutdown();
 #endif
 
@@ -49,15 +51,24 @@ extern "C" void zts_ctr_shutdown();
 
 #ifdef __3DS__
 namespace {
-std::atomic_int CtrZtDiagnostics[8] {};
+std::atomic_int CtrZtDiagnostics[16] {};
 }
 extern "C" void ctr_zt_trace(unsigned kind, int value)
 {
-	if (kind >= 8) return;
-	if (kind == 2 || kind == 3 || kind == 4 || kind == 5)
-		CtrZtDiagnostics[kind].fetch_add(1, std::memory_order_relaxed);
-	else
-		CtrZtDiagnostics[kind].store(value, std::memory_order_relaxed);
+	if (kind >= 16) return;
+	if (kind == 2 || kind == 3 || kind == 4 || kind == 5 || kind == 8 || kind == 9 || kind == 11 || kind == 12 || kind == 13 || kind == 15)
+		CtrZtDiagnostics[kind].fetch_add(kind == 8 || kind == 9 || kind == 13 ? value : 1, std::memory_order_relaxed);
+	else {
+		const int previous = CtrZtDiagnostics[kind].exchange(value, std::memory_order_relaxed);
+#ifdef __3DS__
+		if (previous != value) devilution::CtrZeroTierLogTrace(kind, value);
+#else
+		(void)previous;
+#endif
+	}
+#ifdef __3DS__
+	if (kind == 2) devilution::CtrZeroTierLogTrace(kind, CtrZtDiagnostics[kind].load());
+#endif
 }
 #endif
 
@@ -184,25 +195,36 @@ void Callback(void *ptr)
 
 	switch (msg->event_code) {
 	case ZTS_EVENT_NODE_ONLINE:
+#ifdef __3DS__
+		CtrZeroTierLogStage("node online");
+#endif
 		Log("ZeroTier: ZTS_EVENT_NODE_ONLINE, nodeId={:x}", (unsigned long long)msg->node->node_id);
 		zt_node_online = true;
 		if (!zt_joined) {
 			const int result = zts_net_join(ZtNetwork);
 			zt_joined = result == ZTS_ERR_OK;
 #ifdef __3DS__
+			CtrZeroTierLogStage("ZeroTier network join requested", result);
 			if (!zt_joined) NetworkError = result;
 #endif
 		}
 		break;
 
 	case ZTS_EVENT_NODE_OFFLINE:
+#ifdef __3DS__
+		CtrZeroTierLogStage("node offline");
+#endif
 		Log("ZeroTier: ZTS_EVENT_NODE_OFFLINE");
 		zt_node_online = false;
+		zt_network_ready = false;
 		break;
 
 	case ZTS_EVENT_NETWORK_READY_IP6:
 		Log("ZeroTier: ZTS_EVENT_NETWORK_READY_IP6, networkId={:x}", (unsigned long long)msg->network->net_id);
 		zt_ip6setup();
+#ifdef __3DS__
+		CtrZeroTierLogStage("virtual IPv6 network ready");
+#endif
 		zt_network_ready = true;
 #ifdef __3DS__
 		NetworkError = 0;
@@ -219,16 +241,19 @@ void Callback(void *ptr)
 	case ZTS_EVENT_NETWORK_ACCESS_DENIED:
 	case ZTS_EVENT_NETWORK_CLIENT_TOO_OLD:
 	case ZTS_EVENT_NODE_FATAL_ERROR:
+		CtrZeroTierLogStage("network access / core failure", msg->event_code);
 		NetworkError = msg->event_code;
 		zt_network_ready = false;
 		break;
 	case ZTS_EVENT_NETWORK_DOWN:
+		CtrZeroTierLogStage("game network down", msg->event_code);
 		zt_network_ready = false;
 		break;
 #endif
 	case ZTS_EVENT_PEER_DIRECT:
 	case ZTS_EVENT_PEER_RELAY: {
 #ifdef __3DS__
+		CtrZeroTierLogStage(msg->event_code == ZTS_EVENT_PEER_DIRECT ? "peer direct connection" : "peer relayed connection");
 		PeerEventGuard guard;
 #endif
 		ztPeerEvents[msg->peer->peer_id] = static_cast<zts_event_t>(msg->event_code);
@@ -264,6 +289,10 @@ void zerotier_log_diagnostics(FILE *file)
 	std::fprintf(file, "  phase %d; event %d; UDP binds %d; sends %d; receives %d; polls %d; socket errno %d; worker error %d\n",
 	    CtrZtDiagnostics[0].load(), CtrZtDiagnostics[1].load(), CtrZtDiagnostics[2].load(), CtrZtDiagnostics[3].load(),
 	    CtrZtDiagnostics[4].load(), CtrZtDiagnostics[5].load(), CtrZtDiagnostics[6].load(), CtrZtDiagnostics[7].load());
+	std::fprintf(file, "  UDP sent bytes %d; received bytes %d; select errno %d; select failures %d\n",
+	    CtrZtDiagnostics[8].load(), CtrZtDiagnostics[9].load(), CtrZtDiagnostics[10].load(), CtrZtDiagnostics[11].load());
+	std::fprintf(file, "  RNG calls %d; RNG bytes %d; RNG result %d; SDK workers created %d\n",
+	    CtrZtDiagnostics[12].load(), CtrZtDiagnostics[13].load(), CtrZtDiagnostics[14].load(), CtrZtDiagnostics[15].load());
 }
 
 CtrZeroTierStartup zerotier_startup_state()
@@ -278,6 +307,7 @@ void zerotier_network_shutdown()
 {
 	if (ShuttingDown.exchange(true, std::memory_order_acq_rel))
 		return;
+	CtrZeroTierLogStage("shutdown requested");
 	// Startup can still be allocating the node or initializing SOC.
 	if (StartupWorker != nullptr) {
 		threadJoin(StartupWorker, UINT64_MAX);
@@ -286,6 +316,7 @@ void zerotier_network_shutdown()
 	}
 	// Joins the node, tap, callback and lwIP threads before SDK heap teardown.
 	zts_ctr_shutdown();
+	CtrZeroTierLogStage("all ZeroTier workers stopped");
 	zt_network_ready = false;
 	zt_node_online = false;
 	PeerEventGuard guard;
@@ -301,6 +332,7 @@ int zerotier_startup_error()
 void zerotier_network_start()
 {
 #ifdef __3DS__
+	CtrZeroTierLogStart();
 	// Constructors run before the hero menu. Never perform network setup on
 	// the UI thread while its palette is still black from the transition.
 	if (ShuttingDown.load(std::memory_order_acquire))
@@ -321,27 +353,44 @@ void zerotier_network_start()
 			StartupState.store(state, std::memory_order_release);
 		};
 		try {
+			CtrZeroTierLogStage("initializing native Wi-Fi and SOC");
 			if (!n3ds_socInit()) {
+				CtrZeroTierLogStage(n3ds_networkError().c_str(), -1);
 				finish(CtrZeroTierStartup::NoWifi);
 				return;
 			}
+			CtrZeroTierLogStage("native Wi-Fi ready");
+			const std::string ip = n3ds_localAddress();
+			CtrZeroTierLogStage(ip.empty() ? "local IP unavailable" : ip.c_str());
 			// Fail before spawning libzt workers if CIA/HBL denies its RNG service.
+			CtrZeroTierLogStage("checking secure random service");
 			if (!n3ds_initSecureRandom()) {
+				CtrZeroTierLogStage(n3ds_networkError().c_str(), -1);
 				finish(CtrZeroTierStartup::SecureRandomFailed);
 				return;
 			}
 			const std::string path = paths::ConfigPath() + "zerotier";
+			CtrZeroTierLogStage("opening ZeroTier identity storage");
 			int result = zts_init_from_storage(path.c_str());
+			CtrZeroTierLogStage("identity storage initialized", result);
 			if (result == ZTS_ERR_OK)
 				result = zts_init_set_event_handler(&Callback);
-			if (result == ZTS_ERR_OK)
+			if (result == ZTS_ERR_OK) {
+				CtrZeroTierLogStage("starting ZeroTier core and lwIP");
 				result = zts_node_start();
+			}
+			CtrZeroTierLogStage("node start returned", result);
 			finish(result == ZTS_ERR_OK ? CtrZeroTierStartup::Started : CtrZeroTierStartup::Failed, result);
+		} catch (const std::exception &error) {
+			CtrZeroTierLogStage(error.what(), ZTS_ERR_GENERAL);
+			finish(CtrZeroTierStartup::Failed, ZTS_ERR_GENERAL);
 		} catch (...) {
+			CtrZeroTierLogStage("unhandled startup exception", ZTS_ERR_GENERAL);
 			finish(CtrZeroTierStartup::Failed, ZTS_ERR_GENERAL);
 		}
 	}, nullptr, 256 * 1024, 0x38, -2, false);
 	if (StartupWorker == nullptr) {
+		CtrZeroTierLogStage("startup worker creation failed", ZTS_ERR_GENERAL);
 		StartupError.store(ZTS_ERR_GENERAL, std::memory_order_relaxed);
 		StartupState.store(CtrZeroTierStartup::Failed, std::memory_order_release);
 	}
