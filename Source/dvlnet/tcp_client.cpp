@@ -132,20 +132,20 @@ int tcp_client::join(std::string_view addrstr)
 		        PLR_BROADCAST, PLR_MASTER, cookie_self, game_init_info);
 		if (!pkt.has_value()) {
 			const std::string_view message = pkt.error().what();
-			SDL_SetError("make_packet: %.*s", static_cast<int>(message.size()), message.data());
+			SDL_SetError("make_packet: %s", std::string(message).c_str());
 			return -1;
 		}
 		std::expected<void, PacketError> sendResult = send(**pkt);
 		if (!sendResult.has_value()) {
 			const std::string_view message = sendResult.error().what();
-			SDL_SetError("send: %.*s", static_cast<int>(message.size()), message.data());
+			SDL_SetError("send: %s", std::string(message).c_str());
 			return -1;
 		}
 		for (auto i = 0; i < NoSleep; ++i) {
 			std::expected<void, PacketError> pollResult = poll();
 			if (!pollResult.has_value()) {
 				const std::string_view message = pollResult.error().what();
-				SDL_SetError("%.*s", static_cast<int>(message.size()), message.data());
+				SDL_SetError("%s", std::string(message).c_str());
 				return -1;
 			}
 			if (plr_self != PLR_BROADCAST)
@@ -158,7 +158,7 @@ int tcp_client::join(std::string_view addrstr)
 	}
 	if (plr_self == PLR_BROADCAST) {
 		const std::string_view message = _("Unable to connect");
-		SDL_SetError("%.*s", static_cast<int>(message.size()), message.data());
+		SDL_SetError("%s", std::string(message).c_str());
 		return -1;
 	}
 

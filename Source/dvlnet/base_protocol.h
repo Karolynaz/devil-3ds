@@ -218,14 +218,14 @@ int base_protocol<P>::create(std::string_view addrstr)
 	std::expected<void, PacketError> isReady = wait_network();
 	if (!isReady.has_value()) {
 		const std::string_view message = isReady.error().what();
-		SDL_SetError("%.*s", static_cast<int>(message.size()), message.data());
+		SDL_SetError("%s", std::string(message).c_str());
 		return -1;
 	}
 	plr_self = 0;
 	if (std::expected<void, PacketError> result = Connect(plr_self);
 	    !result.has_value()) {
 		const std::string_view message = result.error().what();
-		SDL_SetError("%.*s", static_cast<int>(message.size()), message.data());
+		SDL_SetError("%s", std::string(message).c_str());
 		return -1;
 	}
 	return plr_self;
@@ -243,19 +243,19 @@ int base_protocol<P>::join(std::string_view addrstr)
 	std::expected<void, PacketError> isReady = wait_network();
 	if (!isReady.has_value()) {
 		const std::string_view message = isReady.error().what();
-		SDL_SetError("%.*s", static_cast<int>(message.size()), message.data());
+		SDL_SetError("%s", std::string(message).c_str());
 		return -1;
 	}
 	std::expected<void, PacketError> isPeerReady = wait_firstpeer();
 	if (!isPeerReady.has_value()) {
 		const std::string_view message = isPeerReady.error().what();
-		SDL_SetError("%.*s", static_cast<int>(message.size()), message.data());
+		SDL_SetError("%s", std::string(message).c_str());
 		return -1;
 	}
 	std::expected<void, PacketError> isJoined = wait_join();
 	if (!isJoined.has_value()) {
 		const std::string_view message = isJoined.error().what();
-		SDL_SetError("%.*s", static_cast<int>(message.size()), message.data());
+		SDL_SetError("%s", std::string(message).c_str());
 		return -1;
 	}
 	return (plr_self == PLR_BROADCAST ? -1 : plr_self);
