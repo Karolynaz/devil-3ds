@@ -146,6 +146,10 @@ void AddItemToLabelQueue(int id, Point position)
 	if (*GetOptions().Graphics.zoom) {
 		position *= 2;
 	}
+#ifdef __3DS__
+	// Item anchors are in the native world; labels live on the UI canvas.
+	position = CtrTopToScreen(position, GetScreenWidth());
+#endif
 	position.x -= nameWidth / 2;
 	position.y -= labelHeight;
 	labelQueue.push_back(ItemLabel { id, nameWidth, labelHeight, position, std::move(textOnGround) });

@@ -61,7 +61,7 @@ static_assert(CtrPresenterSourceColumn(399, 400) < 640);
 /**
  * @brief Converts a position in the 640 wide mouse space to world pixels.
  *
- * World coordinates use the unchanged 640x240 camera. Unlike CtrScreenToTop this does not reject
+ * World coordinates use the native 400x240 camera. Unlike CtrScreenToTop this does not reject
  * positions, because world hit tests run for any cursor position.
  */
 constexpr Point CtrScreenToWorld(Point p, int screenWidth)

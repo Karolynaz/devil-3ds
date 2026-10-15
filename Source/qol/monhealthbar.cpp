@@ -83,7 +83,12 @@ void DrawMonsterHealthBar(const Surface &out)
 	const int width = (*healthBox)[0].width();
 	const int barWidth = (*health)[0].width();
 	const int height = (*healthBox)[0].height();
+#ifdef __3DS__
+	// This bar is drawn on the 640-wide UI, not the native world surface.
+	Point position = { (out.w() - width) / 2, 18 };
+#else
 	Point position = { (GetViewportWidth() - width) / 2, 18 };
+#endif
 
 	if (CanPanelsCoverView()) {
 		if (IsRightPanelOpen())

@@ -13,6 +13,10 @@
 
 #include "engine/render/text_render.hpp"
 #include "options.h"
+#ifdef __3DS__
+#include "platform/ctr/ui_geometry.hpp"
+#include "utils/display.h"
+#endif
 #include "utils/str_cat.hpp"
 
 namespace devilution {
@@ -92,6 +96,9 @@ void DrawFloatingNumbers(const Surface &out, Point viewPosition, Displacement of
 		}
 
 		Point screenPosition { worldOffset.deltaX, worldOffset.deltaY };
+#ifdef __3DS__
+		screenPosition = CtrTopToScreen(screenPosition, GetScreenWidth());
+#endif
 
 		const int lineWidth = GetLineWidth(floatingNum.text, GetGameFontSize(floatingNum.style));
 		screenPosition.x -= lineWidth / 2;

@@ -44,6 +44,7 @@ prelude = r'''
 #include <unordered_map>
 #include <vector>
 #include "engine/rectangle.hpp"
+#include "platform/ctr/ui_geometry.hpp"
 #include "DiabloUI/ui_flags.hpp"
 #include "utils/string_or_view.hpp"
 using namespace devilution;

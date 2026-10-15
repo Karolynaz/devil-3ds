@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <random>
@@ -93,10 +94,10 @@ std::string GeneratePublicGameName()
 	int maxNum = 0;
 	auto checkName = [&](const std::string &name) {
 		constexpr std::string_view prefix = "Public_";
-		if (name.size() > prefix.size() && strncasecmp(name.c_str(), prefix.data(), prefix.size()) == 0) {
+		if (name.size() > prefix.size() && SDL_strncasecmp(name.c_str(), prefix.data(), prefix.size()) == 0) {
 			char *end = nullptr;
 			long val = std::strtol(name.c_str() + prefix.size(), &end, 10);
-			if (end != nullptr && *end == '\0' && val > maxNum) {
+			if (end != nullptr && *end == '\0' && val > maxNum && val < std::numeric_limits<int>::max()) {
 				maxNum = static_cast<int>(val);
 			}
 		}
@@ -111,6 +112,12 @@ std::string GeneratePublicGameName()
 	return "Public_" + std::to_string(maxNum + 1);
 }
 
+bool IsPrivateGameId(std::string_view name)
+{
+	return name.size() == 6 && SDL_strncasecmp(name.data(), "PR", 2) == 0
+	    && std::all_of(name.begin() + 2, name.end(), [](char c) { return c >= '0' && c <= '9'; });
+}
+
 std::string GeneratePrivateGameId()
 {
 	std::vector<GameInfo> gamelist = DvlNet_GetGamelist();
@@ -122,14 +129,14 @@ std::string GeneratePrivateGameId()
 		std::string id = "PR" + std::to_string(dist(gen));
 		bool collision = false;
 		for (const auto &game : gamelist) {
-			if (strcasecmp(game.name.c_str(), id.c_str()) == 0) {
+			if (SDL_strcasecmp(game.name.c_str(), id.c_str()) == 0) {
 				collision = true;
 				break;
 			}
 		}
 		if (!collision) {
 			for (const auto &game : Gamelist) {
-				if (strcasecmp(game.name.c_str(), id.c_str()) == 0) {
+				if (SDL_strcasecmp(game.name.c_str(), id.c_str()) == 0) {
 					collision = true;
 					break;
 				}
@@ -248,7 +255,10 @@ void UiInitGameSelectionList(std::string_view search)
 #ifdef __3DS__
 		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Host Game"), 1, UiFlags::ColorUiGold));
 #else
+#ifdef PACKET_ENCRYPTION
 		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Game"), 0, UiFlags::ColorUiGold));
+#endif
+		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Create Public Game"), 1, UiFlags::ColorUiGold));
 #endif
 	}
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Join Game"), 2, UiFlags::ColorUiGold));
@@ -550,6 +560,12 @@ void selgame_GameSelection_Select(size_t value)
 		HighlightedItem = 0;
 #endif
 
+#if defined(PACKET_ENCRYPTION) && !defined(__3DS__)
+		if (provider != SELCONN_ZT) {
+			UiInitList(nullptr, selgame_Password_Init, selgame_GameSelection_Init, vecSelGameDialog);
+			break;
+		}
+#endif
 		UiInitList(nullptr, [](size_t value) {
 			selgame_Password[0] = '\0';
 			selgame_Password_Select(value);
@@ -860,7 +876,7 @@ void selgame_Password_Select(size_t /*value*/)
 				}
 			}
 			strcpy(GetOptions().Network.szPreviousZTGame, selgame_Ip);
-			bool isPublic = (selgame_selectedGame > 2) || (strncasecmp(selgame_Ip, "Public_", 7) == 0);
+			bool isPublic = (selgame_selectedGame > 2) || (SDL_strncasecmp(selgame_Ip, "Public_", 7) == 0);
 			DvlNet_SetGamePrivacy(isPublic);
 		} else {
 			strcpy(GetOptions().Network.szPreviousHost, selgame_Ip);
@@ -959,7 +975,7 @@ void RefreshGameList()
 		std::vector<GameInfo> gamelist = DvlNet_GetGamelist();
 		Gamelist.clear();
 		for (unsigned i = 0; i < gamelist.size(); i++) {
-			if (strncasecmp(gamelist[i].name.c_str(), "PR", 2) == 0)
+			if (IsPrivateGameId(gamelist[i].name))
 				continue;
 			Gamelist.push_back(gamelist[i]);
 		}

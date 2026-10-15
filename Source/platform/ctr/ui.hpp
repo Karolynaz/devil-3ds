@@ -12,7 +12,7 @@ namespace devilution {
 
 inline Point CtrTopToScreen(Point p) { return CtrTopToScreen(p, gnScreenWidth); }
 inline Point CtrScreenToTop(Point p) { return CtrScreenToTop(p, gnScreenWidth); }
-/** @brief Mouse position in the fixed 640-wide world buffer. */
+/** @brief Mouse position in the native 400-wide world buffer. */
 inline Point CtrScreenToWorld(Point p) { return CtrScreenToWorld(p, gnScreenWidth); }
 inline Point CtrInventoryToScreen(Point p) { return CtrInventoryToScreen(p, gnScreenWidth, IsStashOpen || IsVisualStoreOpen); }
 inline Point CtrScreenToInventory(Point p) { return CtrScreenToInventory(p, gnScreenWidth, IsStashOpen || IsVisualStoreOpen); }

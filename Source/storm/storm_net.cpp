@@ -278,6 +278,10 @@ void DvlNet_SetPassword(std::string pw)
 
 void DvlNet_ClearPassword()
 {
+	// Only ZeroTier has password-free rooms with explicit privacy. Other
+	// transports infer public/private state from the password as before.
+	if (provider != SELCONN_ZT)
+		GameIsPublic = true;
 	GamePassword.clear();
 	dvlnet_inst->clear_password();
 }

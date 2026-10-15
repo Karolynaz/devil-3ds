@@ -122,7 +122,7 @@ std::expected<void, PacketError> base_protocol<P>::wait_firstpeer()
 	// wait for peer for up to 10 seconds
 	for (auto i = 0; i < 1000; ++i) {
 		auto it = std::find_if(game_list.begin(), game_list.end(), [&](const auto &entry) {
-			return strcasecmp(entry.first.c_str(), gamename.c_str()) == 0;
+			return SDL_strcasecmp(entry.first.c_str(), gamename.c_str()) == 0;
 		});
 		if (it != game_list.end()) {
 			firstpeer = it->second.peer;

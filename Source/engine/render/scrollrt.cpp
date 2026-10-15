@@ -1375,7 +1375,7 @@ void DrawView(const Surface &out, Point startPosition)
 	DebugCoordsMap.clear();
 #endif
 #ifdef __3DS__
-	// Preserve the existing 640x240 world view; UI pixels stay independent. The top of
+	// Render the native 400x240 world view; UI pixels stay independent. The top of
 	// `out` is cleared to the key index, so the presenter shows the world in
 	// every pixel that the UI below does not draw.
 	CtrWorldBeginFrame(out);
