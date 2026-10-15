@@ -1,6 +1,7 @@
 #include "DiabloUI/hero/selhero.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -26,6 +27,13 @@
 #include "DiabloUI/ui_item.h"
 #include "controls/control_mode.hpp"
 #include "engine/assets.hpp"
+#ifdef __3DS__
+#include "engine/load_file.hpp"
+#include "engine/palette.h"
+#include "engine/render/clx_render.hpp"
+#include "player.h"
+#include "utils/surface_to_clx.hpp"
+#endif
 #include "engine/point.hpp"
 #include "game_mode.hpp"
 #include "levels/gendung.h"
@@ -67,8 +75,89 @@ std::vector<std::unique_ptr<UiItemBase>> vecSelDlgItems;
 UiImageClx *SELHERO_DIALOG_HERO_IMG;
 #ifdef __3DS__
 std::vector<UiItemBase *> HeroSummaryElements;
+std::optional<OwnedClxSpriteList> HeroPreviewRaw;
+std::optional<OwnedClxSpriteList> HeroPreviewMapped;
+std::array<SDL_Color, 256> HeroPreviewUiPalette {};
+std::array<std::array<uint8_t, 3>, 256> HeroPreviewGamePalette {};
+std::optional<std::pair<HeroClass, uint8_t>> HeroPreviewKey;
+bool HeroPreviewVisible = false;
+uint32_t HeroPreviewStarted;
+
+void UpdateHeroPreview()
+{
+	const auto key = std::pair { selhero_heroInfo.heroclass, selhero_heroInfo.graphics };
+	if (HeroPreviewKey != key) {
+		HeroPreviewRaw.reset();
+		HeroPreviewMapped.reset();
+		HeroPreviewKey = key;
+		auto sprites = LoadPlayerPreviewSprites(key.first, key.second);
+		if (sprites && sprites->numSprites() <= 32) {
+			int width = 0, height = 0;
+			for (const ClxSprite sprite : ClxSpriteList { *sprites }) {
+				width = std::max(width, int(sprite.width()));
+				height = std::max(height, int(sprite.height()));
+			}
+			if (width > 0 && width <= 256 && height > 0 && height <= 256) {
+				const int frames = static_cast<int>(sprites->numSprites());
+				OwnedSurface atlas(width, height * frames);
+				SDL_FillSurfaceRect(atlas.surface, nullptr, 0);
+				int left = width, right = -1, top = height, bottom = -1;
+				for (int frame = 0; frame < frames; ++frame) {
+					const ClxSprite sprite = (*sprites)[frame];
+					RenderClxSprite(atlas, sprite, { (width - sprite.width()) / 2, frame * height + height - sprite.height() });
+					for (int y = 0; y < height; ++y) {
+						for (int x = 0; x < width; ++x) {
+							if (*atlas.at(x, frame * height + y) == 0) continue;
+							left = std::min(left, x); right = std::max(right, x);
+							top = std::min(top, y); bottom = std::max(bottom, y);
+						}
+					}
+				}
+				// One shared crop keeps feet/weapon positions stable across frames.
+				if (right >= left && bottom >= top
+				    && LoadOptionalFileInMem("levels\\towndata\\town.pal", HeroPreviewGamePalette.data(), HeroPreviewGamePalette.size())) {
+					OwnedSurface cropped(right - left + 1, (bottom - top + 1) * frames);
+					for (int frame = 0; frame < frames; ++frame)
+						cropped.BlitFrom(atlas, MakeSdlRect(left, frame * height + top, cropped.w(), bottom - top + 1), { 0, frame * (bottom - top + 1) });
+					HeroPreviewRaw.emplace(SurfaceToClx(cropped, frames, 0));
+				}
+			}
+		}
+	}
+	HeroPreviewVisible = HeroPreviewRaw.has_value();
+	HeroPreviewStarted = SDL_GetTicks();
+	if (HeroPreviewVisible) SELHERO_DIALOG_HERO_IMG->Hide();
+	else SELHERO_DIALOG_HERO_IMG->Show();
+}
+
+void RenderHeroPreview()
+{
+	if (!HeroPreviewVisible || !HeroPreviewRaw) return;
+	if (!HeroPreviewMapped || std::memcmp(HeroPreviewUiPalette.data(), logical_palette.data(), sizeof(HeroPreviewUiPalette)) != 0) {
+		std::array<uint8_t, 256> translation {};
+		for (size_t i = 1; i < translation.size(); ++i) {
+			int best = 3 * 256 * 256;
+			for (size_t j = 1; j < logical_palette.size(); ++j) {
+				const int r = int(HeroPreviewGamePalette[i][0]) - logical_palette[j].r;
+				const int g = int(HeroPreviewGamePalette[i][1]) - logical_palette[j].g;
+				const int b = int(HeroPreviewGamePalette[i][2]) - logical_palette[j].b;
+				const int distance = r*r + g*g + b*b;
+				if (distance < best) { best = distance; translation[i] = static_cast<uint8_t>(j); }
+			}
+		}
+		HeroPreviewMapped.emplace(HeroPreviewRaw->clone());
+		ClxApplyTrans(*HeroPreviewMapped, translation.data());
+		HeroPreviewUiPalette = logical_palette;
+	}
+	// Standing animation advances independently of menu FPS and game tick rate.
+	const uint32_t frame = ((SDL_GetTicks() - HeroPreviewStarted) / 100) % HeroPreviewMapped->numSprites();
+	UiImageClx image((*HeroPreviewMapped)[frame], MakeSdlRect(12, 15, 288, 210), UiFlags::AlignCenter);
+	image.setAllowUpscale(true);
+	UiRenderItem(image);
+}
 void SetHeroSummaryVisible(bool visible)
 {
+	if (!visible) { HeroPreviewVisible = false; SELHERO_DIALOG_HERO_IMG->Show(); }
 	for (auto *element : HeroSummaryElements) {
 		if (visible) element->Show();
 		else element->Hide();
@@ -104,6 +193,10 @@ void SelheroFree()
 
 #ifdef __3DS__
 	HeroSummaryElements.clear();
+	HeroPreviewRaw.reset();
+	HeroPreviewMapped.reset();
+	HeroPreviewKey.reset();
+	HeroPreviewVisible = false;
 #endif
 	vecSelHeroDialog.clear();
 
@@ -118,6 +211,9 @@ void SelheroSetStats()
 	SetHeroSummaryVisible(true);
 #endif
 	SELHERO_DIALOG_HERO_IMG->setSprite(UiGetHeroDialogSprite(static_cast<size_t>(selhero_heroInfo.heroclass)));
+#ifdef __3DS__
+	UpdateHeroPreview();
+#endif
 	CopyUtf8(textStats[0], StrCat(selhero_heroInfo.level), sizeof(textStats[0]));
 	CopyUtf8(textStats[1], StrCat(selhero_heroInfo.strength), sizeof(textStats[1]));
 	CopyUtf8(textStats[2], StrCat(selhero_heroInfo.magic), sizeof(textStats[2]));
@@ -137,6 +233,9 @@ void RenderDifficultyIndicators()
 	    SELHERO_DIALOG_HERO_IMG->m_rect.y + SELHERO_DIALOG_HERO_IMG->m_rect.h - height - 1,
 	    width,
 	    height);
+#ifdef __3DS__
+	if (HeroPreviewVisible) { rect.x = 12; rect.y = 222; }
+#endif
 	for (int i = 0; i <= DIFF_LAST; i++) {
 		if (i >= selhero_heroInfo.herorank)
 			break;
@@ -325,6 +424,9 @@ void SelheroClassSelectorFocus(size_t value)
 
 	selhero_heroInfo.level = 1;
 	selhero_heroInfo.heroclass = heroClass;
+#ifdef __3DS__
+	selhero_heroInfo.graphics = 0;
+#endif
 	selhero_heroInfo.strength = defaults.strength;
 	selhero_heroInfo.magic = defaults.magic;
 	selhero_heroInfo.dexterity = defaults.dexterity;
@@ -574,10 +676,7 @@ void selhero_Init()
 
 	vecSelDlgItems.clear();
 #ifdef __3DS__
-	SDL_Rect rect = MakeSdlRect(uiPosition.x + 20, 15, 600, 32);
-	vecSelHeroDialog.push_back(std::make_unique<UiArtText>(&title, rect, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
-
-	HeroSummaryElements.push_back(vecSelHeroDialog.back().get());
+	SDL_Rect rect; // The top screen contains only the hero and statistics.
 
 	// Top screen: 640 logical width -> 400 physical width (factor 0.625).
 	// 288 logical width -> 180 physical width, preserving 180:76 (1:1 Diablo pixel aspect ratio).
@@ -752,6 +851,9 @@ static void UiSelHeroDialog(
 			UiClearScreen();
 			UiRenderItems(vecSelHeroDialog);
 			RenderDifficultyIndicators();
+#ifdef __3DS__
+			RenderHeroPreview();
+#endif
 			UiPollAndRender();
 		}
 		SelheroFree();

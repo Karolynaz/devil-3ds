@@ -220,6 +220,9 @@ void Game2UiPlayer(const Player &player, _uiheroinfo *heroinfo, bool bHasSaveFil
 	heroinfo->hassaved = bHasSaveFile;
 	heroinfo->herorank = player.pDiabloKillLevel;
 	heroinfo->spawned = gbIsSpawn;
+#ifdef __3DS__
+	heroinfo->graphics = player._pgfxnum;
+#endif
 }
 
 bool GetFileName(uint8_t lvl, char *dst)

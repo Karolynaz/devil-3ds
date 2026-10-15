@@ -69,6 +69,9 @@ struct _uiheroinfo {
 	uint16_t vitality;
 	bool hassaved;
 	bool spawned;
+#ifdef __3DS__
+	uint8_t graphics = 0; // Equipped armor/weapon appearance; menu-only metadata.
+#endif
 };
 
 extern OptionalOwnedClxSpriteList ArtLogo;

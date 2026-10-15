@@ -2094,6 +2094,38 @@ ClxSprite GetPlayerPortraitSprite(Player &player)
 	return spriteList[(graphic == player_graphic::Stand) ? 0 : spriteList.numSprites() - 1];
 }
 
+#ifdef __3DS__
+std::optional<OwnedClxSpriteList> LoadPlayerPreviewSprites(HeroClass heroClass, uint8_t graphics)
+{
+	const size_t armor = graphics >> 4;
+	const size_t weapon = graphics & 0xF;
+	if (heroClass > HeroClass::LAST || armor >= ArmourChar.size() || weapon >= WepChar.size())
+		return std::nullopt;
+	const HeroClass spriteClass = GetPlayerSpriteClass(heroClass);
+	const PlayerSpriteData &spriteData = GetPlayerSpriteDataForClass(spriteClass);
+	const char prefix[3] = { spriteData.classChar, ArmourChar[armor], WepChar[weapon] };
+	char path[256];
+	GetPlayerGraphicsPath(spriteData.classPath, std::string_view(prefix, 3), "as", path);
+	auto loaded = LoadCl2ListOrSheetWithStatus(path,
+	    PointerOrValue<uint16_t> { GetPlayerSpriteWidth(spriteClass, player_graphic::Stand, static_cast<PlayerWeaponGraphic>(weapon)) });
+	if (!loaded || !loaded->isSheet() || loaded->numLists() <= static_cast<size_t>(Direction::South))
+		return std::nullopt;
+	const ClxSpriteList south = loaded->sheet()[static_cast<size_t>(Direction::South)];
+	if (south.numSprites() == 0)
+		return std::nullopt;
+	auto preview = south.clone();
+	if (const auto trn = GetPlayerGraphicTRN(path))
+		ClxApplyTrans(preview, trn->data());
+	// The fallback sprite class can differ from the real class (Bard/Barbarian).
+	const auto &classData = GetPlayerSpriteDataForClass(heroClass);
+	const std::string classPath = StrCat("plrgfx\\", classData.trn, ".trn");
+	std::array<uint8_t, 256> classTrn;
+	if (LoadOptionalFileInMem(classPath.c_str(), classTrn.data(), classTrn.size()))
+		ClxApplyTrans(preview, classTrn.data());
+	return preview;
+}
+#endif
+
 bool IsPlayerUnarmed(Player &player)
 {
 	const PlayerWeaponGraphic animWeaponId = GetPlayerWeaponGraphic(player_graphic::Stand, static_cast<PlayerWeaponGraphic>(player._pgfxnum & 0xF));
