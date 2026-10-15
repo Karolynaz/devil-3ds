@@ -393,7 +393,11 @@ void selgame_GameSelection_Focus(size_t value)
 		if (provider == SELCONN_ZT) {
 			CopyUtf8(selgame_Description, _("Enter Game ID to join a game already in progress."), sizeof(selgame_Description));
 		} else {
+			#ifdef __3DS__
+			CopyUtf8(selgame_Description, _("Enter address"), sizeof(selgame_Description));
+#else
 			CopyUtf8(selgame_Description, _("Enter an IP or a hostname to join a game already in progress."), sizeof(selgame_Description));
+#endif
 		}
 		break;
 	default:
@@ -501,7 +505,7 @@ void selgame_GameSelection_Select(size_t value)
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(&title, rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
 	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 50), 65, DESCRIPTION_WIDTH, 160 };
-	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilverDark, 1, 26));
+	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilverDark, 1, 18));
 
 	switch (value) {
 	case 0:
@@ -636,7 +640,7 @@ void selgame_Diff_Focus(size_t value)
 		break;
 	}
 #ifdef __3DS__
-	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont24, 1, CtrTextScale::TopScreen), sizeof(selgame_Description));
+	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont12, 1, CtrTextScale::TopScreen), sizeof(selgame_Description));
 #else
 	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH), sizeof(selgame_Description));
 #endif
@@ -728,7 +732,7 @@ void selgame_GameSpeedSelection()
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Create Game").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
 	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 50), 65, DESCRIPTION_WIDTH, 160 };
-	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilverDark, 1, 26));
+	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilverDark, 1, 18));
 
 	const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 20), 248, 600, 26 };
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Select Game Speed").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
@@ -792,7 +796,7 @@ void selgame_Speed_Focus(size_t value)
 		break;
 	}
 #ifdef __3DS__
-	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont24, 1, CtrTextScale::TopScreen), sizeof(selgame_Description));
+	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH, GameFont12, 1, CtrTextScale::TopScreen), sizeof(selgame_Description));
 #else
 	CopyUtf8(selgame_Description, WordWrapString(selgame_Description, DESCRIPTION_WIDTH), sizeof(selgame_Description));
 #endif
@@ -834,7 +838,7 @@ void selgame_Password_Init(size_t /*value*/)
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_(ConnectionNames[provider]).data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
 	const SDL_Rect rect3 = { (Sint16)(uiPosition.x + 50), 65, DESCRIPTION_WIDTH, 160 };
-	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilverDark, 1, 26));
+	vecSelGameDialog.push_back(std::make_unique<UiArtText>(selgame_Description, rect3, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilverDark, 1, 18));
 
 	const SDL_Rect rect4 = { (Sint16)(uiPosition.x + 20), 248, 600, 26 };
 	vecSelGameDialog.push_back(std::make_unique<UiArtText>(_("Enter Password").data(), rect4, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
@@ -999,7 +1003,7 @@ void RefreshGameList()
 
 	const uint32_t currentTime = SDL_GetTicks();
 
-	if ((lastPublicGameRequest == 0 || currentTime - lastPublicGameRequest > 30000) && DvlNet_SendInfoRequest()) {
+	if ((lastPublicGameRequest == 0 || currentTime - lastPublicGameRequest > 5000) && DvlNet_SendInfoRequest()) {
 		lastPublicGameRequest = currentTime;
 		lastPublicGameUpdate = currentTime - 3000; // Give 2 sec for responses, but don't wait 5
 		if (firstPublicGameInfoRequestSend == 0)
