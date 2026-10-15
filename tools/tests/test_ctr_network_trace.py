@@ -16,7 +16,7 @@ inline void LightLock_Unlock(LightLock *l){l->lock.unlock();}
 struct HostThread {std::thread thread;HostThread(void(*fn)(void*),void *arg):thread(fn,arg){}};
 using Thread=HostThread*;
 inline Thread threadCreate(void(*fn)(void*),void*arg,size_t stack,int priority,int,bool){
- if(stack!=64*1024 || priority!=0x37) std::abort();return new HostThread(fn,arg);
+ if(stack!=64*1024 || priority!=0x3f) std::abort();return new HostThread(fn,arg);
 }
 inline void threadJoin(Thread t,uint64_t){t->thread.join();}
 inline void threadFree(Thread t){delete t;}

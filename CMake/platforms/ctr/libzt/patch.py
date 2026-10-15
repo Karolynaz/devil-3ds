@@ -75,7 +75,7 @@ edit('ext/ZeroTierOne/osdep/Phy.hpp', lambda s: s.replace('inline void whack()\n
      .replace('inline void poll(unsigned long timeout)\n\t{', 'inline void poll(unsigned long timeout)\n\t{\n#ifdef __3DS__\n\t\ttimeout = (timeout == 0 || timeout > 10) ? 10 : timeout;\n#endif')
      .replace('FD_ISSET(_whackReceiveSocket,&rfds)', '(_whackReceiveSocket >= 0) && FD_ISSET(_whackReceiveSocket,&rfds)'))
 # Strong randomness comes from the console service, never an emulated /dev file.
-edit('ext/ZeroTierOne/node/Utils.cpp', lambda s: s.replace('#else // not __WINDOWS__\n\n\tstatic int devURandomFd', '#elif defined(__3DS__)\n\tResult randomResult = psGetSessionHandle() ? 0 : psInit();\n\tif (R_SUCCEEDED(randomResult)) randomResult = PS_GenerateRandomBytes(buf, bytes);\n\tctr_zt_trace(12, 0);\n\tctr_zt_trace(13, (int)bytes);\n\tif (R_FAILED(randomResult)) {\n\t\tctr_zt_trace(14, (int)randomResult);\n\t\tthrow std::runtime_error("3DS secure random service failed");\n\t}\n#else // not __WINDOWS__\n\n\tstatic int devURandomFd'))
+edit('ext/ZeroTierOne/node/Utils.cpp', lambda s: s.replace('#else // not __WINDOWS__\n\n\tstatic int devURandomFd', '#elif defined(__3DS__)\n\t// globalLock above protects the existing random buffer. Amortize the PS\n\t// IPC cost instead of requesting eight fresh bytes for every packet.\n\tuint8_t *output = static_cast<uint8_t *>(buf);\n\twhile (bytes != 0) {\n\t\tif (randomPtr >= 512) {\n\t\t\tResult randomResult = psGetSessionHandle() ? 0 : psInit();\n\t\t\tif (R_SUCCEEDED(randomResult)) randomResult = PS_GenerateRandomBytes(randomBuf, 512);\n\t\t\tctr_zt_trace(12, 0);\n\t\t\tctr_zt_trace(13, 512);\n\t\t\tif (R_FAILED(randomResult)) {\n\t\t\t\tctr_zt_trace(14, (int)randomResult);\n\t\t\t\tthrow std::runtime_error("3DS secure random service failed");\n\t\t\t}\n\t\t\trandomPtr = 0;\n\t\t}\n\t\tconst unsigned int available = 512 - randomPtr;\n\t\tconst unsigned int count = bytes < available ? bytes : available;\n\t\tmemcpy(output, randomBuf + randomPtr, count);\n\t\tmemset(randomBuf + randomPtr, 0, count);\n\t\trandomPtr += count;\n\t\toutput += count;\n\t\tbytes -= count;\n\t}\n#else // not __WINDOWS__\n\n\tstatic int devURandomFd'))
 edit('ext/ZeroTierOne/node/Utils.cpp', lambda s: '#include <3ds.h>\n#include "zt_ctr_threads.h"\n' + s)
 edit('ext/lwip-contrib/ports/unix/port/sys_arch.c', lambda s: s.replace('clock_gettime(CLOCK_MONOTONIC, ts);', 'ctr_zt_monotonic(ts);'))
 
@@ -278,7 +278,7 @@ def trace_phy(s):
     s = diagnostic_replace(s, 'long n = (long)::recvfrom(s->sock,buf,sizeof(buf),0,(struct sockaddr *)&ss,&slen);',
         'long n = (long)::recvfrom(s->sock,buf,sizeof(buf),0,(struct sockaddr *)&ss,&slen);\n#ifdef __3DS__\n                            if (n > 0) { ctr_zt_trace(4, 0); ctr_zt_trace(9, (int)n); }\n                            else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) ctr_zt_trace(6, errno);\n#endif')
     s = diagnostic_replace(s, 'if (::select((int)_nfds + 1,&rfds,&wfds,&efds,(timeout > 0) ? &tv : (struct timeval *)0) <= 0)\n\t\t\treturn;',
-        'int selected = ::select((int)_nfds + 1,&rfds,&wfds,&efds,(timeout > 0) ? &tv : (struct timeval *)0);\n#ifdef __3DS__\n        ctr_zt_trace(5, 0);\n        if (selected < 0) { ctr_zt_trace(6, errno); ctr_zt_trace(10, errno); ctr_zt_trace(11, 0); }\n#endif\n        if (selected <= 0) return;')
+        'int selected = ::select((int)_nfds + 1,&rfds,&wfds,&efds,(timeout > 0) ? &tv : (struct timeval *)0);\n#ifdef __3DS__\n        ctr_zt_trace(5, 0);\n        if (selected < 0) { ctr_zt_trace(6, errno); ctr_zt_trace(10, errno); ctr_zt_trace(11, 0); svcSleepThread(2 * 1000 * 1000); }\n#endif\n        if (selected <= 0) return;')
     return s
 edit('ext/ZeroTierOne/osdep/Phy.hpp', trace_phy)
 
@@ -309,3 +309,8 @@ def port_tcp_listen(s):
         '#ifdef __3DS__\n\t\tif (::listen(s,5)) {\n            ctr_zt_trace(6, 3000 + errno);\n#else\n\t\tif (::listen(s,1024)) {\n#endif')
     return s[:start] + body + s[end:]
 edit('ext/ZeroTierOne/osdep/Phy.hpp', port_tcp_listen)
+
+# A flooded socket must leave CPU time for the audio worker too.
+edit('ext/ZeroTierOne/osdep/Phy.hpp', lambda s: s.replace(
+    'if (selected <= 0) return;',
+    'if (selected <= 0) return;\n#ifdef __3DS__\n        svcSleepThread(1000 * 1000);\n#endif'))

@@ -43,8 +43,9 @@ struct ctr_zt_start { void *(*fn)(void *); void *arg; };
 static inline void ctr_zt_trampoline(void *opaque) { struct ctr_zt_start start = *(struct ctr_zt_start *)opaque; free(opaque); start.fn(start.arg); }
 // The desktop ZeroTier core requires a 1 MiB stack. Its multicast send
 // path alone uses over 80 KiB, before calling packet/crypto routines.
-// Network and identity generation must yield to the foreground UI (priority 0x30).
-static inline int ctr_zt_create(Thread *t, const ctr_zt_attr_t *attr, void *(*fn)(void *), void *arg) { struct ctr_zt_start *start = (struct ctr_zt_start *)malloc(sizeof(*start)); if (!start) return ENOMEM; start->fn = fn; start->arg = arg; *t = threadCreate(ctr_zt_trampoline, start, attr ? *attr : 1024 * 1024, 0x38, -2, attr == NULL); if (!*t) { ctr_zt_trace(7, EAGAIN); free(start); return EAGAIN; } ctr_zt_trace(15, 0); return 0; }
+// Keep network workers in the ordinary SDL worker priority class so they
+// cannot starve music decoding/mixing while the foreground UI sleeps.
+static inline int ctr_zt_create(Thread *t, const ctr_zt_attr_t *attr, void *(*fn)(void *), void *arg) { struct ctr_zt_start *start = (struct ctr_zt_start *)malloc(sizeof(*start)); if (!start) return ENOMEM; start->fn = fn; start->arg = arg; *t = threadCreate(ctr_zt_trampoline, start, attr ? *attr : 1024 * 1024, 0x3f, -2, attr == NULL); if (!*t) { ctr_zt_trace(7, EAGAIN); free(start); return EAGAIN; } ctr_zt_trace(15, 0); return 0; }
 static inline int ctr_zt_join(Thread t, void **value) { (void)value; if (t) { threadJoin(t, UINT64_MAX); threadFree(t); } return 0; }
 static inline int ctr_zt_attr_init(ctr_zt_attr_t *a) { *a = 1024 * 1024; return 0; }
 static inline int ctr_zt_attr_setstacksize(ctr_zt_attr_t *a, size_t size) { *a = size; return 0; }

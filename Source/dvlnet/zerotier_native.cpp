@@ -216,7 +216,8 @@ void Callback(void *ptr)
 #endif
 		Log("ZeroTier: ZTS_EVENT_NODE_OFFLINE");
 		zt_node_online = false;
-		zt_network_ready = false;
+		// OFFLINE does not remove the configured virtual interface. READY_IP6
+		// need not be emitted again when the node comes back online.
 		break;
 
 	case ZTS_EVENT_NETWORK_READY_IP6:
@@ -257,8 +258,7 @@ void Callback(void *ptr)
 		PeerEventGuard guard;
 #endif
 		ztPeerEvents[msg->peer->peer_id] = static_cast<zts_event_t>(msg->event_code);
-		if (!zerotier_peers_ready())
-			zt_peers_ready = SDL_GetTicks();
+		// Peer churn must not keep postponing public-game discovery.
 		break;
 	}
 	case ZTS_EVENT_PEER_PATH_DEAD: {

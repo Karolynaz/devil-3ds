@@ -74,7 +74,7 @@ void WriteLog(void *)
 	if (file != nullptr) {
 		bool newModel = false;
 		APT_CheckNew3DS(&newModel);
-		std::fprintf(file, "\n=== ZeroTier diagnostic session ZT-1; version %s; build %s; model %s ===\n", CTR_PORT_VERSION, CTR_BUILD_COMMIT, newModel ? "New 3DS" : "original 3DS");
+		std::fprintf(file, "\n=== ZeroTier diagnostic session ZT-2; version %s; build %s; model %s ===\n", CTR_PORT_VERSION, CTR_BUILD_COMMIT, newModel ? "New 3DS" : "original 3DS");
 		std::fprintf(file, "Trace kinds: 0 core phase; 1 SDK event; 2 UDP bind; 6 socket errno (+1000 TCP listen socket, +2000 TCP listen bind, +3000 TCP listen); 7 thread error; 10 select error; 14 RNG service result\nNo packet contents, private keys or identity files are recorded.\n");
 	}
 	uint32_t snapshotTime = SDL_GetTicks() - 5000;
@@ -88,7 +88,7 @@ void WriteLog(void *)
 			    static_cast<int>(net::zerotier_startup_state()), net::zerotier_node_online(), net::zerotier_network_ready(), net::zerotier_network_error(), net::zerotier_startup_error());
 			net::zerotier_log_diagnostics(file);
 		}
-		if (file != nullptr && now - flushTime >= 1000) {
+		if (file != nullptr && now - flushTime >= 5000) {
 			flushTime = now;
 			std::fflush(file);
 		}
@@ -108,7 +108,7 @@ void CtrZeroTierLogStart()
 		StartTime = SDL_GetTicks();
 		Stopping.store(false);
 		Enabled.store(true, std::memory_order_release);
-		Writer = threadCreate(WriteLog, nullptr, 64 * 1024, 0x37, -2, false);
+		Writer = threadCreate(WriteLog, nullptr, 64 * 1024, 0x3f, -2, false);
 		if (Writer == nullptr) {
 			Enabled.store(false);
 			LogError("Unable to start ZeroTier diagnostic writer");

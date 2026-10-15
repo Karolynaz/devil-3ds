@@ -15,6 +15,11 @@
 
 #include <ankerl/unordered_dense.h>
 
+#ifdef __3DS__
+#include "platform/ctr/network_progress.hpp"
+#include "platform/ctr/zerotier_log.hpp"
+#endif
+
 #include "dvlnet/base.h"
 #include "dvlnet/packet.h"
 #include "player.h"
@@ -102,6 +107,9 @@ std::expected<void, PacketError> base_protocol<P>::wait_network()
 			return std::unexpected(std::move(status).error());
 		if (*status)
 			return {};
+#ifdef __3DS__
+		CtrPumpNetworkProgress();
+#endif
 		SDL_Delay(10);
 	}
 	return std::unexpected("Timeout waiting for ZeroTier network initialization");
@@ -119,18 +127,29 @@ template <class P>
 std::expected<void, PacketError> base_protocol<P>::wait_firstpeer()
 {
 	firstpeer = {};
-	// wait for peer for up to 10 seconds
-	for (auto i = 0; i < 1000; ++i) {
+	// Bound discovery traffic: multicast fans out to every network member.
+	uint32_t lastRequest = SDL_GetTicks() - 500;
+	for (auto i = 0; i < 1500; ++i) {
 		auto it = std::find_if(game_list.begin(), game_list.end(), [&](const auto &entry) {
 			return SDL_strcasecmp(entry.first.c_str(), gamename.c_str()) == 0;
 		});
 		if (it != game_list.end()) {
+#ifdef __3DS__
+			CtrZeroTierLogStage("room host found");
+#endif
 			firstpeer = it->second.peer;
 			gamename = it->first;
 			break;
 		}
-		send_info_request();
+		const uint32_t now = SDL_GetTicks();
+		if (now - lastRequest >= 500) {
+			send_info_request();
+			lastRequest = now;
+		}
 		recv();
+#ifdef __3DS__
+		CtrPumpNetworkProgress();
+#endif
 		SDL_Delay(10);
 	}
 	if (!firstpeer)
@@ -154,7 +173,11 @@ bool base_protocol<P>::send_info_request()
 		LogError("make_packet: {}", pkt.error().what());
 		return false;
 	}
-	return proto.send_oob_mc((*pkt)->Data());
+	const bool sent = proto.send_oob_mc((*pkt)->Data());
+#ifdef __3DS__
+	CtrZeroTierLogStage("public room discovery request", sent ? 1 : 0);
+#endif
+	return sent;
 }
 
 template <class P>
@@ -170,10 +193,13 @@ std::expected<void, PacketError> base_protocol<P>::wait_join()
 	if (!result.has_value()) {
 		return result;
 	}
-	for (auto i = 0; i < 1000; ++i) {
+	for (auto i = 0; i < 1500; ++i) {
 		recv();
 		if (plr_self != PLR_BROADCAST)
 			return {}; // join successful
+#ifdef __3DS__
+		CtrPumpNetworkProgress();
+#endif
 		SDL_Delay(10);
 	}
 	return std::unexpected("Timeout waiting to join game");
@@ -297,7 +323,7 @@ void base_protocol<P>::recv()
 {
 	buffer_t pkt_buf;
 	endpoint_t sender;
-	while (proto.recv(sender, pkt_buf)) { // read until kernel buffer is empty?
+	for (unsigned budget = 0; budget < 64 && proto.recv(sender, pkt_buf); ++budget) {
 		std::expected<void, PacketError> result
 		    = pktfty->make_packet(pkt_buf)
 		          .and_then([&](std::unique_ptr<packet> &&pkt) {
@@ -403,6 +429,9 @@ std::expected<void, PacketError> base_protocol<P>::recv_decrypted(packet &pkt, e
 		size_t gameNameSize = infoBuffer.size() - neededSize;
 		gameName.resize(gameNameSize);
 		std::memcpy(&gameName[0], infoBuffer.data() + neededSize, gameNameSize);
+#ifdef __3DS__
+		CtrZeroTierLogStage("received room discovery reply", static_cast<int>(gameName.size()));
+#endif
 		game_list[gameName] = GameListValue { gameData, std::move(playerNames), sender };
 		return {};
 	}
@@ -451,6 +480,8 @@ std::expected<void, PacketError> base_protocol<P>::recv_ingame(packet &pkt, endp
 		std::expected<plr_t, PacketError> newPlayer = pkt.NewPlayer();
 		if (!newPlayer.has_value())
 			return std::unexpected(newPlayer.error());
+		if (*newPlayer >= MAX_PLRS)
+			return std::unexpected("Invalid player ID in connect packet");
 		Peer &peer = peers[*newPlayer];
 		std::expected<const buffer_t *, PacketError> pktInfo = pkt.Info();
 		if (!pktInfo.has_value())
@@ -539,7 +570,7 @@ bool base_protocol<P>::is_recognized(endpoint_t sender)
 	if (sender == firstpeer)
 		return true;
 
-	for (auto player = 0; player <= MAX_PLRS; player++) {
+	for (auto player = 0; player < MAX_PLRS; player++) {
 		if (sender == peers[player].endpoint)
 			return true;
 	}

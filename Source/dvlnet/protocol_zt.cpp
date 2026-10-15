@@ -489,10 +489,7 @@ std::optional<int> protocol_zt::get_latency_to(const endpoint &peer) const
 
 std::string protocol_zt::make_default_gamename()
 {
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<int> dist(1000, 9999);
-	return "PR" + std::to_string(dist(gen));
+	return "PR" + std::to_string(1000 + packet_out::GenerateCookie() % 9000);
 }
 
 } // namespace net

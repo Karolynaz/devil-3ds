@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <optional>
 #include <string>
@@ -46,6 +47,7 @@
 #include "engine/surface.hpp"
 #include "engine/ticks.hpp"
 #include "headless_mode.hpp"
+#include "game_mode.hpp"
 #include "hwcursor.hpp"
 #include "init.hpp"
 #include "options.h"
@@ -689,6 +691,40 @@ void LoadUiGFX()
 #ifdef __3DS__
 std::unique_ptr<OwnedSurface> UiBottomBackgroundBuffer;
 std::unique_ptr<OwnedSurface> UiTopBackgroundBuffer;
+std::unique_ptr<OwnedSurface> UiMenuSymbol;
+std::array<SDL_Color, 256> UiMenuSymbolPalette {};
+void Draw3DSMenuSymbol(const Surface &out)
+{
+	if (!UiMenuSymbol || std::memcmp(UiMenuSymbolPalette.data(), logical_palette.data(), sizeof(UiMenuSymbolPalette)) != 0) {
+		std::array<SDL_Color, 256> sourcePalette {};
+		const auto art = LoadPcx(gbIsSpawn && !gbIsHellfire ? "ui_art\\swmmenu" : "ui_art\\mainmenu", std::nullopt, sourcePalette.data(), false);
+		if (!art || (*art)[0].width() < 640 || (*art)[0].height() < 430) return;
+		OwnedSurface original(640, 480);
+		SDL_FillSurfaceRect(original.surface, nullptr, 0);
+		RenderClxSprite(original, (*art)[0], { 0, 0 });
+		std::array<uint8_t, 256> translation {};
+		for (size_t i = 0; i < 256; ++i) {
+			int best = 3 * 256 * 256;
+			for (size_t j = 0; j < 256; ++j) {
+				const int r = int(sourcePalette[i].r) - logical_palette[j].r;
+				const int g = int(sourcePalette[i].g) - logical_palette[j].g;
+				const int b = int(sourcePalette[i].b) - logical_palette[j].b;
+				const int distance = r*r + g*g + b*b;
+				if (distance < best) { best = distance; translation[i] = j; }
+			}
+		}
+		for (int y = 0; y < original.h(); ++y)
+			for (int x = 0; x < original.w(); ++x) *original.at(x,y) = translation[*original.at(x,y)];
+		OwnedSurface native(320, 240);
+		SDL_FillSurfaceRect(native.surface, nullptr, 0);
+		const Size fit = CtrFitImage({640,226}, {320,240});
+		native.ScaleBlitFrom(original, MakeSdlRect(0,204,640,226), MakeSdlRect((320-fit.width)/2,(240-fit.height)/2,fit.width,fit.height));
+		UiMenuSymbol = std::make_unique<OwnedSurface>(640,240);
+		UiMenuSymbol->ScaleBlitFromPreservingDownscale(native, MakeSdlRect(0,0,320,240), MakeSdlRect(0,0,640,240));
+		UiMenuSymbolPalette = logical_palette;
+	}
+	out.BlitFromSkipColorIndexZero(*UiMenuSymbol, {0,0,640,240}, {(out.w()-640)/2,240});
+}
 
 void Prepare3DSMenuTitleBackground()
 {
@@ -777,6 +813,7 @@ void UnloadUiGFX()
 #ifdef __3DS__
 	UiBottomBackgroundBuffer = nullptr;
 	UiTopBackgroundBuffer = nullptr;
+	UiMenuSymbol = nullptr;
 #endif
 	ArtHero = std::nullopt;
 	for (OptionalOwnedClxSpriteList &override : ArtHeroOverrides)
@@ -966,6 +1003,7 @@ void UiClearScreen()
 #ifdef __3DS__
 	CtrWorldClearFrame();
 	SDL_FillSurfaceRect(DiabloUiSurface(), nullptr, 0);
+	Draw3DSMenuSymbol(Surface(DiabloUiSurface()));
 #else
 	if (!ArtBackground || gnScreenWidth > (*ArtBackground)[0].width() || gnScreenHeight > (*ArtBackground)[0].height()) {
 		SDL_FillSurfaceRect(DiabloUiSurface(), nullptr, 0);
@@ -1122,10 +1160,12 @@ void Render(const UiImageClx &uiImage)
 			out.ScaleBlitFromPreservingDownscale(titleTop, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, 640, 240));
 			SDL_Rect bottomRect = MakeSdlRect(0, 240, out.w(), 240);
 			SDL_FillSurfaceRect(out.surface, &bottomRect, 0);
+			Draw3DSMenuSymbol(out);
 			return;
 		}
-		// Clear to clean black background for hero selection, game selection, etc.
+		// Share the menu watermark across hero, settings and network screens.
 		SDL_FillSurfaceRect(out.surface, nullptr, 0);
+		Draw3DSMenuSymbol(out);
 		return;
 	}
 

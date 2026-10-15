@@ -6,6 +6,7 @@
 #include "gmenu.h"
 #ifdef __3DS__
 #include "gamemenu.h"
+#include "diablo_msg.hpp"
 #endif
 
 #include <algorithm>
@@ -260,6 +261,9 @@ void gmenu_draw_pause(const Surface &out)
 	if (leveltype != DTYPE_TOWN)
 		RedBack(out);
 	if (sgpCurrentMenu == nullptr) {
+#ifdef __3DS__
+		DrawDiabloMsgBackground(out, { { 180, 90 }, { 280, 60 } });
+#endif
 		DrawString(out, _("Pause"), { { 0, 0 }, { gnScreenWidth, GetMainPanel().position.y } },
 		    { .flags = UiFlags::FontSize46 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter, .spacing = 2 });
 	}
@@ -345,6 +349,8 @@ void gmenu_draw(const Surface &out)
 #endif
 #ifdef __3DS__
 		int y = GMenuTop();
+		DrawDiabloMsgBackground(out, { { 20, std::max(0, y - 8) },
+		    { out.w() - 40, std::min(240 - std::max(0, y - 8), sgCurrentMenuIdx * GMenuItemHeight + 16) } });
 #else
 		const int uiPositionY = GetUIRectangle().position.y;
 		const ClxSprite sprite = (*sgpLogo)[LogoAnim_frame];

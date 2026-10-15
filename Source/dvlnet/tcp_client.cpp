@@ -16,6 +16,9 @@
 #endif
 
 #include <asio/connect.hpp>
+#ifdef __3DS__
+#include "platform/ctr/network_progress.hpp"
+#endif
 
 #include "options.h"
 #include "utils/language.h"
@@ -35,7 +38,11 @@ int tcp_client::join(std::string_view addrstr)
 {
 	passwordRequired = false;
 	constexpr int MsSleep = 10;
+#ifdef __3DS__
+	constexpr int NoSleep = 1500;
+#else
 	constexpr int NoSleep = 250;
+#endif
 
 	const char *defaultPort = "6112";
 	std::string_view host;
@@ -70,13 +77,43 @@ int tcp_client::join(std::string_view addrstr)
 	}
 
 	asio::error_code errorCode;
-	const asio::ip::basic_resolver_results<asio::ip::tcp> range = resolver.resolve(host, port, errorCode);
+	const asio::ip::basic_resolver_results<asio::ip::tcp> range = resolver.resolve(host, port,
+#ifdef __3DS__
+	    asio::ip::tcp::resolver::numeric_host | asio::ip::tcp::resolver::numeric_service,
+#endif
+	    errorCode);
 	if (errorCode) {
 		SDL_SetError("%s", errorCode.message().c_str());
 		return -1;
 	}
 
+#ifdef __3DS__
+	// Avoid the system's long blocking connect timeout. Keep drawing while
+	// ASIO completes or the explicit deadline expires.
+	bool connected = false;
+	asio::async_connect(sock, range, [&](const asio::error_code &error, const asio::ip::tcp::endpoint &) {
+		errorCode = error;
+		connected = true;
+	});
+	const uint32_t started = SDL_GetTicks();
+	while (!connected && SDL_GetTicks() - started < 15000) {
+		ioc.restart();
+		ioc.poll();
+		CtrPumpNetworkProgress();
+		SDL_Delay(5);
+	}
+	if (!connected) {
+		asio::error_code ignored;
+		sock.cancel(ignored);
+		sock.close(ignored);
+		// Drain cancellation before stack-owned callback references expire.
+		ioc.restart();
+		while (!connected) { ioc.poll_one(); SDL_Delay(1); }
+		errorCode = asio::error::timed_out;
+	}
+#else
 	asio::connect(sock, range, errorCode);
+#endif
 	if (errorCode) {
 		SDL_SetError("%s", errorCode.message().c_str());
 		return -1;
@@ -113,6 +150,9 @@ int tcp_client::join(std::string_view addrstr)
 			}
 			if (plr_self != PLR_BROADCAST)
 				break; // join successful
+#ifdef __3DS__
+			CtrPumpNetworkProgress();
+#endif
 			SDL_Delay(MsSleep);
 		}
 	}
@@ -132,7 +172,7 @@ bool tcp_client::IsGameHost()
 
 std::expected<void, PacketError> tcp_client::poll()
 {
-	while (ioc.poll_one() > 0) {
+	for (unsigned budget = 0; budget < 64 && ioc.poll_one() > 0; ++budget) {
 		if (IsGameHost()) {
 			std::expected<void, PacketError> serverResult = local_server->CheckIoHandlerError();
 			if (!serverResult.has_value())

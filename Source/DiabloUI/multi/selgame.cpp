@@ -1,6 +1,7 @@
 #include "DiabloUI/multi/selgame.h"
 
 #include <algorithm>
+#include <functional>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -8,7 +9,6 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <random>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -28,6 +28,12 @@
 #include "DiabloUI/ui_flags.hpp"
 #include "DiabloUI/ui_item.h"
 #include "config.h"
+#include "dvlnet/packet.h"
+#ifdef __3DS__
+#include "controls/input.h"
+#include "platform/ctr/network_progress.hpp"
+#include "platform/ctr/zerotier_log.hpp"
+#endif
 #include "diablo.h"
 #include "engine/point.hpp"
 #include "engine/render/text_render.hpp"
@@ -89,6 +95,38 @@ constexpr uint32_t PublicRequestStartupTimeout = 10000;
 constexpr uint32_t PublicDiscoveryWait = 2000;
 #endif
 
+#ifdef __3DS__
+uint32_t ConnectionProgressTick;
+uint32_t ConnectionStarted;
+void RenderConnectionProgress()
+{
+	const uint32_t now = SDL_GetTicks();
+	if (now - ConnectionProgressTick < 100) return;
+	ConnectionProgressTick = now;
+	SDL_Event event;
+	while (PollEvent(&event)) { /* Do not allow a second operation mid-join. */ }
+	UiClearScreen();
+	UiRenderItems(vecSelGameDialog);
+	const std::string progress = std::string(_("Loading...")) + " " + std::to_string((now - ConnectionStarted) / 1000) + "s";
+	DrawString(Surface(DiabloUiSurface()), progress, { { 32, 446 }, { 576, 24 } },
+	    { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilver });
+	UiFadeIn();
+}
+#endif
+bool RunNetworkOperation(const std::function<bool()> &operation)
+{
+#ifdef __3DS__
+	struct ProgressGuard {
+		~ProgressGuard() { CtrNetworkProgressCallback = nullptr; }
+	} guard;
+	ConnectionStarted = SDL_GetTicks();
+	ConnectionProgressTick = ConnectionStarted - 100;
+	CtrNetworkProgressCallback = RenderConnectionProgress;
+	RenderConnectionProgress();
+#endif
+	return operation();
+}
+
 std::string GeneratePublicGameName()
 {
 	int maxNum = 0;
@@ -121,12 +159,10 @@ bool IsPrivateGameId(std::string_view name)
 std::string GeneratePrivateGameId()
 {
 	std::vector<GameInfo> gamelist = DvlNet_GetGamelist();
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<int> dist(1000, 9999);
+	const auto nextNumber = [] { return 1000 + net::packet_out::GenerateCookie() % 9000; };
 
 	for (int attempts = 0; attempts < 1000; ++attempts) {
-		std::string id = "PR" + std::to_string(dist(gen));
+		std::string id = "PR" + std::to_string(nextNumber());
 		bool collision = false;
 		for (const auto &game : gamelist) {
 			if (SDL_strcasecmp(game.name.c_str(), id.c_str()) == 0) {
@@ -145,7 +181,7 @@ std::string GeneratePrivateGameId()
 		if (!collision)
 			return id;
 	}
-	return "PR" + std::to_string(dist(gen));
+	return "PR" + std::to_string(nextNumber());
 }
 
 void selgame_FreeVectors()
@@ -292,7 +328,7 @@ void UiInitGameSelectionList(std::string_view search)
 	const int actionCount = static_cast<int>(std::min<size_t>(6, vecSelGameDlgItems.size()));
 	// Reserve the heading above the six-row ZeroTier lobby; LAN actions stay centered.
 	const int actionTop = provider == SELCONN_ZT ? 280 : 240 + (240 - actionCount * actionHeight) / 2;
-	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 65, actionTop, 510, actionHeight, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize24));
+	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 65, actionTop, 510, actionHeight, UiFlags::AlignCenter | UiFlags::VerticalCenter | (provider == SELCONN_ZT ? UiFlags::FontSize12 : UiFlags::FontSize24)));
 #else
 	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 305, (uiPosition.y + 255), 285, 26, UiFlags::AlignCenter | UiFlags::FontSize24));
 
@@ -479,7 +515,7 @@ void selgame_GameSelection_Select(size_t value)
 		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Nightmare"), DIFF_NIGHTMARE));
 		vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Hell"), DIFF_HELL));
 
-		vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, vecSelGameDlgItems.size(), uiPosition.x + 70, 290, 500, 34, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+		vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, vecSelGameDlgItems.size(), uiPosition.x + 70, 240 + (240 - 3 * 34) / 2, 500, 34, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 
 		UiInitList(selgame_Diff_Focus, selgame_Diff_Select, selgame_Diff_Esc, vecSelGameDialog, true);
 		break;
@@ -702,7 +738,7 @@ void selgame_GameSpeedSelection()
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Faster"), 40));
 	vecSelGameDlgItems.push_back(std::make_unique<UiListItem>(_("Fastest"), 50));
 
-	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, vecSelGameDlgItems.size(), uiPosition.x + 70, 290, 500, 34, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, vecSelGameDlgItems.size(), uiPosition.x + 70, 240 + (240 - 4 * 34) / 2, 500, 34, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 
 	UiInitList(selgame_Speed_Focus, selgame_Speed_Select, selgame_Speed_Esc, vecSelGameDialog, true);
 #else
@@ -882,7 +918,7 @@ void selgame_Password_Select(size_t /*value*/)
 		} else {
 			strcpy(GetOptions().Network.szPreviousHost, selgame_Ip);
 		}
-		if (allowJoin && SNetJoinGame(selgame_Ip, gamePassword, gdwPlayerId)) {
+		if (allowJoin && RunNetworkOperation([&] { return SNetJoinGame(selgame_Ip, gamePassword, gdwPlayerId); })) {
 			if (!IsGameCompatibleWithErrorMessage(*m_game_data)) {
 				InitGameInfo();
 				selgame_GameSelection_Select(1);
@@ -934,7 +970,7 @@ void selgame_Password_Select(size_t /*value*/)
 		gameName = generatedName.c_str();
 		DvlNet_SetGamePrivacy(isPublic);
 	}
-	if (SNetCreateGame(gameName, gamePassword, reinterpret_cast<char *>(&gameInitInfo), sizeof(gameInitInfo), gdwPlayerId)) {
+	if (RunNetworkOperation([&] { return SNetCreateGame(gameName, gamePassword, reinterpret_cast<char *>(&gameInitInfo), sizeof(gameInitInfo), gdwPlayerId); })) {
 		UiInitList_clear();
 		selgame_endMenu = true;
 	} else {

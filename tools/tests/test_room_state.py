@@ -19,6 +19,8 @@ CPP=r'''
 #include <strings.h>
 #include <vector>
 #define SDL_strncasecmp strncasecmp
+#define SDL_strcasecmp strcasecmp
+namespace net {struct packet_out {static unsigned GenerateCookie(){static unsigned n=0;return n++;}};}
 struct GameInfo{std::string name;};
 std::vector<GameInfo> Gamelist, advertised;
 std::vector<GameInfo> DvlNet_GetGamelist(){return advertised;}
@@ -26,8 +28,8 @@ constexpr int SELCONN_ZT=1,SELCONN_TCP=2;
 int provider=SELCONN_ZT;
 bool GameIsPublic;
 std::string GamePassword;
-struct Net{int clears=0;void clear_password(){++clears;}} net;
-Net*dvlnet_inst=&net;
+struct Net{int clears=0;void clear_password(){++clears;}} mockNet;
+Net*dvlnet_inst=&mockNet;
 '''
 TEST=r'''
 int main(){
@@ -43,12 +45,13 @@ int main(){
   provider=SELCONN_TCP;GameIsPublic=isPublic;GamePassword="old";
   DvlNet_ClearPassword();assert(GameIsPublic&&GamePassword.empty());
  }
- assert(net.clears==4);
+ assert(mockNet.clears==4);
+ advertised={{"PR1000"}};Gamelist={{"PR1001"}};assert(GeneratePrivateGameId()=="PR1002");
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:
  src=Path(tmp)/'test.cpp';exe=Path(tmp)/'test'
- src.write_text(CPP+function('Source/DiabloUI/multi/selgame.cpp','std::string GeneratePublicGameName()')+function('Source/DiabloUI/multi/selgame.cpp','bool IsPrivateGameId(')+function('Source/storm/storm_net.cpp','void DvlNet_ClearPassword()')+TEST)
+ src.write_text(CPP+function('Source/DiabloUI/multi/selgame.cpp','std::string GeneratePublicGameName()')+function('Source/DiabloUI/multi/selgame.cpp','bool IsPrivateGameId(')+function('Source/DiabloUI/multi/selgame.cpp','std::string GeneratePrivateGameId()')+function('Source/storm/storm_net.cpp','void DvlNet_ClearPassword()')+TEST)
  subprocess.run(['c++','-std=c++17','-fsanitize=address,undefined',str(src),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)
 print('PASS: public room numbering handles oversized suffixes; LAN privacy resets after private rooms')
