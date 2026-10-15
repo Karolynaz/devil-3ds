@@ -339,7 +339,7 @@ void base_protocol<P>::recv()
 		if (!result.has_value()) {
 			// drop packet
 #ifdef __3DS__
-			CtrZeroTierLogStage(result.error().what());
+			CtrZeroTierLogStage(std::string(result.error().what()).c_str());
 #endif
 			proto.disconnect(sender);
 			Log("{}", result.error().what());
