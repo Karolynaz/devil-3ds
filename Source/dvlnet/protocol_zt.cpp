@@ -219,6 +219,9 @@ std::expected<bool, PacketError> protocol_zt::send_queued_peer(const endpoint &p
 			return std::unexpected(ProtocolError("ZeroTier peer connection: {}", strerror(errno)));
 		state.connecting = result < 0;
 		state.connectStarted = SDL_GetTicks();
+#ifdef __3DS__
+		CtrZeroTierLogStage("virtual TCP connect started", result);
+#endif
 	}
 	if (state.connecting) {
 		int error = 0;
@@ -241,6 +244,9 @@ std::expected<bool, PacketError> protocol_zt::send_queued_peer(const endpoint &p
 #endif
 		}
 		state.connecting = false;
+#ifdef __3DS__
+		CtrZeroTierLogStage("virtual TCP connected");
+#endif
 	}
 	while (!state.send_queue.empty()) {
 		auto len = state.send_queue.front().size();
@@ -359,6 +365,9 @@ bool protocol_zt::accept_all()
 		set_nodelay(newfd);
 		state.fd = newfd;
 		state.connecting = false;
+#ifdef __3DS__
+		CtrZeroTierLogStage("virtual TCP accepted");
+#endif
 	}
 	return true;
 }

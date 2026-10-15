@@ -172,6 +172,9 @@ bool tcp_client::IsGameHost()
 
 std::expected<void, PacketError> tcp_client::poll()
 {
+	// A completed async_connect can exhaust the context before receive/write
+	// handlers are queued. Restart it before driving the new handshake work.
+	ioc.restart();
 	for (unsigned budget = 0; budget < 64 && ioc.poll_one() > 0; ++budget) {
 		if (IsGameHost()) {
 			std::expected<void, PacketError> serverResult = local_server->CheckIoHandlerError();

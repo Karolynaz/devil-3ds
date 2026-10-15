@@ -36,6 +36,7 @@ using buffer_t=std::vector<unsigned char>;
 struct PacketError { std::string message;const char *what() const {return message.c_str();} };
 template<class... A> PacketError ProtocolError(std::string_view text,A&&...) {return {std::string(text)};}
 template<class... A> void LogError(A&&...) {}
+void CtrZeroTierLogStage(const char *, int = 0) {}
 struct sockaddr {};
 using socklen_t=unsigned;
 struct ZeroTierSocketAddress {unsigned sin6_port,sin6_family;struct {unsigned char s6_addr[16]{};} sin6_addr;};

@@ -939,8 +939,7 @@ void selgame_Password_Select(size_t /*value*/)
 				return;
 			}
 #endif
-			InitGameInfo();
-			selgame_Free();
+			// Preserve the transport error before UI/asset cleanup can change SDL state.
 			std::string error;
 			if (!allowJoin)
 				error = GetErrorMessageIncompatibility(Gamelist[selgame_selectedGame - 3].gameData);
@@ -948,6 +947,11 @@ void selgame_Password_Select(size_t /*value*/)
 				error = SDL_GetError();
 			if (error.empty())
 				error = "Unknown network error";
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+			CtrZeroTierLogStage(error.c_str(), provider);
+#endif
+			InitGameInfo();
+			selgame_Free();
 			UiSelOkDialog(_("Multi Player Game").data(), error.c_str(), false);
 			selgame_Init();
 			if (selgame_selectedGame == 2)
@@ -1047,9 +1051,9 @@ bool UiSelectGame(GameData *gameData, int *playerId)
 		if (provider == SELCONN_ZT)
 			RefreshGameList();
 #ifdef __3DS__
-		// Keep the lobby responsive while reserving CPU for ZeroTier's
-		// lower-priority workers. Gameplay uses its normal frame pacing.
-		if (provider == SELCONN_ZT) SDL_Delay(25);
+		// Both transports share the music decoder. Yield in LAN menus too,
+		// especially when presentation is not blocking on vertical sync.
+		SDL_Delay(25);
 #endif
 	}
 	selgame_Free();

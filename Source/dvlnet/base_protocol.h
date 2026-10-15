@@ -195,8 +195,12 @@ std::expected<void, PacketError> base_protocol<P>::wait_join()
 	}
 	for (auto i = 0; i < 1500; ++i) {
 		recv();
-		if (plr_self != PLR_BROADCAST)
+		if (plr_self != PLR_BROADCAST) {
+#ifdef __3DS__
+			CtrZeroTierLogStage("game join accepted", plr_self);
+#endif
 			return {}; // join successful
+		}
 #ifdef __3DS__
 		CtrPumpNetworkProgress();
 #endif
@@ -232,6 +236,9 @@ int base_protocol<P>::join(std::string_view addrstr)
 {
 	gamename = addrstr;
 	isGameHost_ = false;
+#ifdef __3DS__
+	CtrZeroTierLogStage("game join started");
+#endif
 
 	std::expected<void, PacketError> isReady = wait_network();
 	if (!isReady.has_value()) {
@@ -331,6 +338,9 @@ void base_protocol<P>::recv()
 		          });
 		if (!result.has_value()) {
 			// drop packet
+#ifdef __3DS__
+			CtrZeroTierLogStage(result.error().what());
+#endif
 			proto.disconnect(sender);
 			Log("{}", result.error().what());
 		}
@@ -348,6 +358,9 @@ void base_protocol<P>::recv()
 template <class P>
 std::expected<void, PacketError> base_protocol<P>::handle_join_request(packet &inPkt, endpoint_t sender)
 {
+#ifdef __3DS__
+	CtrZeroTierLogStage("host received join request");
+#endif
 	plr_t i;
 	for (i = 0; i < Players.size(); ++i) {
 		Peer &peer = peers[i];
