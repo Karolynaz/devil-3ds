@@ -217,7 +217,7 @@ void UiInitGameSelectionList(std::string_view search)
 	const Point uiPosition = GetUIRectangle().position;
 
 #ifdef __3DS__
-	const SDL_Rect rectScrollbar = { (Sint16)(uiPosition.x + 500), 280, 25, 144 };
+	const SDL_Rect rectScrollbar = { (Sint16)(uiPosition.x + 500), 280, 25, 180 };
 	vecSelGameDialog.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0], *ArtScrollBarArrow, rectScrollbar));
 
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 20), 15, 600, 32 };
@@ -288,9 +288,10 @@ void UiInitGameSelectionList(std::string_view search)
 	}
 
 #ifdef __3DS__
-	const int actionHeight = 36;
+	const int actionHeight = provider == SELCONN_ZT ? 30 : 36;
 	const int actionCount = static_cast<int>(std::min<size_t>(6, vecSelGameDlgItems.size()));
-	const int actionTop = 240 + (240 - actionCount * actionHeight) / 2;
+	// Reserve the heading above the six-row ZeroTier lobby; LAN actions stay centered.
+	const int actionTop = provider == SELCONN_ZT ? 280 : 240 + (240 - actionCount * actionHeight) / 2;
 	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 65, actionTop, 510, actionHeight, UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::FontSize24));
 #else
 	vecSelGameDialog.push_back(std::make_unique<UiList>(vecSelGameDlgItems, 6, uiPosition.x + 305, (uiPosition.y + 255), 285, 26, UiFlags::AlignCenter | UiFlags::FontSize24));
