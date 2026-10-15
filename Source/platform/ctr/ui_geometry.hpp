@@ -71,14 +71,14 @@ constexpr Point CtrScreenToWorld(Point p, int screenWidth)
 
 constexpr Point CtrTopToScreen(Point p, int screenWidth)
 {
-	return { (p.x * screenWidth + CtrTopSize.width / 2) / CtrTopSize.width, p.y };
+	return { p.x * screenWidth / CtrTopSize.width, p.y };
 }
 
 constexpr Point CtrScreenToTop(Point p, int screenWidth)
 {
 	if (p.x < 0 || p.x >= screenWidth || p.y < 0 || p.y >= CtrTopSize.height)
 		return { -1, -1 };
-	return { p.x * CtrTopSize.width / screenWidth, p.y };
+	return { CtrUiToWorldX(p.x, screenWidth), p.y };
 }
 
 constexpr Rectangle CtrInventorySlotRect(int slot, bool split)

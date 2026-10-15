@@ -26,6 +26,8 @@ struct TMenuItem {
 	uint32_t dwFlags;
 	const char *pszStr;
 	void (*fnMenu)(bool);
+	void *userData = nullptr;
+	bool localizeText = true;
 
 	[[nodiscard]] bool enabled() const
 	{
@@ -79,6 +81,7 @@ struct TMenuItem {
 };
 
 extern DVL_API_FOR_TEST TMenuItem *sgpCurrentMenu;
+extern TMenuItem *sgpActivatedMenuItem;
 
 void gmenu_draw_pause(const Surface &out);
 void FreeGMenu();

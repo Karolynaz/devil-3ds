@@ -70,6 +70,7 @@ struct Utf8CodePoints { std::u32string cps;
 };
 int ScaleSpacing(int w,CtrTextScale s){return s==CtrTextScale::TopScreen?(w*8+2)/5:s==CtrTextScale::BottomScreen?w*2:w;}
 int ScaleCharWidth(int w,CtrTextScale s){return s==CtrTextScale::TopScreen?w*8/5:s==CtrTextScale::BottomScreen?w*2:w;}
+int ScaleNativeWidth(int w,CtrTextScale s){return s==CtrTextScale::TopScreen?(w*8+4)/5:s==CtrTextScale::BottomScreen?w*2:w;}
 [[noreturn]] void app_fatal(const char *) {std::abort();}
 bool IsBreakableWhitespace(char32_t cp){return cp==' ';}
 bool IsBreakAllowed(char32_t,char32_t){return false;}

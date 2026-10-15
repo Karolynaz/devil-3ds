@@ -19,6 +19,9 @@ AutomapType mode=AutomapType::Minimap;
 AutomapType GetAutomapType() { return mode; }
 int GetViewportWidth() { return 400; }
 Rectangle MinimapRect;
+bool leftPanelOpen=false,rightPanelOpen=false;
+bool IsLeftPanelOpen() { return leftPanelOpen; }
+bool IsRightPanelOpen() { return rightPanelOpen; }
 struct Surface {
     mutable std::vector<uint8_t> pixels=std::vector<uint8_t>(400*240, 7);
     void SetPixel(Point p, uint8_t c) const { assert(p.x>=0 && p.x<400 && p.y>=0 && p.y<240);pixels[p.y*400+p.x]=c; }
@@ -27,6 +30,12 @@ void SetHalfTransparentPixel(const Surface &s, Point p, uint8_t c) { s.SetPixel(
 '''
 TEST=r'''
 int main() {
+    // Full-map overlays shift by a quarter of the native viewport, not the
+    // unchanged 640-wide UI canvas.
+    leftPanelOpen=true;assert(GetAutomapPanelOffsetX()==100);
+    leftPanelOpen=false;rightPanelOpen=true;assert(GetAutomapPanelOffsetX()==-100);
+    leftPanelOpen=true;assert(GetAutomapPanelOffsetX()==0);
+    leftPanelOpen=false;rightPanelOpen=false;
     UpdateMinimapRect();
     // Including the map frame/shadow, the physical footprint is 133x80,
     // positioned in the top-right third without reaching screen edges.
@@ -48,7 +57,7 @@ int main() {
 '''
 with tempfile.TemporaryDirectory() as tmp:
     source=Path(tmp)/'test.cpp';exe=Path(tmp)/'test'
-    source.write_text(CPP+extract('Source/automap.cpp','void UpdateMinimapRect()')+'\n'+extract('Source/engine/render/automap_render.cpp','void SetMapPixel(')+TEST)
+    source.write_text(CPP+extract('Source/automap.cpp','int GetAutomapPanelOffsetX()')+'\n'+extract('Source/automap.cpp','void UpdateMinimapRect()')+'\n'+extract('Source/engine/render/automap_render.cpp','void SetMapPixel(')+TEST)
     subprocess.run([os.environ.get('CXX','c++'),'-std=c++17','-D__3DS__','-I'+str(ROOT/'Source'),str(source),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
 print('PASS: 133x80 map footprint; map pixels stay inside the panel')

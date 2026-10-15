@@ -692,33 +692,46 @@ void LoadUiGFX()
 std::unique_ptr<OwnedSurface> UiBottomBackgroundBuffer;
 std::unique_ptr<OwnedSurface> UiTopBackgroundBuffer;
 std::unique_ptr<OwnedSurface> UiMenuSymbol;
+std::unique_ptr<OwnedSurface> UiMenuSymbolSource;
+std::array<SDL_Color, 256> UiMenuSymbolSourcePalette {};
 std::array<SDL_Color, 256> UiMenuSymbolPalette {};
+bool UiMenuSymbolSpawn = false;
 void Draw3DSMenuSymbol(const Surface &out)
 {
-	if (!UiMenuSymbol || std::memcmp(UiMenuSymbolPalette.data(), logical_palette.data(), sizeof(UiMenuSymbolPalette)) != 0) {
-		std::array<SDL_Color, 256> sourcePalette {};
-		const auto art = LoadPcx(gbIsSpawn && !gbIsHellfire ? "ui_art\\swmmenu" : "ui_art\\mainmenu", std::nullopt, sourcePalette.data(), false);
+	const bool spawn = gbIsSpawn && !gbIsHellfire;
+	if (!UiMenuSymbolSource || UiMenuSymbolSpawn != spawn) {
+		const auto art = LoadPcx(spawn ? "ui_art\\swmmenu" : "ui_art\\mainmenu", std::nullopt, UiMenuSymbolSourcePalette.data(), false);
 		if (!art || (*art)[0].width() < 640 || (*art)[0].height() < 430) return;
 		OwnedSurface original(640, 480);
 		SDL_FillSurfaceRect(original.surface, nullptr, 0);
 		RenderClxSprite(original, (*art)[0], { 0, 0 });
+		const Size fit = CtrFitImage({640,226}, {320,240});
+		UiMenuSymbolSource = std::make_unique<OwnedSurface>(fit);
+		UiMenuSymbolSource->ScaleBlitFrom(original, MakeSdlRect(0,204,640,226), MakeSdlRect(0,0,fit.width,fit.height));
+		UiMenuSymbolSpawn = spawn;
+		UiMenuSymbol.reset();
+	}
+	if (!UiMenuSymbol || std::memcmp(UiMenuSymbolPalette.data(), logical_palette.data(), sizeof(UiMenuSymbolPalette)) != 0) {
+		// Cache the native crop independently of the active menu palette.
+		// Menu transitions only remap 320x113 pixels; no archive reads/decoding.
 		std::array<uint8_t, 256> translation {};
 		for (size_t i = 0; i < 256; ++i) {
 			int best = 3 * 256 * 256;
 			for (size_t j = 0; j < 256; ++j) {
-				const int r = int(sourcePalette[i].r) - logical_palette[j].r;
-				const int g = int(sourcePalette[i].g) - logical_palette[j].g;
-				const int b = int(sourcePalette[i].b) - logical_palette[j].b;
+				const int r = int(UiMenuSymbolSourcePalette[i].r) - logical_palette[j].r;
+				const int g = int(UiMenuSymbolSourcePalette[i].g) - logical_palette[j].g;
+				const int b = int(UiMenuSymbolSourcePalette[i].b) - logical_palette[j].b;
 				const int distance = r*r + g*g + b*b;
-				if (distance < best) { best = distance; translation[i] = j; }
+				if (distance < best) { best = distance; translation[i] = static_cast<uint8_t>(j); }
 			}
 		}
-		for (int y = 0; y < original.h(); ++y)
-			for (int x = 0; x < original.w(); ++x) *original.at(x,y) = translation[*original.at(x,y)];
 		OwnedSurface native(320, 240);
 		SDL_FillSurfaceRect(native.surface, nullptr, 0);
-		const Size fit = CtrFitImage({640,226}, {320,240});
-		native.ScaleBlitFrom(original, MakeSdlRect(0,204,640,226), MakeSdlRect((320-fit.width)/2,(240-fit.height)/2,fit.width,fit.height));
+		const int left = (320 - UiMenuSymbolSource->w()) / 2;
+		const int top = (240 - UiMenuSymbolSource->h()) / 2;
+		for (int y = 0; y < UiMenuSymbolSource->h(); ++y)
+			for (int x = 0; x < UiMenuSymbolSource->w(); ++x)
+				*native.at(left + x, top + y) = translation[*UiMenuSymbolSource->at(x,y)];
 		UiMenuSymbol = std::make_unique<OwnedSurface>(640,240);
 		UiMenuSymbol->ScaleBlitFromPreservingDownscale(native, MakeSdlRect(0,0,320,240), MakeSdlRect(0,0,640,240));
 		UiMenuSymbolPalette = logical_palette;
@@ -814,6 +827,7 @@ void UnloadUiGFX()
 	UiBottomBackgroundBuffer = nullptr;
 	UiTopBackgroundBuffer = nullptr;
 	UiMenuSymbol = nullptr;
+	UiMenuSymbolSource = nullptr;
 #endif
 	ArtHero = std::nullopt;
 	for (OptionalOwnedClxSpriteList &override : ArtHeroOverrides)

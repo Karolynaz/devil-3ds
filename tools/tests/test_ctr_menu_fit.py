@@ -54,7 +54,7 @@ prelude = r'''
 #include "DiabloUI/ui_flags.hpp"
 using namespace devilution;
 enum GameFontTables { GameFont12, GameFont24, GameFont30, GameFont42, GameFont46, FontSizeDialog };
-enum class CtrTextScale { BottomScreen };
+enum class CtrTextScale { TopScreen, BottomScreen };
 enum class text_color { ColorDialogWhite };
 constexpr char32_t ZWSP=0x200b, Utf8DecodeError=0xfffd;
 std::unordered_map<unsigned,int> widths;
@@ -78,6 +78,10 @@ struct Utf8CodePoints {
 };
 int ScaleSpacing(int w,CtrTextScale) { return w*2; }
 int ScaleCharWidth(int w,CtrTextScale) { return w*2; }
+int ScaleNativeWidth(int w,CtrTextScale scale) {
+ if(scale==CtrTextScale::TopScreen) return w>=0?(w*8+4)/5:-((-w*8)/5);
+ return scale==CtrTextScale::BottomScreen?w*2:w;
+}
 [[noreturn]] void app_fatal(const char *) { std::abort(); }
 '''
 font = function((ROOT / 'Source/engine/render/text_render.hpp').read_text(), 'constexpr GameFontTables GetFontSizeFromUiFlags(')

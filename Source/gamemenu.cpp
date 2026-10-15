@@ -5,6 +5,15 @@
  */
 #include "gamemenu.h"
 
+#ifdef __3DS__
+#include <algorithm>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+#endif
+
 #ifdef USE_SDL3
 #include <SDL3/SDL_timer.h>
 #endif
@@ -12,6 +21,7 @@
 #include "cursor.h"
 #ifdef __3DS__
 #include "control/control_chat.hpp"
+#include "engine/render/text_render.hpp"
 #include "platform/ctr/sockets.hpp"
 #include "storm/storm_net.hpp"
 #endif
@@ -56,8 +66,14 @@ void GamemenuBrightness(bool bActivate);
 void GamemenuSpeed(bool bActivate);
 #ifdef __3DS__
 void GamemenuSmallMap(bool bActivate);
+void GamemenuMods(bool bActivate);
+void GamemenuModsBack(bool bActivate);
+void GamemenuModsOption(bool bActivate);
+void GamemenuModsNextPage(bool bActivate);
+void GamemenuModsPreviousPage(bool bActivate);
 void GamemenuTalk(bool bActivate);
 void GamemenuHostile(bool bActivate);
+void GamemenuBuildModsMenu();
 #endif
 
 /** Contains the game menu items of the single player menu. */
@@ -99,11 +115,19 @@ TMenuItem sgOptionsMenu[] = {
 	{ GMENU_ENABLED | GMENU_SLIDER, N_("Speed"),         &GamemenuSpeed        },
 #ifdef __3DS__
 	{ GMENU_ENABLED               , N_("Show small map"), &GamemenuSmallMap     },
+	{ GMENU_ENABLED               , N_("Mods"),            &GamemenuMods         },
 #endif
 	{ GMENU_ENABLED               , N_("Previous Menu"), &GamemenuPrevious     },
 	{ GMENU_ENABLED               , nullptr,             nullptr               },
 	// clang-format on
 };
+#ifdef __3DS__
+constexpr size_t ModsMenuSinglePlayerPageSize = 4;
+constexpr size_t ModsMenuMultiplayerPageSize = 3;
+std::vector<TMenuItem> sgModsMenu;
+std::vector<std::string> sgModsMenuLabels;
+size_t sgModsMenuPage = 0;
+#endif
 /** Specifies the menu names for music enabled and disabled. */
 const char *const MusicToggleNames[] = {
 	N_("Music"),
@@ -241,6 +265,132 @@ void GamemenuSmallMap(bool /*bActivate*/)
 	GamemenuSmallMapLabel();
 	SaveOptions();
 	RedrawEverything();
+}
+
+std::vector<OptionEntryBase *> GamemenuGetLiveModsOptions()
+{
+	GameplayOptions &gameplay = GetOptions().Gameplay;
+	std::vector<OptionEntryBase *> options;
+	for (OptionEntryBase *pEntry : gameplay.GetEntries()) {
+		const OptionEntryFlags flags = pEntry->GetFlags();
+		if (pEntry == &gameplay.tickRate || HasAnyOf(flags, OptionEntryFlags::Invisible | OptionEntryFlags::CantChangeInGame))
+			continue;
+		if (gbIsMultiplayer && HasAnyOf(flags, OptionEntryFlags::CantChangeInMultiPlayer))
+			continue;
+		if (pEntry == &gameplay.grabInput || pEntry == &gameplay.pauseOnFocusLoss)
+			continue;
+		// These values are copied into sgGameInitInfo when the session starts.
+		if (pEntry == &gameplay.runInTown || pEntry == &gameplay.friendlyFire || pEntry == &gameplay.multiplayerFullQuests)
+			continue;
+		if (gbIsHellfire ? HasAnyOf(flags, OptionEntryFlags::OnlyDiablo) : HasAnyOf(flags, OptionEntryFlags::OnlyHellfire))
+			continue;
+		options.push_back(pEntry);
+	}
+	return options;
+}
+
+std::string GamemenuFormatModsLabel(std::string_view name, std::string_view value)
+{
+	const int availableWidth = gnScreenWidth - 2 * 56 - 16;
+	std::string label(name);
+	label.append(": ");
+	label.append(value);
+	if (GetLineWidth(label, GameFont12, 0, nullptr, CtrTextScale::TopScreen) <= availableWidth)
+		return label;
+	label.assign(name);
+	label.push_back('\n');
+	label.append(value);
+	return label;
+}
+
+void GamemenuBuildModsMenu()
+{
+	struct MenuRow {
+		std::string label;
+		void (*handler)(bool);
+		bool enabled;
+		OptionEntryBase *option;
+	};
+	const std::vector<OptionEntryBase *> options = GamemenuGetLiveModsOptions();
+	const size_t pageSize = gbIsMultiplayer ? ModsMenuMultiplayerPageSize : ModsMenuSinglePlayerPageSize;
+	const size_t pageCount = std::max<size_t>(1, (options.size() + pageSize - 1) / pageSize);
+	sgModsMenuPage = std::min(sgModsMenuPage, pageCount - 1);
+	const size_t firstOption = sgModsMenuPage * pageSize;
+	std::vector<MenuRow> rows;
+	const size_t optionCount = std::min(pageSize, options.size() - firstOption);
+	rows.reserve(optionCount + 3);
+	for (size_t i = firstOption; i < firstOption + optionCount; i++) {
+		OptionEntryBase *pOption = options[i];
+		std::string label = GamemenuFormatModsLabel(pOption->GetName(), pOption->GetValueDescription());
+		rows.push_back({ std::move(label), &GamemenuModsOption, true, pOption });
+	}
+	if (pageCount > 1) {
+		rows.push_back({ std::string(_("Previous Page")) + " (" + std::to_string(sgModsMenuPage + 1) + "/" + std::to_string(pageCount) + ")",
+		    &GamemenuModsPreviousPage, sgModsMenuPage > 0, nullptr });
+		rows.push_back({ std::string(_("Next Page")) + " (" + std::to_string(sgModsMenuPage + 1) + "/" + std::to_string(pageCount) + ")",
+		    &GamemenuModsNextPage, sgModsMenuPage + 1 < pageCount, nullptr });
+	}
+	rows.push_back({ std::string(_("Previous Menu")), &GamemenuModsBack, true, nullptr });
+
+	sgModsMenuLabels.clear();
+	sgModsMenuLabels.reserve(rows.size());
+	sgModsMenu.clear();
+	sgModsMenu.reserve(rows.size() + 1);
+	for (MenuRow &row : rows)
+		sgModsMenuLabels.push_back(std::move(row.label));
+	for (size_t i = 0; i < rows.size(); i++) {
+		const MenuRow &row = rows[i];
+		const uint32_t flags = row.enabled ? GMENU_ENABLED : 0;
+		sgModsMenu.push_back({ flags, sgModsMenuLabels[i].c_str(), row.handler, row.option, false });
+	}
+	sgModsMenu.push_back({ GMENU_ENABLED, nullptr, nullptr });
+}
+
+void GamemenuMods(bool /*bActivate*/)
+{
+	sgModsMenuPage = 0;
+	GamemenuBuildModsMenu();
+	gmenu_set_items(sgModsMenu.data(), nullptr);
+}
+
+void GamemenuModsBack(bool /*bActivate*/)
+{
+	gmenu_set_items(sgOptionsMenu, nullptr);
+}
+
+void GamemenuModsOption(bool /*bActivate*/)
+{
+	if (sgpActivatedMenuItem == nullptr || sgpActivatedMenuItem->userData == nullptr)
+		return;
+	auto *pOption = static_cast<OptionEntryBase *>(sgpActivatedMenuItem->userData);
+	if (pOption->GetType() == OptionEntryType::Boolean) {
+		auto *pBooleanOption = static_cast<OptionEntryBoolean *>(pOption);
+		pBooleanOption->SetValue(!**pBooleanOption);
+	} else if (pOption->GetType() == OptionEntryType::List) {
+		auto *pListOption = static_cast<OptionEntryListBase *>(pOption);
+		const size_t listSize = pListOption->GetListSize();
+		if (listSize != 0)
+			pListOption->SetActiveListIndex((pListOption->GetActiveListIndex() + 1) % listSize);
+	}
+	const size_t itemIndex = static_cast<size_t>(sgpActivatedMenuItem - sgModsMenu.data());
+	std::string label = GamemenuFormatModsLabel(pOption->GetName(), pOption->GetValueDescription());
+	sgModsMenuLabels[itemIndex] = std::move(label);
+	sgpActivatedMenuItem->pszStr = sgModsMenuLabels[itemIndex].c_str();
+}
+
+void GamemenuModsNextPage(bool /*bActivate*/)
+{
+	++sgModsMenuPage;
+	GamemenuBuildModsMenu();
+	gmenu_set_items(sgModsMenu.data(), nullptr);
+}
+
+void GamemenuModsPreviousPage(bool /*bActivate*/)
+{
+	if (sgModsMenuPage > 0)
+		--sgModsMenuPage;
+	GamemenuBuildModsMenu();
+	gmenu_set_items(sgModsMenu.data(), nullptr);
 }
 #endif
 

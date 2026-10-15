@@ -108,7 +108,9 @@ void checkValues(){
  }
 }
 int main(){
- DrawChr3DS({});checkValues();bool yellow=false;for(const auto&d:draws)if(d.rect.position==Point{132,106})yellow=HasAnyOf(d.flags,UiFlags::ColorDialogYellow);assert(yellow);
+ DrawChr3DS({});checkValues();
+ const auto name=std::find_if(draws.begin(),draws.end(),[](const Draw&d){return d.rect.position==Point{12,18};});assert(name!=draws.end()&&name->text=="Hero"&&name->rect.size.height==18);assert(!HasAnyOf(name->flags,UiFlags::FontSizeDialog));
+ bool yellow=false;for(const auto&d:draws)if(d.rect.position==Point{132,106})yellow=HasAnyOf(d.flags,UiFlags::ColorDialogYellow);assert(yellow);
  draws.clear();player._pStrength=35;player._pMagic=40;player._pDexterity=750;player._pVitality=750;
  minDamage=1000;maxDamage=2000;
  DrawChr3DS({});checkValues();
@@ -129,4 +131,4 @@ with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp);(p/'test.cpp').write_text(code)
  subprocess.run(['c++','-std=c++20','-fsanitize=address,undefined','-I'+str(root/'Source'),str(p/'test.cpp'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
-print('PASS: production character stat bindings, positive/negative bonuses, combat fields, resistances, max life/mana and large-number widths (ASan/UBSan)')
+print('PASS: native-size character name and production stat bindings, bonuses, combat fields, resistances, resources and large-number widths (ASan/UBSan)')

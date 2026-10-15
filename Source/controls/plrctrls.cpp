@@ -260,13 +260,33 @@ void FindItemOrObject()
 
 void CheckTownersNearby()
 {
+#ifdef __3DS__
+	int distance = 0;
+	int rotations = 0;
+#endif
 	for (size_t i = 0; i < GetNumTowners(); i++) {
-		const int distance = GetDistance(Towners[i].position, 2);
-		if (distance == 0)
+		const Towner &towner = Towners[i];
+		const int newDistance = GetDistance(towner.position, 2);
+		if (newDistance == 0)
 			continue;
-		if (!IsTownerPresent(Towners[i]._ttype))
+		if (!IsTownerPresent(towner._ttype))
 			continue;
+#ifdef __3DS__
+		const int newRotations = GetRotaryDistance(towner.position);
+		// Controller focus follows the facing direction, like ground items and objects.
+		if (newRotations > 1)
+			continue;
+		if (pcursmonst != -1 && distance < newDistance)
+			continue;
+		if (pcursmonst != -1 && distance == newDistance && rotations <= newRotations)
+			continue;
+
+		distance = newDistance;
+		rotations = newRotations;
 		pcursmonst = static_cast<int>(i);
+#else
+		pcursmonst = static_cast<int>(i);
+#endif
 	}
 }
 

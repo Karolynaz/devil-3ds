@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TEST = r'''
 #include <cstdlib>
 #include <initializer_list>
+#include "platform/ctr/pixel_geometry.hpp"
 #include "platform/ctr/ui_geometry.hpp"
 using namespace devilution;
 void check(bool ok) { if (!ok) std::abort(); }
@@ -44,6 +45,13 @@ int main() {
     check(CtrScreenToTop({x, 240}, 640) == Point(-1, -1));
     const Point top = CtrScreenToTop({x, 120}, 640);
     check(top.x >= 0 && top.x < 400 && top.y == 120);
+    // Cursor hit testing must invert the presenter's source-column sampling.
+    check(CtrScreenToWorld({x, 120}, 640).x == CtrInverseColumn(x, 400));
+  }
+  for (int x = 0; x < 400; ++x) {
+    check(CtrScreenToTop(CtrTopToScreen({x, 120}, 640), 640) == Point(x, 120));
+    const int sourceColumn = CtrNativeColumn(x, 400);
+    check(CtrScreenToWorld({sourceColumn, 0}, 640).x == x);
   }
   for(bool hellfire : {false,true}) {
     Rectangle previous {};

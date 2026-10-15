@@ -96,7 +96,7 @@ main += '}\n'
 with tempfile.TemporaryDirectory() as directory:
     cpp = Path(directory) / 'dialogs.cpp'; exe = Path(directory) / 'dialogs'
     production = '\n'.join(function(signature) for signature in (
-        'inline int ScaleCharWidth(', 'inline int ScaleSpacing(',
+        'inline int ScaleCharWidth(', 'inline int ScaleSpacing(', 'inline int ScaleBoundary(', 'inline int ScaleNativeWidth(',
         'std::string WordWrapString(std::string_view text, unsigned width, GameFontTables size, int spacing, CtrTextScale scale)'))
     cpp.write_text(prelude + production + main)
     subprocess.run([os.environ.get('CXX', 'c++'), '-std=c++17', '-fsanitize=address,undefined', str(cpp), '-o', str(exe)], check=True)

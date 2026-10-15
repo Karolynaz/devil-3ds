@@ -55,6 +55,17 @@ constexpr size_t IndexPadTimerText = 2;
 constexpr int ControlsCategoryIndex = 999;
 constexpr int UpdateCategoryIndex = 1000;
 std::string updateStatus;
+
+bool IsLiveGameplayOption(const OptionEntryBase *pEntry)
+{
+	const GameplayOptions &gameplay = GetOptions().Gameplay;
+	const OptionEntryFlags flags = pEntry->GetFlags();
+	return pEntry != &gameplay.tickRate
+	    && HasNoneOf(flags, OptionEntryFlags::Invisible | OptionEntryFlags::CantChangeInGame | OptionEntryFlags::CantChangeInMultiPlayer)
+	    && pEntry != &gameplay.runInTown
+	    && pEntry != &gameplay.friendlyFire
+	    && pEntry != &gameplay.multiplayerFullQuests;
+}
 #endif
 
 bool endMenu = false;
@@ -105,9 +116,7 @@ bool IsValidEntry(OptionEntryBase *pOptionEntry)
 			return false;
 	}
 	if (pOptionEntry == &GetOptions().Gameplay.grabInput
-	    || pOptionEntry == &GetOptions().Gameplay.quickCast
-	    || pOptionEntry == &GetOptions().Gameplay.pauseOnFocusLoss
-	    || pOptionEntry == &GetOptions().Gameplay.storeUi) {
+	    || pOptionEntry == &GetOptions().Gameplay.pauseOnFocusLoss) {
 		return false;
 	}
 #endif
@@ -126,8 +135,11 @@ std::vector<OptionEntryBase *> GetCategoryEntriesForMenu(OptionCategoryBase *pCa
 		std::vector<OptionEntryBase *> entries;
 		for (OptionEntryBase *pEntry : GetOptions().GameMode.GetEntries())
 			entries.push_back(pEntry);
-		for (OptionEntryBase *pEntry : GetOptions().Gameplay.GetEntries())
+		for (OptionEntryBase *pEntry : GetOptions().Gameplay.GetEntries()) {
+			if (IsLiveGameplayOption(pEntry))
+				continue;
 			entries.push_back(pEntry);
+		}
 		for (OptionEntryBase *pEntry : GetOptions().Mods.GetEntries())
 			entries.push_back(pEntry);
 		return entries;

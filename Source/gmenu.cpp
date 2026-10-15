@@ -103,6 +103,11 @@ void DrawGMenuSpinner(const Surface &out, ClxSprite sprite, Point position)
 }
 #endif
 
+std::string_view GmenuItemText(const TMenuItem *pItem)
+{
+	return pItem->localizeText ? _(pItem->pszStr) : std::string_view(pItem->pszStr);
+}
+
 void GmenuUpDown(bool isDown)
 {
 	if (sgpCurrItem == nullptr) {
@@ -151,12 +156,51 @@ void GmenuLeftRight(bool isRight)
 }
 
 #ifdef __3DS__
+int GmenuGetTextWidth(TMenuItem *pItem, GameFontTables font, int spacing)
+{
+	const std::string_view text = GmenuItemText(pItem);
+	int width = 0;
+	size_t lineStart = 0;
+	while (lineStart <= text.size()) {
+		const size_t lineEnd = text.find('\n', lineStart);
+		const std::string_view line = text.substr(lineStart, lineEnd == std::string_view::npos ? text.size() - lineStart : lineEnd - lineStart);
+		width = std::max(width, GetLineWidth(line, font, spacing, nullptr, CtrTextScale::TopScreen));
+		if (lineEnd == std::string_view::npos)
+			break;
+		lineStart = lineEnd + 1;
+	}
+	return width;
+}
+
+int GmenuGetSpacing(TMenuItem *pItem)
+{
+	const int availableWidth = gnScreenWidth - 2 * 56 - 16;
+	if (pItem->userData != nullptr) {
+		for (int spacing = 1; spacing >= 0; spacing--) {
+			if (GmenuGetTextWidth(pItem, GameFont12, spacing) <= availableWidth)
+				return spacing;
+		}
+		return 0;
+	}
+	for (const GameFontTables font : { GameFont30, GameFont24 }) {
+		if (GmenuGetTextWidth(pItem, font, 2) <= availableWidth)
+			return 2;
+	}
+	for (int spacing = 2; spacing >= 0; spacing--) {
+		if (GmenuGetTextWidth(pItem, GameFont12, spacing) <= availableWidth)
+			return spacing;
+	}
+	return 0;
+}
+
 GameFontTables GmenuGetFont(TMenuItem *pItem)
 {
+	if (pItem->userData != nullptr)
+		return GameFont12;
 	// Reserve two 48-column spinners, their gaps, and an outer margin.
 	const int availableWidth = gnScreenWidth - 2 * 56 - 16;
 	for (const GameFontTables font : { GameFont30, GameFont24 }) {
-		if (GetLineWidth(_(pItem->pszStr), font, 2, nullptr, CtrTextScale::TopScreen) <= availableWidth)
+		if (GmenuGetTextWidth(pItem, font, 2) <= availableWidth)
 			return font;
 	}
 	return GameFont12;
@@ -169,9 +213,9 @@ int GmenuGetLineWidth(TMenuItem *pItem)
 		return SliderItemWidth;
 
 #ifdef __3DS__
-	return GetLineWidth(_(pItem->pszStr), GmenuGetFont(pItem), 2, nullptr, CtrTextScale::TopScreen);
+	return GmenuGetTextWidth(pItem, GmenuGetFont(pItem), GmenuGetSpacing(pItem));
 #else
-	return GetLineWidth(_(pItem->pszStr), GameFont46, 2);
+	return GetLineWidth(GmenuItemText(pItem), GameFont46, 2);
 #endif
 }
 
@@ -205,8 +249,13 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 	const GameFontTables font = GmenuGetFont(pItem);
 	const UiFlags fontFlags = font == GameFont30 ? UiFlags::FontSize30
 	    : font == GameFont24 ? UiFlags::FontSize24 : UiFlags::FontSize12;
-	DrawString(out, _(pItem->pszStr), Point { x, y },
-	    { .flags = style | fontFlags, .spacing = 2 });
+	if (pItem->userData != nullptr) {
+		DrawString(out, GmenuItemText(pItem), { { 0, y }, { gnScreenWidth, GMenuItemHeight } },
+		    { .flags = style | fontFlags | UiFlags::AlignCenter, .spacing = GmenuGetSpacing(pItem), .lineHeight = 12 });
+	} else {
+		DrawString(out, GmenuItemText(pItem), Point { x, y },
+		    { .flags = style | fontFlags, .spacing = GmenuGetSpacing(pItem) });
+	}
 	if (pItem == sgpCurrItem) {
 		if (PentSpin_cel) {
 			const ClxSprite sprite = (*PentSpin_cel)[PentSpn2Spin()];
@@ -215,7 +264,7 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 		}
 	}
 #else
-	DrawString(out, _(pItem->pszStr), Point { x, y },
+	DrawString(out, GmenuItemText(pItem), Point { x, y },
 	    { .flags = style | UiFlags::FontSize46, .spacing = 2 });
 	if (pItem == sgpCurrItem) {
 		const ClxSprite sprite = (*PentSpin_cel)[PentSpn2Spin()];
@@ -255,6 +304,7 @@ int GmenuGetSliderFill()
 } // namespace
 
 TMenuItem *sgpCurrentMenu;
+TMenuItem *sgpActivatedMenuItem;
 
 void gmenu_draw_pause(const Surface &out)
 {
@@ -359,7 +409,9 @@ void gmenu_draw(const Surface &out)
 #endif
 #ifdef __3DS__
 		const char *address = gamemenu_network_address();
-		if (address[0] != '\0') {
+		// Keep the connection address below the menu when there is room. Long
+		// menus (including the full single-player Mods page) use this space.
+		if (address[0] != '\0' && y + sgCurrentMenuIdx * GMenuItemHeight <= 220) {
 			const int width = GetLineWidth(address, GameFont12, 1, nullptr, CtrTextScale::TopScreen);
 			DrawString(out, address, Point { (gnScreenWidth - width) / 2, 220 },
 			    { .flags = UiFlags::FontSize12 | UiFlags::ColorWhite, .spacing = 1 });
@@ -385,7 +437,9 @@ bool gmenu_presskeys(SDL_Keycode vkey)
 	case SDLK_RETURN:
 		if (sgpCurrItem->enabled()) {
 			PlaySFX(SfxID::MenuMove);
+			sgpActivatedMenuItem = sgpCurrItem;
 			sgpCurrItem->fnMenu(true);
+			sgpActivatedMenuItem = nullptr;
 		}
 		break;
 	case SDLK_ESCAPE:
@@ -470,7 +524,9 @@ bool gmenu_left_mouse(bool isDown)
 		isDraggingSlider = GmenuMouseIsOverSlider();
 		gmenu_on_mouse_move();
 	} else {
+		sgpActivatedMenuItem = sgpCurrItem;
 		sgpCurrItem->fnMenu(true);
+		sgpActivatedMenuItem = nullptr;
 	}
 	return true;
 }

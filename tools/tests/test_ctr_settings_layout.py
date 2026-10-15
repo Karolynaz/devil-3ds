@@ -57,6 +57,7 @@ struct CurrentFont { char32_t cp; bool load(int,text_color,char32_t c) {cp=c;ret
 [[noreturn]] void app_fatal(const char *) {std::abort();}
 int ScaleSpacing(int w,CtrTextScale) {return 2*w;}
 int ScaleCharWidth(int w,CtrTextScale) {return 2*w;}
+int ScaleNativeWidth(int w,CtrTextScale) {return 2*w;}
 char32_t DecodeFirstUtf8CodePoint(std::string_view s,size_t *n) {
  auto c=uint8_t(s[0]); *n=c<128?1:c<224?2:c<240?3:4;
  char32_t cp=c&(*n==1?127:*n==2?31:*n==3?15:7);

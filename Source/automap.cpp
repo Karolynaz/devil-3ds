@@ -1282,6 +1282,11 @@ Displacement GetAutomapScreen()
 	return screen;
 }
 
+int GetAutomapPanelOffsetX()
+{
+	return (static_cast<int>(IsLeftPanelOpen()) - static_cast<int>(IsRightPanelOpen())) * GetViewportWidth() / 4;
+}
+
 void SearchAutomapItem(const Surface &out, const Displacement &myPlayerOffset, int searchRadius, tl::function_ref<bool(Point position)> highlightTile)
 {
 	const Player &player = *MyPlayer;
@@ -1318,10 +1323,7 @@ void SearchAutomapItem(const Surface &out, const Displacement &myPlayerOffset, i
 			screen += GetAutomapScreen();
 
 			if (mapType != AutomapType::Minimap && CanPanelsCoverView()) {
-				if (IsRightPanelOpen())
-					screen.x -= gnScreenWidth / 4;
-				if (IsLeftPanelOpen())
-					screen.x += gnScreenWidth / 4;
+				screen.x += GetAutomapPanelOffsetX();
 			}
 
 			screen.y -= AmLine(AmLineLength::FullTile);
@@ -1371,10 +1373,7 @@ void DrawAutomapPlr(const Surface &out, const Displacement &myPlayerOffset, cons
 	base += GetAutomapScreen();
 
 	if (CanPanelsCoverView()) {
-		if (IsRightPanelOpen())
-			base.x -= gnScreenWidth / 4;
-		if (IsLeftPanelOpen())
-			base.x += gnScreenWidth / 4;
+		base.x += GetAutomapPanelOffsetX();
 	}
 
 	switch (player._pdir) {
@@ -1869,12 +1868,7 @@ void DrawAutomap(const Surface &out)
 	screen.y += scale * myPlayerOffset.deltaY / 100 / 2;
 
 	if (CanPanelsCoverView()) {
-		if (IsRightPanelOpen()) {
-			screen.x -= gnScreenWidth / 4;
-		}
-		if (IsLeftPanelOpen()) {
-			screen.x += gnScreenWidth / 4;
-		}
+		screen.x += GetAutomapPanelOffsetX();
 	}
 
 	Point map = { Automap.x - cells, Automap.y - 1 };
