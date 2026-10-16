@@ -242,6 +242,19 @@ void LoadOptions()
 #ifdef __3DS__
 	// The custom bottom HUD always includes experience, including old INI files.
 	options.Gameplay.experienceBar.SetValue(true);
+	if (ini->get("Game", "Show Vital Values").empty())
+		options.Gameplay.showVitalValues.SetValue(*options.Gameplay.showHealthValues || *options.Gameplay.showManaValues);
+	if (ini->get("Game", "Auto Collect Consumables").empty()) {
+		auto &g = options.Gameplay;
+		g.autoConsumables.SetValue(*g.autoElixirPickup || *g.autoOilPickup
+		    || *g.numHealPotionPickup > 0 || *g.numFullHealPotionPickup > 0
+		    || *g.numManaPotionPickup > 0 || *g.numFullManaPotionPickup > 0
+		    || *g.numRejuPotionPickup > 0 || *g.numFullRejuPotionPickup > 0);
+	}
+	ApplyCtrGameplayOptions();
+	// Choose the expansion per hero, before Lua mounts any expansion archives.
+	options.Mods.SetHellfireEnabled(false);
+	options.GameMode.gameMode.SetValue(StartUpGameMode::Diablo);
 #endif
 
 	ini->getUtf8Buf("Hellfire", "SItem", options.Hellfire.szItem, sizeof(options.Hellfire.szItem));
@@ -860,6 +873,11 @@ std::vector<OptionEntryBase *> GraphicsOptions::GetEntries()
 
 GameplayOptions::GameplayOptions()
     : OptionCategoryBase("Game", N_("Gameplay"), N_("Gameplay Settings"))
+#ifdef __3DS__
+    , showVitalValues("Show Vital Values", OptionEntryFlags::None, N_("Show health and mana"), N_("Shows current and maximum health and mana as numbers."), false)
+    , autoConsumables("Auto Collect Consumables", OptionEntryFlags::None, N_("Auto Collect Consumables"), N_("Collects potions (up to 8 of each type), elixirs and Hellfire oils. Does not use them."), false)
+    , autoEquip("Auto Equip Items", OptionEntryFlags::None, N_("Auto Equip Items"), N_("Equips picked up or purchased items only in empty equipment slots. Never replaces worn equipment."), true)
+#endif
     , tickRate("Speed", OptionEntryFlags::Invisible, "Speed", "Gameplay ticks per second.", 20)
     , runInTown("Run in Town", OptionEntryFlags::CantChangeInMultiPlayer, N_("Run in Town"), N_("Enable jogging/fast walking in town for Diablo and Hellfire. This option was introduced in the expansion."), false)
     , grabInput("Grab Input", OptionEntryFlags::None, N_("Grab Input"), N_("When enabled mouse is locked to the game window."), false)
@@ -871,7 +889,13 @@ GameplayOptions::GameplayOptions()
     , testBard("Test Bard", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Test Bard"), N_("Force the Bard character type to appear in the hero selection menu."), false)
     , testBarbarian("Test Barbarian", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Test Barbarian"), N_("Force the Barbarian character type to appear in the hero selection menu."), false)
     , experienceBar("Experience Bar", CtrGraphicsFlag, N_("Experience Bar"), N_("Experience Bar is added to the UI at the bottom of the screen."), true)
-    , showSmallMap("Show small map", OptionEntryFlags::Invisible, N_("Show small map"), N_("Draws the map in the upper-right corner."), false)
+    , showSmallMap("Show small map", OptionEntryFlags::Invisible, N_("Show small map"), N_("Draws the map in the upper-right corner."),
+#ifdef __3DS__
+          true
+#else
+          false
+#endif
+      )
     , showHealthValues("Show health values", OptionEntryFlags::None, N_("Show health values"), N_("Displays current / max health value on health globe."), false)
     , showManaValues("Show mana values", OptionEntryFlags::None, N_("Show mana values"), N_("Displays current / max mana value on mana globe."), false)
     , showMultiplayerPartyInfo("Show Multiplayer Party Information", OptionEntryFlags::CantChangeInMultiPlayer, N_("Show Party Information"), N_("Displays the health and mana of all connected multiplayer party members."), false)
@@ -898,7 +922,12 @@ GameplayOptions::GameplayOptions()
     , numFullManaPotionPickup("Full Mana Potion Pickup", OptionEntryFlags::None, N_("Full Mana Potion Pickup"), N_("Number of Full Mana potions to pick up automatically."), 0, { 0, 1, 2, 4, 8, 16 })
     , numRejuPotionPickup("Rejuvenation Potion Pickup", OptionEntryFlags::None, N_("Rejuvenation Potion Pickup"), N_("Number of Rejuvenation potions to pick up automatically."), 0, { 0, 1, 2, 4, 8, 16 })
     , numFullRejuPotionPickup("Full Rejuvenation Potion Pickup", OptionEntryFlags::None, N_("Full Rejuvenation Potion Pickup"), N_("Number of Full Rejuvenation potions to pick up automatically."), 0, { 0, 1, 2, 4, 8, 16 })
-    , storeUi("Store UI", OptionEntryFlags::None, N_("Store UI"), N_("User interface for stores"), StoreUi::Text,
+    , storeUi("Store UI", OptionEntryFlags::None, N_("Store UI"), N_("User interface for stores"),
+#ifdef __3DS__
+          StoreUi::ListWithItemGraphics,
+#else
+          StoreUi::Text,
+#endif
           {
               { StoreUi::Text, N_("Text-only list") },
               { StoreUi::ListWithItemGraphics, N_("List with item graphics") },
@@ -911,6 +940,11 @@ GameplayOptions::GameplayOptions()
 std::vector<OptionEntryBase *> GameplayOptions::GetEntries()
 {
 	return {
+#ifdef __3DS__
+		&showVitalValues,
+		&autoConsumables,
+		&autoEquip,
+#endif
 		&tickRate,
 		&friendlyFire,
 		&multiplayerFullQuests,
@@ -953,6 +987,68 @@ std::vector<OptionEntryBase *> GameplayOptions::GetEntries()
 		&skipLoadingScreenThresholdMs,
 	};
 }
+
+#ifdef __3DS__
+void ApplyCtrGameplayOptions()
+{
+	auto &g = GetOptions().Gameplay;
+	g.showHealthValues.SetValue(*g.showVitalValues);
+	g.showManaValues.SetValue(*g.showVitalValues);
+	for (auto *option : { &g.autoEquipWeapons, &g.autoEquipArmor, &g.autoEquipHelms, &g.autoEquipShields, &g.autoEquipJewelry })
+		option->SetValue(*g.autoEquip);
+	g.autoElixirPickup.SetValue(*g.autoConsumables);
+	g.autoOilPickup.SetValue(*g.autoConsumables);
+	for (auto *option : { &g.numHealPotionPickup, &g.numFullHealPotionPickup, &g.numManaPotionPickup, &g.numFullManaPotionPickup, &g.numRejuPotionPickup, &g.numFullRejuPotionPickup })
+		option->SetValue(*g.autoConsumables ? 8 : 0);
+}
+
+const char *CtrGameplayGroupName(int group)
+{
+	static const char *names[] = { N_("Display"), N_("Auto Pickup"), N_("Inventory"), N_("Game Rules"), N_("Multiplayer"), N_("Hellfire"), N_("Extra Mods") };
+	return names[group];
+}
+
+std::vector<OptionEntryBase *> GetCtrGameplayEntries(int group)
+{
+	auto &g = GetOptions().Gameplay;
+	switch (group) {
+	case -1: return { &g.showItemLabels, &g.enemyHealthBar, &g.showVitalValues, &g.autoGoldPickup, &g.autoConsumables, &g.autoRefillBelt, &g.autoEquip, &g.showSmallMap };
+	case 0: return { &g.showItemLabels, &g.enemyHealthBar, &g.showVitalValues, &g.showSmallMap, &g.showMonsterType, &g.floatingInfoBox, &g.storeUi };
+	case 1: return { &g.autoGoldPickup, &g.autoConsumables, &g.autoPickupInTown };
+	case 2: return { &g.autoRefillBelt, &g.autoEquip };
+	case 3: return { &g.runInTown, &g.randomizeQuests, &g.disableCripplingShrines };
+	case 4: return { &g.friendlyFire, &g.multiplayerFullQuests, &g.showMultiplayerPartyInfo };
+	case 5: return { &g.theoQuest, &g.cowQuest, &g.testBard, &g.testBarbarian };
+	case 6: {
+		auto entries = GetOptions().GameMode.GetEntries();
+		for (auto *entry : GetOptions().Mods.GetEntries()) entries.push_back(entry);
+		return entries;
+	}
+	default: return {};
+	}
+}
+
+void ResetCtrGameplayOptions(bool liveOnly)
+{
+	GameplayOptions defaults;
+	auto &g = GetOptions().Gameplay;
+	const auto entries = liveOnly ? GetCtrGameplayEntries() : g.GetEntries();
+	for (auto *entry : entries) {
+		if (entry == &g.tickRate || entry == &g.grabInput || entry == &g.pauseOnFocusLoss || entry == &g.skipLoadingScreenThresholdMs)
+			continue;
+		for (auto *initial : defaults.GetEntries()) {
+			if (entry->key != initial->key) continue;
+			if (entry->GetType() == OptionEntryType::Boolean)
+				static_cast<OptionEntryBoolean *>(entry)->SetValue(**static_cast<OptionEntryBoolean *>(initial));
+			else if (entry->GetType() == OptionEntryType::List)
+				static_cast<OptionEntryListBase *>(entry)->SetActiveListIndex(static_cast<OptionEntryListBase *>(initial)->GetActiveListIndex());
+			break;
+		}
+	}
+	g.experienceBar.SetValue(true);
+	ApplyCtrGameplayOptions();
+}
+#endif
 
 ControllerOptions::ControllerOptions()
     : OptionCategoryBase("Controller", N_("Controller"), N_("Controller Settings"))

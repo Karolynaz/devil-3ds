@@ -29,7 +29,10 @@
 #include "controls/control_mode.hpp"
 #include "engine/assets.hpp"
 #ifdef __3DS__
+#include "controls/controller.h"
+#include "items.h"
 #include "engine/load_file.hpp"
+#include "engine/load_pcx.hpp"
 #include "engine/load_cl2.hpp"
 #include "engine/load_clx.hpp"
 #include "engine/render/text_render.hpp"
@@ -65,7 +68,15 @@ void (*gfnHeroStats)(HeroClass, _uidefaultstats *);
 namespace {
 
 std::size_t selhero_SaveCount = 0;
+#ifdef __3DS__
+_uiheroinfo selhero_heros[2 * MAX_CHARACTERS];
+bool HeroListActive = false;
+char HeroListHint[512] {};
+char HeroLoadHint[512] {};
+OptionalOwnedClxSpriteList DiabloNewHeroArt;
+#else
 _uiheroinfo selhero_heros[MAX_CHARACTERS];
+#endif
 _uiheroinfo selhero_heroInfo;
 char textStats[6][4];
 const char *title = "";
@@ -198,7 +209,7 @@ std::string ClassPreviewText;
 
 size_t FirstClassPreview(size_t selection, size_t count)
 {
-	return count <= 3 ? 0 : std::min(selection > 0 ? selection - 1 : 0, count - 3);
+	return count <= 4 ? 0 : std::min(selection > 0 ? selection - 1 : 0, count - 4);
 }
 
 uint32_t ClassPreviewFrame(uint32_t elapsed, uint32_t idleFrames, uint32_t actionFrames, bool selected)
@@ -210,7 +221,7 @@ uint32_t ClassPreviewFrame(uint32_t elapsed, uint32_t idleFrames, uint32_t actio
 
 // Shared crop and anchor across idle/attack frames prevent the figure jumping
 // or changing size when a weapon appears and disappears.
-void PrepareClassPreview(ClassPreviewClip &clip, ClxSpriteList idle, std::optional<ClxSpriteList> action)
+void PrepareClassPreview(ClassPreviewClip &clip, ClxSpriteList idle, std::optional<ClxSpriteList> action, int maxWidth = 122)
 {
 	const uint32_t idleFrames = idle.numSprites();
 	const uint32_t actionFrames = action ? action->numSprites() : 0;
@@ -238,7 +249,7 @@ void PrepareClassPreview(ClassPreviewClip &clip, ClxSpriteList idle, std::option
 	// Aim for a 120px standing figure; constrain a wide sword swing to its slot.
 	const int idleHeight = idleBottom - idleTop + 1;
 	Size size { std::max(1, width * 120 / idleHeight), std::max(1, height * 120 / idleHeight) };
-	size = CtrFitImage(size, { 122, 164 });
+	size = CtrFitImage(size, { maxWidth, 164 });
 	OwnedSurface scaled(size.width, size.height * frames);
 	for (uint32_t frame = 0; frame < frames; ++frame)
 		scaled.ScaleBlitFrom(atlas, MakeSdlRect(left, frame * Canvas + top, width, height),
@@ -261,7 +272,8 @@ void EnsureClassPreview(HeroClass heroClass)
 	else if (heroClass == HeroClass::Barbarian) weapon = PlayerWeaponGraphic::Axe;
 	auto action = LoadPlayerPreviewSprites(heroClass, static_cast<uint8_t>(weapon),
 	    heroClass == HeroClass::Sorcerer ? player_graphic::Fire : player_graphic::Attack);
-	PrepareClassPreview(clip, ClxSpriteList { *idle }, action ? std::optional<ClxSpriteList> { ClxSpriteList { *action } } : std::nullopt);
+	PrepareClassPreview(clip, ClxSpriteList { *idle }, action ? std::optional<ClxSpriteList> { ClxSpriteList { *action } } : std::nullopt,
+	    ClassPreviewClasses.size() >= 4 ? 90 : 122);
 }
 
 void EnsureClassProjectile(size_t index)
@@ -342,8 +354,9 @@ void RenderClassPreviews()
 		ClassPreviewPaletteValid = true;
 	}
 	const size_t first = FirstClassPreview(ClassPreviewSelection, ClassPreviewClasses.size());
-	const size_t count = std::min<size_t>(3, ClassPreviewClasses.size());
+	const size_t count = std::min<size_t>(4, ClassPreviewClasses.size());
 	const uint32_t elapsed = SDL_GetTicks() - ClassPreviewStarted;
+	const int slotWidth = std::min(196, static_cast<int>(640 / count) - 16);
 	for (size_t slot = 0; slot < count; ++slot) {
 		const size_t index = first + slot;
 		const HeroClass heroClass = ClassPreviewClasses[index];
@@ -351,12 +364,12 @@ void RenderClassPreviews()
 		const int center = static_cast<int>((2 * slot + 1) * 640 / (2 * count));
 		MapClassPreview(clip);
 		if (!clip.mapped) {
-			UiImageClx portrait(UiGetHeroDialogSprite(static_cast<size_t>(heroClass)), MakeSdlRect(center - 96, 45, 192, 135), UiFlags::AlignCenter);
+			UiImageClx portrait(UiGetHeroDialogSprite(static_cast<size_t>(heroClass)), MakeSdlRect(center - slotWidth / 2, 45, slotWidth, 135), UiFlags::AlignCenter);
 			UiRenderItem(portrait);
 			continue;
 		}
 		const ClxSprite sprite = (*clip.mapped)[ClassPreviewFrame(elapsed, clip.idleFrames, clip.actionFrames, index == ClassPreviewSelection)];
-		UiImageClx image(sprite, MakeSdlRect(center - 98, 180 - sprite.height(), 196, sprite.height()), UiFlags::AlignCenter);
+		UiImageClx image(sprite, MakeSdlRect(center - slotWidth / 2, 180 - sprite.height(), slotWidth, sprite.height()), UiFlags::AlignCenter);
 		UiRenderItem(image);
 		if (index != ClassPreviewSelection || clip.actionFrames == 0) continue;
 		if (heroClass != HeroClass::Rogue && heroClass != HeroClass::Sorcerer) continue;
@@ -382,7 +395,7 @@ void FocusClassPreview(size_t selection)
 	if (!ClassPreviewPaletteLoaded)
 		ClassPreviewPaletteLoaded = LoadOptionalFileInMem("levels\\towndata\\town.pal", HeroPreviewGamePalette.data(), HeroPreviewGamePalette.size());
 	const size_t first = FirstClassPreview(ClassPreviewSelection, ClassPreviewClasses.size());
-	for (size_t i = first; i < std::min(first + 3, ClassPreviewClasses.size()); ++i)
+	for (size_t i = first; i < std::min(first + 4, ClassPreviewClasses.size()); ++i)
 		EnsureClassPreview(ClassPreviewClasses[i]);
 	EnsureClassProjectile(0);
 	EnsureClassProjectile(1);
@@ -400,6 +413,48 @@ void SetHeroSummaryVisible(bool visible)
 	    ? MakeSdlRect(GetUIRectangle().position.x + 12, 82, 288, 76)
 	    : MakeSdlRect(0, 0, 640, 240);
 	SELHERO_DIALOG_HERO_IMG->setAllowUpscale(!visible);
+}
+#endif
+
+#ifdef __3DS__
+void SetHeroMenuMode(bool hellfire)
+{
+	const bool changed = gbIsHellfire != hellfire;
+	SetCtrHeroGameMode(hellfire);
+	if (!changed) return;
+	HeroPreviewKey.reset();
+	HeroPreviewRaw.reset();
+	HeroPreviewMapped.reset();
+	HeroPreviewVisible = false;
+	for (auto &clip : ClassPreviews) clip = ClassPreviewClip {};
+	for (auto &clip : ClassProjectiles) clip = ClassPreviewClip {};
+	ClassPreviewPaletteLoaded = false;
+	ClassPreviewPaletteValid = false;
+	LoadHeros();
+	FreeItemGFX();
+	InitItemGFX();
+}
+
+bool CreatingDiabloHero()
+{
+	return !HaveHellfire() || IsControllerButtonPressed(ControllerButton_BUTTON_LEFTSHOULDER);
+}
+
+void UpdateHeroListPresentation()
+{
+	if (!HeroListActive) return;
+	std::string_view hint;
+	if (selhero_isSavegame) {
+		hint = selhero_heroInfo.hellfire ? _("Hellfire · Press (Y) to delete") : _("Press (Y) to delete");
+	} else {
+		hint = HaveHellfire() ? _("Hold L for a Diablo (non-Hellfire) character") : std::string_view {};
+		SELHERO_DIALOG_HERO_IMG->m_rect = MakeSdlRect(GetUIRectangle().position.x + 176, 82, 288, 76);
+		if (CreatingDiabloHero() && DiabloNewHeroArt && DiabloNewHeroArt->numSprites() > 3)
+			SELHERO_DIALOG_HERO_IMG->setSprite((*DiabloNewHeroArt)[3]);
+		else
+			SELHERO_DIALOG_HERO_IMG->setSprite(UiGetHeroDialogSprite(GetNumPlayerClasses()));
+	}
+	CopyUtf8(HeroListHint, WordWrapString(hint, 600, GameFont12, 1, CtrTextScale::BottomScreen), sizeof(HeroListHint));
 }
 #endif
 
@@ -426,6 +481,7 @@ void SelheroFree()
 	ArtBackground = std::nullopt;
 
 #ifdef __3DS__
+	HeroListActive = false;
 	HeroSummaryElements.clear();
 	HeroPreviewRaw.reset();
 	HeroPreviewMapped.reset();
@@ -497,6 +553,9 @@ UiArtTextButton *SELLIST_DIALOG_DELETE_BUTTON;
 
 bool SelHeroGetHeroInfo(_uiheroinfo *pInfo)
 {
+#ifdef __3DS__
+	if (selhero_SaveCount >= 2 * MAX_CHARACTERS) return false;
+#endif
 	selhero_heros[selhero_SaveCount] = *pInfo;
 
 	selhero_SaveCount++;
@@ -512,9 +571,15 @@ void SelheroListFocus(size_t value)
 #endif
 	if (selhero_SaveCount != 0 && value < selhero_SaveCount) {
 		memcpy(&selhero_heroInfo, &selhero_heros[value], sizeof(selhero_heroInfo));
+#ifdef __3DS__
+		SELHERO_DIALOG_HERO_IMG->m_rect = MakeSdlRect(GetUIRectangle().position.x + 12, 82, 288, 76);
+#endif
 		SelheroSetStats();
 		SELLIST_DIALOG_DELETE_BUTTON->SetFlags(baseFlags | UiFlags::ColorUiGold);
 		selhero_isSavegame = true;
+#ifdef __3DS__
+		UpdateHeroListPresentation();
+#endif
 		return;
 	}
 
@@ -526,6 +591,9 @@ void SelheroListFocus(size_t value)
 		strcpy(textStat, "--");
 	SELLIST_DIALOG_DELETE_BUTTON->SetFlags(baseFlags | UiFlags::ColorUiSilver | UiFlags::ElementDisabled);
 	selhero_isSavegame = false;
+#ifdef __3DS__
+	UpdateHeroListPresentation();
+#endif
 }
 
 bool SelheroListDeleteYesNo()
@@ -537,6 +605,19 @@ bool SelheroListDeleteYesNo()
 
 void SelheroListSelect(size_t value)
 {
+#ifdef __3DS__
+	const bool fromHeroList = HeroListActive;
+	HeroListActive = false;
+	if (value == selhero_SaveCount && fromHeroList) {
+		SetHeroMenuMode(!CreatingDiabloHero());
+		// Enumeration above combined two independent save namespaces. Refresh
+		// occupancy for the selected mode before choosing a free slot.
+		gfnHeroInfo([](_uiheroinfo *) { return true; });
+	} else if (value != selhero_SaveCount) {
+		SetHeroMenuMode(selhero_heroInfo.hellfire);
+		SelheroSetStats();
+	}
+#endif
 	const Point uiPosition = GetUIRectangle().position;
 
 	if (static_cast<std::size_t>(value) == selhero_SaveCount) {
@@ -636,8 +717,10 @@ void SelheroListSelect(size_t value)
 
 		vecSelHeroDlgItems.clear();
 		vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_("Load Game"), 0));
-		vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_("New Game"), 1));
-		vecSelDlgItems.push_back(std::make_unique<UiList>(vecSelHeroDlgItems, vecSelHeroDlgItems.size(), uiPosition.x + 70, 330, 500, 36, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+		vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_("Reset World"), 1));
+		vecSelDlgItems.push_back(std::make_unique<UiList>(vecSelHeroDlgItems, vecSelHeroDlgItems.size(), uiPosition.x + 70, 318, 500, 36, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
+		CopyUtf8(HeroLoadHint, WordWrapString(_("Reset World: new maps and respawned monsters. Your level, stats, items and spells stay."), 600, GameFont12, 1, CtrTextScale::BottomScreen), sizeof(HeroLoadHint));
+		vecSelDlgItems.push_back(std::make_unique<UiArtText>(HeroLoadHint, MakeSdlRect(uiPosition.x + 20, 402, 600, 76), UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilver, 1, 17));
 #else
 		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), (Sint16)(uiPosition.y + 211), 365, 33 };
 		vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Save File Exists").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
@@ -765,6 +848,10 @@ void SelheroClassSelectorEsc()
 	vecSelDlgItems.clear();
 	vecSelHeroDlgItems.clear();
 
+#ifdef __3DS__
+	selhero_List_Init();
+	return;
+#endif
 	if (selhero_SaveCount != 0) {
 		selhero_List_Init();
 		return;
@@ -924,6 +1011,11 @@ const char *SelheroGenerateName(HeroClass heroClass)
 
 void selhero_Init()
 {
+#ifdef __3DS__
+	SetHeroMenuMode(false);
+	if (!DiabloNewHeroArt)
+		DiabloNewHeroArt = LoadPcxSpriteList("ui_art\\heros", -76);
+#endif
 	AddSelHeroBackground();
 #ifndef __3DS__
 	UiAddLogo(&vecSelHeroDialog);
@@ -932,6 +1024,12 @@ void selhero_Init()
 
 	selhero_SaveCount = 0;
 	gfnHeroInfo(SelHeroGetHeroInfo);
+#ifdef __3DS__
+	if (HaveHellfire()) {
+		SetHeroMenuMode(true);
+		gfnHeroInfo(SelHeroGetHeroInfo);
+	}
+#endif
 	std::reverse(selhero_heros, selhero_heros + selhero_SaveCount);
 
 	const Point uiPosition = GetUIRectangle().position;
@@ -1013,6 +1111,8 @@ void selhero_List_Init()
 {
 #ifdef __3DS__
 	ClassPreviewVisible = false;
+	SetHeroMenuMode(HaveHellfire());
+	HeroListActive = true;
 #endif
 	const Point uiPosition = GetUIRectangle().position;
 
@@ -1026,7 +1126,8 @@ void selhero_List_Init()
 	vecSelHeroDlgItems.clear();
 	for (std::size_t i = 0; i < selhero_SaveCount; i++) {
 		vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(std::string_view(selhero_heros[i].name), static_cast<int>(i)));
-		if (selhero_heros[i].saveNumber == selhero_heroInfo.saveNumber)
+		if (selhero_heros[i].saveNumber == selhero_heroInfo.saveNumber
+		    && selhero_heros[i].hellfire == selhero_heroInfo.hellfire)
 			selectedItem = i;
 	}
 	vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_("New Hero"), static_cast<int>(selhero_SaveCount)));
@@ -1040,8 +1141,8 @@ void selhero_List_Init()
 	SELLIST_DIALOG_DELETE_BUTTON = setlistDialogDeleteButton.get();
 	vecSelDlgItems.push_back(std::move(setlistDialogDeleteButton));
 
-	const SDL_Rect rectHint = { (Sint16)uiPosition.x, 444, 640, 20 };
-	vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Delete (Y)").data(), rectHint, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilver));
+	const SDL_Rect rectHint = { (Sint16)(uiPosition.x + 20), 438, 600, 40 };
+	vecSelDlgItems.push_back(std::make_unique<UiArtText>(HeroListHint, rectHint, UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilver, 1, 18));
 #else
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), (Sint16)(uiPosition.y + 211), 365, 33 };
 	vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Select Hero").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
@@ -1108,11 +1209,19 @@ static void UiSelHeroDialog(
 			}
 			selhero_List_Init();
 		} else {
+#ifdef __3DS__
+			selhero_heroInfo = {};
+			selhero_List_Init();
+#else
 			SelheroListSelect(selhero_SaveCount);
+#endif
 		}
 
 		selhero_endMenu = false;
 		while (!selhero_endMenu && !selhero_navigateYesNo) {
+#ifdef __3DS__
+			UpdateHeroListPresentation();
+#endif
 			UiClearScreen();
 			UiRenderItems(vecSelHeroDialog);
 			RenderDifficultyIndicators();
@@ -1125,17 +1234,27 @@ static void UiSelHeroDialog(
 		SelheroFree();
 
 		if (selhero_navigateYesNo) {
-			char dialogTitle[128];
+			char dialogTitle[128] {};
 			char dialogText[256];
+#ifndef __3DS__
 			if (selhero_isMultiPlayer) {
 				CopyUtf8(dialogTitle, _("Delete Multi Player Hero"), sizeof(dialogTitle));
 			} else {
 				CopyUtf8(dialogTitle, _("Delete Single Player Hero"), sizeof(dialogTitle));
 			}
+#endif
+#ifdef __3DS__
+			CopyUtf8(dialogText, FormatRuntime(_("Delete character „{:s}“?"), selhero_heroInfo.name), sizeof(dialogText));
+#else
 			strcpy(dialogText, FormatRuntime(_("Are you sure you want to delete the character \"{:s}\"?"), selhero_heroInfo.name).c_str());
+#endif
 
-			if (UiSelHeroYesNoDialog(dialogTitle, dialogText))
+			if (UiSelHeroYesNoDialog(dialogTitle, dialogText)) {
+#ifdef __3DS__
+				SetCtrHeroGameMode(selhero_heroInfo.hellfire);
+#endif
 				fnremove(&selhero_heroInfo);
+			}
 		}
 	} while (selhero_navigateYesNo);
 

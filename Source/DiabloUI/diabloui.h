@@ -70,6 +70,7 @@ struct _uiheroinfo {
 	bool hassaved;
 	bool spawned;
 #ifdef __3DS__
+	bool hellfire = false;
 	uint8_t graphics = 0; // Equipped armor/weapon appearance; menu-only metadata.
 #endif
 };
@@ -95,6 +96,9 @@ inline SDL_Surface *DiabloUiSurface()
 void UiDestroy();
 void UiTitleDialog();
 void UnloadUiGFX();
+#ifdef __3DS__
+void LoadHeros();
+#endif
 void UiInitialize();
 bool UiValidPlayerName(std::string_view name); /* check */
 void UiSelHeroMultDialog(bool (*fninfo)(bool (*fninfofunc)(_uiheroinfo *)), bool (*fncreate)(_uiheroinfo *), bool (*fnremove)(_uiheroinfo *), void (*fnstats)(HeroClass, _uidefaultstats *), _selhero_selections *dlgresult, uint32_t *saveNumber);

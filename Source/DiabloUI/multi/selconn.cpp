@@ -270,6 +270,14 @@ void SelconnSelect(size_t value)
 bool UiSelectProvider(GameData *gameData)
 {
 
+#ifdef __3DS__
+	provider = SELCONN_TCP;
+	if (!n3ds_socInit()) {
+		UiSelOkDialog(_("Multiplayer").data(), n3ds_networkError().c_str(), false);
+		return false;
+	}
+	return SNetInitializeProvider(provider, gameData);
+#endif
 	selconn_GameData = gameData;
 	SelconnLoad();
 

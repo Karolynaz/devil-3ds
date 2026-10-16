@@ -31,6 +31,7 @@
 #include "dvlnet/packet.h"
 #ifdef __3DS__
 #include "controls/input.h"
+#include "pfile.h"
 #include "platform/ctr/network_progress.hpp"
 #include "platform/ctr/zerotier_log.hpp"
 #endif
@@ -922,6 +923,9 @@ void selgame_Password_Select(size_t /*value*/)
 		} else {
 			strcpy(GetOptions().Network.szPreviousHost, selgame_Ip);
 		}
+#ifdef __3DS__
+		if (allowJoin) pfile_show_pending_hellfire_intro(gSaveNumber);
+#endif
 		if (allowJoin && RunNetworkOperation([&] { return SNetJoinGame(selgame_Ip, gamePassword, gdwPlayerId); })) {
 			if (!IsGameCompatibleWithErrorMessage(*m_game_data)) {
 				InitGameInfo();
@@ -978,6 +982,9 @@ void selgame_Password_Select(size_t /*value*/)
 		gameName = generatedName.c_str();
 		DvlNet_SetGamePrivacy(isPublic);
 	}
+#ifdef __3DS__
+	pfile_show_pending_hellfire_intro(gSaveNumber);
+#endif
 	if (RunNetworkOperation([&] { return SNetCreateGame(gameName, gamePassword, reinterpret_cast<char *>(&gameInitInfo), sizeof(gameInitInfo), gdwPlayerId); })) {
 		UiInitList_clear();
 		selgame_endMenu = true;

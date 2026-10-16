@@ -169,17 +169,12 @@ with tempfile.TemporaryDirectory() as directory:
 assert 'GamemenuModsNextPage' not in gamemenu
 assert 'GamemenuModsPreviousPage' not in gamemenu
 assert 'for (OptionEntryBase *pOption : options)' in gamemenu
-assert 'GMenuMaxVisibleRows = 7' in gmenu
+assert 'GMenuMaxVisibleRows = 5' in gmenu
 assert 'y + GmenuVisibleRows() * GMenuItemHeight <= 220' in gmenu
 live_filter = function(gamemenu, 'std::vector<OptionEntryBase *> GamemenuGetLiveModsOptions()')
-assert 'pEntry == &gameplay.tickRate' in live_filter
-assert 'gbIsMultiplayer && HasAnyOf(flags, OptionEntryFlags::CantChangeInMultiPlayer)' in live_filter
-for startup_option in ('runInTown', 'friendlyFire', 'multiplayerFullQuests'):
-    assert f'pEntry == &gameplay.{startup_option}' in live_filter
+assert 'GetCtrGameplayEntries()' in live_filter
 toggle = function(gamemenu, 'void GamemenuModsOption(bool /*bActivate*/)')
-assert 'pBooleanOption->SetValue(!**pBooleanOption)' in toggle
-assert 'if (listSize != 0)' in toggle and '% listSize' in toggle
-title_filter = function((ROOT / 'Source/DiabloUI/settingsmenu.cpp').read_text(), 'bool IsLiveGameplayOption(const OptionEntryBase *pEntry)')
-assert 'pEntry != &gameplay.tickRate' in title_filter
-assert 'OptionEntryFlags::CantChangeInMultiPlayer' in title_filter
+assert 'ApplyCtrGameplayOptions();' in toggle
+assert 'SaveOptions();' in toggle
+assert 'gamemenu_back()' in gmenu
 print(f'PASS: {len(cases)} production 3DS Mods labels fit beside the selectors; scrolling rows avoid the scrollbar and network address')

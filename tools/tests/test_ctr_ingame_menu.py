@@ -18,7 +18,7 @@ prelude=r'''
 #include "engine/point.hpp"
 #include "platform/ctr/pixel_geometry.hpp"
 using namespace devilution;
-constexpr int GMenuMaxVisibleRows=7;
+constexpr int GMenuMaxVisibleRows=5;
 int sgFirstVisibleMenuItem=0,sgCurrentMenuIdx=0;
 bool isDraggingSlider=false;
 struct TMenuItem{void (*fnMenu)(bool)=nullptr;bool active=true;bool enabled()const{return active;}};
@@ -60,7 +60,7 @@ int main(){
    assert(selected>=sgFirstVisibleMenuItem&&selected<sgFirstVisibleMenuItem+GmenuVisibleRows());
    assert(sgFirstVisibleMenuItem+GmenuVisibleRows()<=count);
    if(down&&previous==count-1)assert(selected==0&&sgFirstVisibleMenuItem==0);
-   if(!down&&previous==0)assert(sgFirstVisibleMenuItem==std::max(0,count-7));
+   if(!down&&previous==0)assert(sgFirstVisibleMenuItem==std::max(0,count-5));
   }
  }
  // Every source skull column/row appears once after the real 640 -> 400

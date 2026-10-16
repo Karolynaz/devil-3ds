@@ -65,10 +65,11 @@ bool UiSelHeroYesNoDialog(const char *title, const char *body)
 
 #ifdef __3DS__
 	const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 24), 250, 590, 35 };
-	vecSelYesNoDialog.push_back(std::make_unique<UiArtText>(title, rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
+	if (title != nullptr && title[0] != '\0')
+		vecSelYesNoDialog.push_back(std::make_unique<UiArtText>(title, rect1, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver, 3));
 
 	const SDL_Rect rect2 = { (Sint16)(uiPosition.x + 64), 294, 512, 112 };
-	vecSelYesNoDialog.push_back(std::make_unique<UiArtText>(selyesno_confirmationMessage, rect2, UiFlags::FontSize24 | UiFlags::ColorUiSilver));
+	vecSelYesNoDialog.push_back(std::make_unique<UiArtText>(selyesno_confirmationMessage, rect2, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver));
 
 	vecSelYesNoDialogItems.push_back(std::make_unique<UiListItem>(_("Yes"), 0));
 	vecSelYesNoDialogItems.push_back(std::make_unique<UiListItem>(_("No"), 1));

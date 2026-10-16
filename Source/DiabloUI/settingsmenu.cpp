@@ -56,16 +56,8 @@ constexpr int ControlsCategoryIndex = 999;
 constexpr int UpdateCategoryIndex = 1000;
 std::string updateStatus;
 
-bool IsLiveGameplayOption(const OptionEntryBase *pEntry)
-{
-	const GameplayOptions &gameplay = GetOptions().Gameplay;
-	const OptionEntryFlags flags = pEntry->GetFlags();
-	return pEntry != &gameplay.tickRate
-	    && HasNoneOf(flags, OptionEntryFlags::Invisible | OptionEntryFlags::CantChangeInGame | OptionEntryFlags::CantChangeInMultiPlayer)
-	    && pEntry != &gameplay.runInTown
-	    && pEntry != &gameplay.friendlyFire
-	    && pEntry != &gameplay.multiplayerFullQuests;
-}
+int gameplayGroup = 0;
+
 #endif
 
 bool endMenu = false;
@@ -86,6 +78,7 @@ enum class ShownMenuType : uint8_t {
 #ifdef __3DS__
 	Controls,
 	Update,
+	GameplayGroups,
 #endif
 };
 
@@ -102,6 +95,7 @@ enum class SpecialMenuEntry : int8_t {
 	UnbindKey = -3,
 	BindPadButton = -4,
 	UnbindPadButton = -5,
+	ResetGameplay = -6,
 };
 
 ControllerButtonCombo padEntryCombo {};
@@ -111,6 +105,12 @@ std::string padEntryTimerText;
 bool IsValidEntry(OptionEntryBase *pOptionEntry)
 {
 #ifdef __3DS__
+	if (pOptionEntry == &GetOptions().StartUp.hellfireIntro) return false;
+	for (auto *entry : GetOptions().Mods.GetEntries()) {
+		if (pOptionEntry == entry && entry->key == "hf") return false;
+	}
+	if (pOptionEntry == &GetOptions().Gameplay.showSmallMap) return true;
+	if (pOptionEntry == &GetOptions().Gameplay.quickCast) return false;
 	for (OptionEntryBase *pGraphicsEntry : GetOptions().Graphics.GetEntries()) {
 		if (pOptionEntry == pGraphicsEntry)
 			return false;
@@ -131,19 +131,8 @@ std::vector<OptionEntryBase *> GetCategoryEntriesForMenu(OptionCategoryBase *pCa
 #ifdef __3DS__
 	if (pCategory == &GetOptions().GameMode || pCategory == &GetOptions().Gameplay)
 		return {};
-	if (pCategory == &GetOptions().Mods) {
-		std::vector<OptionEntryBase *> entries;
-		for (OptionEntryBase *pEntry : GetOptions().GameMode.GetEntries())
-			entries.push_back(pEntry);
-		for (OptionEntryBase *pEntry : GetOptions().Gameplay.GetEntries()) {
-			if (IsLiveGameplayOption(pEntry))
-				continue;
-			entries.push_back(pEntry);
-		}
-		for (OptionEntryBase *pEntry : GetOptions().Mods.GetEntries())
-			entries.push_back(pEntry);
-		return entries;
-	}
+	if (pCategory == &GetOptions().Mods)
+		return GetCtrGameplayEntries(gameplayGroup);
 #endif
 	return pCategory->GetEntries();
 }
@@ -190,6 +179,11 @@ void GoBackOneMenuLevel()
 		break;
 	case ShownMenuType::Settings:
 #ifdef __3DS__
+		if (selectedCategory == &GetOptions().Mods) {
+			shownMenu = ShownMenuType::GameplayGroups;
+			break;
+		}
+	case ShownMenuType::GameplayGroups:
 	case ShownMenuType::Controls:
 	case ShownMenuType::Update:
 #endif
@@ -285,6 +279,11 @@ void ItemFocused(size_t value)
 #endif
 		UpdateDescription(*pCategory);
 	} break;
+#ifdef __3DS__
+	case ShownMenuType::GameplayGroups:
+		CopyUtf8(optionDescription, vecDialogItems[value]->m_value < 0 ? _("Restores gameplay defaults. Keeps the selected game mode and installed extra mods.") : _("Choose a group of gameplay settings. B returns to Settings."), sizeof(optionDescription));
+		break;
+#endif
 	case ShownMenuType::Settings: {
 		auto &vecItem = vecDialogItems[value];
 		optionDescription[0] = '\0';
@@ -323,6 +322,9 @@ bool ChangeOptionValue(OptionEntryBase *pOption, size_t listIndex)
 		break;
 	}
 
+#ifdef __3DS__
+	ApplyCtrGameplayOptions();
+#endif
 	if (HasAnyOf(pOption->GetFlags(), OptionEntryFlags::RecreateUI)) {
 		// Reinitialize UI with changed settings (for example game mode, language or resolution)
 		UiInitialize();
@@ -342,6 +344,13 @@ void ItemSelected(size_t value)
 		auto specialMenuEntry = static_cast<SpecialMenuEntry>(vecItemValue);
 		switch (specialMenuEntry) {
 		case SpecialMenuEntry::None:
+			break;
+		case SpecialMenuEntry::ResetGameplay:
+#ifdef __3DS__
+			ResetCtrGameplayOptions(false);
+			SaveOptions();
+			endMenu = true;
+#endif
 			break;
 		case SpecialMenuEntry::PreviousMenu:
 			GoBackOneMenuLevel();
@@ -370,6 +379,8 @@ void ItemSelected(size_t value)
 		if (vecItemValue == UpdateCategoryIndex) {
 			endMenu = true;
 			shownMenu = ShownMenuType::Update;
+			updateStatus = std::string(_("Checking for updates..."));
+			if (!CtrUpdateBusy()) CtrCheckForUpdates();
 			return;
 		}
 		if (vecItemValue == ControlsCategoryIndex) {
@@ -381,7 +392,17 @@ void ItemSelected(size_t value)
 		selectedCategory = GetOptions().GetCategories()[vecItemValue];
 		endMenu = true;
 		shownMenu = ShownMenuType::Settings;
+#ifdef __3DS__
+		if (selectedCategory == &GetOptions().Mods) shownMenu = ShownMenuType::GameplayGroups;
+#endif
 	} break;
+#ifdef __3DS__
+	case ShownMenuType::GameplayGroups:
+		gameplayGroup = vecItemValue;
+		endMenu = true;
+		shownMenu = ShownMenuType::Settings;
+		break;
+#endif
 	case ShownMenuType::Settings: {
 		auto *pOption = vecOptions[vecItemValue];
 		bool updateValueDescription = false;
@@ -433,10 +454,7 @@ void ItemSelected(size_t value)
 	} break;
 #ifdef __3DS__
 	case ShownMenuType::Update:
-		if (!CtrUpdateBusy()) {
-			updateStatus = std::string(_("Checking for updates..."));
-			CtrCheckForUpdates();
-		}
+		GoBackOneMenuLevel();
 		break;
 #endif
 	case ShownMenuType::ListOption: {
@@ -517,6 +535,9 @@ void UiSettingsMenu()
 			titleText = _("Settings");
 			break;
 #ifdef __3DS__
+		case ShownMenuType::GameplayGroups:
+			titleText = _("Gameplay");
+			break;
 		case ShownMenuType::Update:
 			titleText = _("Update");
 			break;
@@ -526,6 +547,9 @@ void UiSettingsMenu()
 #endif
 		case ShownMenuType::Settings:
 			titleText = selectedCategory->GetName();
+#ifdef __3DS__
+			if (selectedCategory == &GetOptions().Mods) titleText = _(CtrGameplayGroupName(gameplayGroup));
+#endif
 			break;
 		default:
 			titleText = selectedOption->GetName();
@@ -550,6 +574,12 @@ void UiSettingsMenu()
 					catIndex++;
 					continue;
 				}
+				if (pCategory == &GetOptions().Mods) {
+					if (selectedCategory == pCategory) itemToSelect = vecDialogItems.size();
+					vecDialogItems.push_back(std::make_unique<UiListItem>(_("Gameplay"), static_cast<int>(catIndex), UiFlags::ColorUiGold));
+					catIndex++;
+					continue;
+				}
 				if (pCategory == &GetOptions().GameMode || pCategory == &GetOptions().Gameplay) {
 					catIndex++;
 					continue;
@@ -560,7 +590,11 @@ void UiSettingsMenu()
 						continue;
 					if (selectedCategory == pCategory)
 						itemToSelect = vecDialogItems.size();
-					vecDialogItems.push_back(std::make_unique<UiListItem>(pCategory->GetName(), static_cast<int>(catIndex), UiFlags::ColorUiGold));
+					vecDialogItems.push_back(std::make_unique<UiListItem>(
+#ifdef __3DS__
+					    pCategory == &GetOptions().Mods ? _("Gameplay") :
+#endif
+					    pCategory->GetName(), static_cast<int>(catIndex), UiFlags::ColorUiGold));
 					break;
 				}
 				catIndex++;
@@ -571,8 +605,16 @@ void UiSettingsMenu()
 #endif
 		} break;
 #ifdef __3DS__
+		case ShownMenuType::GameplayGroups:
+			for (int group = 0; group < CtrGameplayGroupCount; ++group) {
+				bool visible = false;
+				for (auto *entry : GetCtrGameplayEntries(group)) visible |= IsValidEntry(entry);
+				if (visible) vecDialogItems.push_back(std::make_unique<UiListItem>(_(CtrGameplayGroupName(group)), group, UiFlags::ColorUiGold));
+			}
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Reset to default"), static_cast<int>(SpecialMenuEntry::ResetGameplay), UiFlags::ColorUiGold));
+			break;
 		case ShownMenuType::Update:
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Check for updates"), 0, UiFlags::ColorUiGold));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Back"), 0, UiFlags::ColorUiGold));
 			vecDialog.push_back(std::make_unique<UiArtText>(CtrProjectUrl.data(), MakeSdlRect(12, 465, 616, 14), UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 0));
 			break;
 		case ShownMenuType::Controls: {
@@ -788,7 +830,7 @@ void UiSettingsMenu()
 					}
 					if (!result->version.empty()) updateStatus += "\n" + std::string(_("Latest release: ")) + result->version;
 				}
-				const std::string status = std::string(_("Version: ")) + std::string(CtrPortVersion()) + " (" + std::string(CtrBuildCommit().substr(0, 7)) + ")" + "\n\n" + (updateStatus.empty() ? std::string(_("Press A to check for updates.")) : updateStatus);
+				const std::string status = std::string(_("Version: ")) + std::string(CtrPortVersion()) + " (" + std::string(CtrBuildCommit().substr(0, 7)) + ")" + "\n\n" + (updateStatus.empty() ? std::string(_("Checking for updates...")) : updateStatus);
 				CopyUtf8(optionDescription, WordWrapString(status, rectDescription.size.width, GameFont12, 1, true), sizeof(optionDescription));
 			}
 #endif

@@ -1401,7 +1401,13 @@ void DiabloInit()
 	if (forceSpawn || *GetOptions().GameMode.shareware)
 		gbIsSpawn = true;
 
+#ifdef __3DS__
+	// Expansion files add a character creation choice, never replace startup presentation.
+	if (gbIsHellfire) GetOptions().Mods.SetHellfireEnabled(false);
+	GetOptions().GameMode.gameMode.SetValue(StartUpGameMode::Diablo);
+#endif
 	bool wasHellfireDiscovered = false;
+#ifndef __3DS__
 	if (!forceDiablo && !forceHellfire)
 		wasHellfireDiscovered = (HaveHellfire() && *GetOptions().GameMode.gameMode == StartUpGameMode::Ask);
 	bool enableHellfire = forceHellfire || wasHellfireDiscovered;
@@ -1413,6 +1419,7 @@ void DiabloInit()
 		GetOptions().Mods.SetHellfireEnabled(enableHellfire);
 	}
 
+#endif
 	gbIsHellfireSaveGame = gbIsHellfire;
 
 	for (size_t i = 0; i < QuickMessages.size(); i++) {

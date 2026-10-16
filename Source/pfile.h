@@ -122,6 +122,9 @@ void pfile_ui_set_class_stats(HeroClass playerClass, _uidefaultstats *classStats
 uint32_t pfile_ui_get_first_unused_save_num();
 bool pfile_ui_save_create(_uiheroinfo *heroinfo);
 bool pfile_delete_save(_uiheroinfo *heroInfo);
+#ifdef __3DS__
+void pfile_show_pending_hellfire_intro(uint32_t saveNum);
+#endif
 void pfile_read_player_from_save(uint32_t saveNum, Player &player);
 void pfile_save_level();
 std::expected<void, std::string> pfile_convert_levels();

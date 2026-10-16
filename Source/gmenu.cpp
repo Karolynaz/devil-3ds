@@ -87,7 +87,7 @@ void (*gmenu_current_option)();
 int sgCurrentMenuIdx;
 
 #ifdef __3DS__
-constexpr int GMenuMaxVisibleRows = 7;
+constexpr int GMenuMaxVisibleRows = 5;
 int sgFirstVisibleMenuItem = 0;
 
 int GmenuVisibleRows()
@@ -110,7 +110,7 @@ void GmenuScrollToCurrent()
 
 int GMenuTop()
 {
-	return GetUIRectangle().position.y + std::max(0, (GMenuTopScreenHeight - GmenuVisibleRows() * GMenuItemHeight) / 2);
+	return GetUIRectangle().position.y + std::max(0, ((gamemenu_gameplay_active() ? 172 : GMenuTopScreenHeight) - GmenuVisibleRows() * GMenuItemHeight) / 2);
 }
 
 void DrawGMenuSliderMarker(const Surface &out, ClxSprite sprite, Point position)
@@ -464,7 +464,7 @@ void gmenu_draw(const Surface &out)
 		const char *address = gamemenu_network_address();
 		// Keep the connection address below the menu when there is room. Long
 		// menus (including the full single-player Mods page) use this space.
-		if (address[0] != '\0' && y + GmenuVisibleRows() * GMenuItemHeight <= 220) {
+		if (!gamemenu_gameplay_active() && address[0] != '\0' && y + GmenuVisibleRows() * GMenuItemHeight <= 220) {
 			const int width = GetLineWidth(address, GameFont12, 1, nullptr, CtrTextScale::TopScreen);
 			DrawString(out, address, Point { (gnScreenWidth - width) / 2, 220 },
 			    { .flags = UiFlags::FontSize12 | UiFlags::ColorWhite, .spacing = 1 });
@@ -477,6 +477,14 @@ void gmenu_draw(const Surface &out)
 			const int thumbY = y + (height - thumbHeight) * sgFirstVisibleMenuItem / (sgCurrentMenuIdx - GmenuVisibleRows());
 			FillRect(out, 620, y, 6, height, 0);
 			FillRect(out, 620, thumbY, 6, thumbHeight, 205);
+		}
+		if (gamemenu_gameplay_active() && sgpCurrItem != nullptr) {
+			const std::string_view description = sgpCurrItem->userData != nullptr
+			    ? static_cast<OptionEntryBase *>(sgpCurrItem->userData)->GetDescription()
+			    : _("Restores the default values for these gameplay settings.");
+			const auto wrapped = WordWrapString(description, gnScreenWidth - 48, GameFont12, 1, CtrTextScale::TopScreen);
+			DrawString(out, wrapped, { { 24, 177 }, { gnScreenWidth - 48, 60 } },
+			    { .flags = UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, .spacing = 1, .lineHeight = 16 });
 		}
 		TMenuItem *i = sgpCurrentMenu + sgFirstVisibleMenuItem;
 		TMenuItem *end = i + GmenuVisibleRows();
@@ -513,6 +521,9 @@ bool gmenu_presskeys(SDL_Keycode vkey)
 		break;
 	case SDLK_ESCAPE:
 		PlaySFX(SfxID::MenuMove);
+#ifdef __3DS__
+		if (gamemenu_back()) break;
+#endif
 		gmenu_set_items(nullptr, nullptr);
 		break;
 	case SDLK_SPACE:

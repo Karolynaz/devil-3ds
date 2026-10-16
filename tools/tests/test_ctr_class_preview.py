@@ -64,12 +64,12 @@ Sprite solid(int w,int h,uint8_t color){return{w,h,std::vector<uint8_t>(w*h,colo
 int bottom(const Sprite &s){for(int y=s.h-1;y>=0;y--)for(int x=0;x<s.w;x++)if(s.pixels[y*s.w+x])return y;return -1;}
 int main(){
  // Base classes always stay visible. Hellfire classes remain reachable in a
- // three-character window, with the current selection inside that window.
+ // four-character window, with the current selection inside that window.
  for(size_t count=1;count<=6;count++)for(size_t selected=0;selected<count;selected++){
   size_t first=FirstClassPreview(selected,count);
-  assert(first<=selected&&selected<first+std::min<size_t>(3,count));
-  assert(first+std::min<size_t>(3,count)<=count);
-  if(count<=3)assert(first==0);
+  assert(first<=selected&&selected<first+std::min<size_t>(4,count));
+  assert(first+std::min<size_t>(4,count)<=count);
+  if(count<=4)assert(first==0);
  }
  // Unselected characters freeze at idle frame zero, including while an intro
  // runs on another class. Selected action plays once, then loops only idle.
@@ -93,6 +93,9 @@ int main(){
  assert(clip.raw->numSprites()==4);
  auto first=(*clip.raw)[0];assert(first.w<=122&&first.h<=164);
  for(auto &f:clip.raw->frames){assert(f.w==first.w&&f.h==first.h);assert(bottom(f)==bottom(first));}
+ ClassPreviewClip compact;PrepareClassPreview(compact,idle,attack,90);
+ assert(compact.raw);
+ for(auto &f:compact.raw->frames){assert(f.w<=90&&f.h<=164);assert(bottom(f)==bottom((*compact.raw)[0]));}
  ClassPreviewClip fallback;PrepareClassPreview(fallback,idle,std::nullopt);
  assert(fallback.raw&&fallback.actionFrames==0&&fallback.idleFrames==2);
  ClassPreviewClip invalid;PrepareClassPreview(invalid,ClxSpriteList{},attack);assert(!invalid.raw);
@@ -104,7 +107,7 @@ with tempfile.TemporaryDirectory() as directory:
     (root / 'test.cpp').write_text(code)
     subprocess.run(['c++', '-std=c++17', '-fsanitize=address,undefined', '-I'+str(ROOT/'Source'), str(root/'test.cpp'), '-o', str(root/'test')], check=True)
     subprocess.run([str(root/'test')], check=True)
-print('PASS: three-class layout, Hellfire paging, frozen unselected clips, one-shot actions, idle loop, stable anchors, missing/invalid clips (ASan/UBSan)')
+print('PASS: four-class Hellfire lineup, optional extra-class paging, frozen unselected clips, one-shot actions, idle loop, stable anchors, missing/invalid clips (ASan/UBSan)')
 
 # The footer is limited to two 16px lines. Check shipped EN/LT glyph metrics;
 # the production word-wrap routine is separately covered by ctr_multiline.

@@ -33,6 +33,7 @@ for line in options.splitlines():
     if match:
         labels.append((match[2], 260 if match[1] == 'storeUi' else 348))
 labels += [('Text-only list',192),('List with item graphics',192),('Visual grid',192),('On',104),('Off',104)]
+labels += [('Hold L for a Diablo (non-Hellfire) character',600), ('Hellfire · Press (Y) to delete',600), ('Press (Y) to delete',600)]
 cases = [(translations.get(label,label) if language=='lt' else label,width) for language in ['en','lt'] for label,width in labels]
 chars = set(''.join(label for label,_ in cases))
 widths = {}

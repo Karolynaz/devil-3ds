@@ -11103,3 +11103,87 @@ msgstr "Įvairiapusis nuotykių ieškotojas, įvaldęs ašmenis ir magiją."
 #: Source/DiabloUI/hero/selhero.cpp
 msgid "A mighty warrior who overwhelms enemies with heavy weapons."
 msgstr "Galingas karys, triuškinantis priešus sunkiais ginklais."
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Show health and mana"
+msgstr "Gyvybių ir manos skaičiai"
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Shows current and maximum health and mana as numbers."
+msgstr "Rodo dabartines ir didžiausias gyvybes bei maną skaičiais."
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Auto Collect Consumables"
+msgstr "Rinkti gėrimus ir priedus"
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Collects potions (up to 8 of each type), elixirs and Hellfire oils. Does not use them."
+msgstr "Surenka iki 8 kiekvienos rūšies gėrimų, eliksyrus ir Hellfire aliejus. Jų nepanaudoja."
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Auto Equip Items"
+msgstr "Automatiškai uždėti įrangą"
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Equips picked up or purchased items only in empty equipment slots. Never replaces worn equipment."
+msgstr "Paimtą ar nupirktą įrangą uždeda tik į tuščias vietas. Turimos įrangos nekeičia."
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Display"
+msgstr "Rodoma informacija"
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Auto Pickup"
+msgstr "Automatinis surinkimas"
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Game Rules"
+msgstr "Žaidimo taisyklės"
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Multiplayer"
+msgstr "Kelių žaidėjų režimas"
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Extra Mods"
+msgstr "Papildomi modai"
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Reset to default"
+msgstr "Atkurti numatytuosius"
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Restores the default values for these gameplay settings."
+msgstr "Atkuria šių žaidimo nuostatų numatytąsias reikšmes."
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Restores gameplay defaults. Keeps the selected game mode and installed extra mods."
+msgstr "Atkuria žaidimo nuostatas. Pasirinktas žaidimo režimas ir papildomi modai lieka."
+
+#: Source/options.cpp Source/gmenu.cpp Source/DiabloUI/settingsmenu.cpp
+msgid "Choose a group of gameplay settings. B returns to Settings."
+msgstr "Pasirinkite žaidimo nuostatų grupę. B grąžina į nuostatas."
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "Hold L for a Diablo (non-Hellfire) character"
+msgstr "Laikykite L, jei norite Diablo veikėjo be Hellfire"
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "Hellfire · Press (Y) to delete"
+msgstr "Hellfire · Y – ištrinti"
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "Press (Y) to delete"
+msgstr "Y – ištrinti"
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "Delete character „{:s}“?"
+msgstr "Ištrinti veikėją „{:s}“?"
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "Reset World"
+msgstr "Atkurti pasaulį"
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "Reset World: new maps and respawned monsters. Your level, stats, items and spells stay."
+msgstr "Atkurti pasaulį: nauji žemėlapiai ir prikelti monstrai. Veikėjo lygis, atributai, daiktai ir burtai išlieka."

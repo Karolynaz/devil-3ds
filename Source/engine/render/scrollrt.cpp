@@ -1386,7 +1386,11 @@ void DrawView(const Surface &out, Point startPosition)
 	Displacement offset = {};
 	CalcFirstTilePosition(startPosition, offset);
 	DrawGame(worldOut, startPosition, offset);
-	if (AutomapActive) {
+	if (AutomapActive
+#ifdef __3DS__
+	    && !gmenu_is_active()
+#endif
+	) {
 		DrawAutomap(worldOut.subregion(0, 0, GetViewportWidth(), GetViewportHeight()));
 	}
 #ifdef _DEBUG
@@ -2131,7 +2135,7 @@ void DrawAndBlit()
 #endif
 	DrawView(out, ViewPosition);
 #ifdef __3DS__
-	if (!invflag && !CharFlag && !QuestLogIsOpen && !SpellbookFlag && !IsPlayerInStore() && !qtextflag)
+	if (!gmenu_is_active() && !invflag && !CharFlag && !QuestLogIsOpen && !SpellbookFlag && !IsPlayerInStore() && !qtextflag)
 		DrawSpell(out);
 	DrawCtrBottomHud(out);
 #else

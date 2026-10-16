@@ -565,8 +565,21 @@ struct GraphicsOptions : OptionCategoryBase {
 	OptionEntryBoolean showFPS;
 };
 
+#ifdef __3DS__
+void ApplyCtrGameplayOptions();
+void ResetCtrGameplayOptions(bool liveOnly);
+std::vector<OptionEntryBase *> GetCtrGameplayEntries(int group = -1);
+const char *CtrGameplayGroupName(int group);
+constexpr int CtrGameplayGroupCount = 7;
+#endif
+
 struct GameplayOptions : OptionCategoryBase {
 	GameplayOptions();
+#ifdef __3DS__
+	OptionEntryBoolean showVitalValues;
+	OptionEntryBoolean autoConsumables;
+	OptionEntryBoolean autoEquip;
+#endif
 	std::vector<OptionEntryBase *> GetEntries() override;
 
 	/** @brief Gameplay ticks per second. */
