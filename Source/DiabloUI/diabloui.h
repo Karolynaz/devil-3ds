@@ -97,7 +97,7 @@ void UiDestroy();
 void UiTitleDialog();
 void UnloadUiGFX();
 #ifdef __3DS__
-void LoadHeros();
+void UiReloadHeroPortraits();
 #endif
 void UiInitialize();
 bool UiValidPlayerName(std::string_view name); /* check */

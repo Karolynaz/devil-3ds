@@ -814,6 +814,13 @@ void Prepare3DSBackground()
 
 } // namespace
 
+#ifdef __3DS__
+void UiReloadHeroPortraits()
+{
+	LoadHeros();
+}
+#endif
+
 ClxSprite UiGetHeroDialogSprite(size_t heroClassIndex)
 {
 	return ArtHeroOverrides[heroClassIndex]

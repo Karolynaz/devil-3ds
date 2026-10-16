@@ -430,7 +430,7 @@ void SetHeroMenuMode(bool hellfire)
 	for (auto &clip : ClassProjectiles) clip = ClassPreviewClip {};
 	ClassPreviewPaletteLoaded = false;
 	ClassPreviewPaletteValid = false;
-	LoadHeros();
+	UiReloadHeroPortraits();
 	FreeItemGFX();
 	InitItemGFX();
 }
