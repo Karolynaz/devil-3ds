@@ -209,7 +209,8 @@ void UiInitList(void (*fnFocus)(size_t value), void (*fnSelect)(size_t value), v
 #endif
 	SelectedItem = selectedItem;
 	SelectedItemMax = 0;
-	ListViewportSize = 0;
+	ListViewportSize = 1;
+	gUiList = nullptr;
 	gfnListFocus = fnFocus;
 	gfnListSelect = fnSelect;
 	gfnListEsc = fnEsc;
@@ -313,6 +314,7 @@ namespace {
 
 void UiFocus(std::size_t itemIndex, bool checkUp, bool ignoreItemsWraps = false)
 {
+	if (gUiList == nullptr) return;
 	if (SelectedItem == itemIndex)
 		return;
 

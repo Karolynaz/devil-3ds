@@ -72,16 +72,13 @@ bool StartupCancelled;
 bool WaitForZeroTierStartup()
 {
 	StartupCancelled = false;
-	std::vector<std::unique_ptr<UiListItem>> actions;
 	std::vector<std::unique_ptr<UiItemBase>> dialog;
 	UiLoadBlackBackground();
 	UiAddBackground(&dialog, false);
 	dialog.push_back(std::make_unique<UiArtText>(_("Multiplayer").data(), MakeSdlRect(24, 24, 592, 36), UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiSilver));
 	char status[256] {};
 	dialog.push_back(std::make_unique<UiArtText>(status, MakeSdlRect(50, 90, 540, 110), UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold, 1, 26));
-	actions.push_back(std::make_unique<UiListItem>(_("Cancel"), 0));
-	dialog.push_back(std::make_unique<UiList>(actions, 1, 160, 330, 320, 36, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
-	UiInitList(nullptr, [](size_t) { StartupCancelled = true; }, []() { StartupCancelled = true; }, dialog, true);
+	UiInitList(nullptr, nullptr, []() { StartupCancelled = true; }, dialog, false);
 
 	net::zerotier_network_start();
 	const uint32_t start = SDL_GetTicks();

@@ -110,10 +110,7 @@ bool UiProgressDialog(int (*fnfunc)())
 	UiLoadBlackBackground();
 	UiAddBackground(&vecProgress, false);
 	vecProgress.push_back(std::make_unique<UiArtText>(_("Joining game...").data(), MakeSdlRect(50, 60, 540, 40), UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver));
-	std::vector<std::unique_ptr<UiListItem>> actions;
-	actions.push_back(std::make_unique<UiListItem>(_("Cancel"), 0));
-	vecProgress.push_back(std::make_unique<UiList>(actions, 1, 65, 330, 510, 36, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
-	UiInitList(nullptr, [](size_t) { DialogActionCancel(); }, DialogActionCancel, vecProgress, true);
+	UiInitList(nullptr, nullptr, DialogActionCancel, vecProgress, false);
 	endMenu = false;
 	int progress = 0;
 	while (!endMenu && progress < 100) {

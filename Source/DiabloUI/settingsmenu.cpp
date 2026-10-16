@@ -614,7 +614,6 @@ void UiSettingsMenu()
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Reset to default"), static_cast<int>(SpecialMenuEntry::ResetGameplay), UiFlags::ColorUiGold));
 			break;
 		case ShownMenuType::Update:
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Back"), 0, UiFlags::ColorUiGold));
 			vecDialog.push_back(std::make_unique<UiArtText>(CtrProjectUrl.data(), MakeSdlRect(12, 465, 616, 14), UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 0));
 			break;
 		case ShownMenuType::Controls: {
@@ -809,14 +808,25 @@ void UiSettingsMenu()
 			Size { uiRectangle.size.width - 50, 80 - descriptionMarginTop } };
 		const UiFlags listFontFlags = UiFlags::FontSize24 | UiFlags::AlignCenter;
 #endif
+#ifdef __3DS__
+		if (shownMenu != ShownMenuType::Update)
+#endif
 		vecDialog.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0],
 		    *ArtScrollBarArrow, MakeSdlRect(rectList.position.x + rectList.size.width + 5, rectList.position.y, 25, rectList.size.height)));
 		vecDialog.push_back(std::make_unique<UiArtText>(optionDescription, MakeSdlRect(rectDescription),
 		    UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 1, descriptionLineHeight));
+#ifdef __3DS__
+		if (shownMenu != ShownMenuType::Update)
+#endif
 		vecDialog.push_back(std::make_unique<UiList>(vecDialogItems, rectList.size.height / ListItemHeight,
 		    rectList.position.x, rectList.position.y, rectList.size.width, ListItemHeight, listFontFlags));
 
-		UiInitList(ItemFocused, ItemSelected, EscPressed, vecDialog, true, FullscreenChanged, nullptr, itemToSelect);
+#ifdef __3DS__
+		if (shownMenu == ShownMenuType::Update)
+			UiInitList(nullptr, nullptr, EscPressed, vecDialog, false);
+		else
+#endif
+			UiInitList(ItemFocused, ItemSelected, EscPressed, vecDialog, true, FullscreenChanged, nullptr, itemToSelect);
 
 		while (!endMenu) {
 #ifdef __3DS__

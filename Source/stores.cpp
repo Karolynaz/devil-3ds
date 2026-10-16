@@ -378,13 +378,16 @@ void AddSText(uint8_t x, size_t y, std::string_view text, UiFlags flags, bool se
 
 void AddOptionsBackButton()
 {
+#ifndef __3DS__
 	const int line = BackButtonLine();
 	AddSText(0, line, _("Back"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 	TextLine[line]._syoff = IsSmallFontTall() ? 0 : 6;
+#endif
 }
 
 void AddItemListBackButton(bool selectable = false)
 {
+#ifndef __3DS__
 	const int line = BackButtonLine();
 	const std::string_view text = _("Back");
 	if (!selectable && IsSmallFontTall()) {
@@ -394,6 +397,7 @@ void AddItemListBackButton(bool selectable = false)
 		AddSText(0, line, text, UiFlags::ColorWhite | UiFlags::AlignCenter, selectable);
 		TextLine[line]._syoff = 6;
 	}
+#endif
 }
 
 void PrintStoreItem(const Item &item, int l, UiFlags flags, bool cursIndent = false)
@@ -484,13 +488,17 @@ void StartSmith()
 	AddSText(0, 10, _("Talk to Griswold"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
 	if (*GetOptions().Gameplay.storeUi == StoreUi::VisualGrid) {
 		AddSText(0, 12, _("Trade / Repair"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 14, _("Leave the shop"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	} else {
 		AddSText(0, 12, _("Buy basic items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 14, _("Buy premium items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 16, _("Sell items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 18, _("Repair items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 20, _("Leave the shop"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	}
 	AddSLine(5);
 	CurrentItemIndex = 20;
@@ -770,13 +778,17 @@ void StartWitch()
 	if (*GetOptions().Gameplay.storeUi == StoreUi::VisualGrid) {
 		AddSText(0, 14, _("Buy / Sell"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 16, _("Recharge staves"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 18, _("Leave the shack"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 		AddSLine(4);
 	} else {
 		AddSText(0, 14, _("Buy items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 16, _("Sell items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 18, _("Recharge staves"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 20, _("Leave the shack"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 		AddSLine(5);
 	}
 
@@ -1076,10 +1088,14 @@ void StartBoy()
 		AddSText(0, 14, _("but it will cost 50 gold"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 		AddSText(0, 16, _("just to take a look. "), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 		AddSText(0, 18, _("What have you got?"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 20, _("Say goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	} else {
 		AddSText(0, 12, _("Talk to Wirt"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 18, _("Say goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	}
 }
 
@@ -1110,7 +1126,9 @@ void SStartBoyBuy()
 		// this one has different text and different layout in LargerSmallFont locales.
 		const int line = BackButtonLine();
 		AddSLine(line - 1);
+#ifndef __3DS__
 		AddSText(0, line, _("Leave"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 		TextLine[line]._syoff = 6;
 	}
 }
@@ -1181,7 +1199,9 @@ void StartStoryteller()
 	AddSText(0, 9, _("Would you like to:"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 12, _("Talk to Cain"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
 	AddSText(0, 14, _("Identify an item"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 	AddSText(0, 18, _("Say goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	AddSLine(5);
 }
 
@@ -1366,7 +1386,9 @@ void StartTavern()
 	AddSText(0, 3, _("Rising Sun"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 9, _("Would you like to:"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 12, _("Talk to Ogden"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 	AddSText(0, 18, _("Leave the tavern"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	AddSLine(5);
 	CurrentItemIndex = 20;
 }
@@ -1379,7 +1401,9 @@ void StartBarmaid()
 	AddSText(0, 9, _("Would you like to:"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 12, _("Talk to Gillian"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
 	AddSText(0, 14, _("Access Storage"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 	AddSText(0, 18, _("Say goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	AddSLine(5);
 	CurrentItemIndex = 20;
 }
@@ -1391,7 +1415,9 @@ void StartDrunk()
 	AddSText(0, 2, _("Farnham the Drunk"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 9, _("Would you like to:"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 12, _("Talk to Farnham"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 	AddSText(0, 18, _("Say Goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	AddSLine(5);
 	CurrentItemIndex = 20;
 }
@@ -2557,6 +2583,9 @@ void StartStore(TalkID s)
 				}
 			}
 
+#ifdef __3DS__
+			lastSelectableLine = NumStoreLines - 1;
+#endif
 			// Insert extra options into empty even-numbered lines before the leave option.
 			size_t optIdx = 0;
 			for (int line = 10; line < lastSelectableLine && optIdx < extraOpts->size(); line += 2) {
@@ -2842,6 +2871,9 @@ void StoreEnter()
 		return;
 	}
 
+#ifdef __3DS__
+	if (CurrentTextLine < 0) return;
+#endif
 	PlaySFX(SfxID::MenuSelect);
 
 	if (CurrentTextLine >= 0 && CurrentTextLine < NumStoreLines && CurrentExtraOptionIndices[CurrentTextLine].has_value()) {
