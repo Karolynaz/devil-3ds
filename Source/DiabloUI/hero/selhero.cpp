@@ -83,6 +83,18 @@ std::optional<std::pair<HeroClass, uint8_t>> HeroPreviewKey;
 bool HeroPreviewVisible = false;
 uint32_t HeroPreviewStarted;
 
+// Match the statistics block instead of choosing a different integer zoom
+// for each class/weapon crop. The same dimensions apply to every idle frame.
+Size GetHeroPreviewSize(Size source)
+{
+	constexpr int Width = 180;
+	constexpr int Height = 120;
+	if (source.width <= 0 || source.height <= 0) return { 0, 0 };
+	if (source.width * Height > source.height * Width)
+		return { Width, std::max(1, source.height * Width / source.width) };
+	return { std::max(1, source.width * Height / source.height), Height };
+}
+
 void UpdateHeroPreview()
 {
 	const auto key = std::pair { selhero_heroInfo.heroclass, selhero_heroInfo.graphics };
@@ -119,7 +131,12 @@ void UpdateHeroPreview()
 					OwnedSurface cropped(right - left + 1, (bottom - top + 1) * frames);
 					for (int frame = 0; frame < frames; ++frame)
 						cropped.BlitFrom(atlas, MakeSdlRect(left, frame * height + top, cropped.w(), bottom - top + 1), { 0, frame * (bottom - top + 1) });
-					HeroPreviewRaw.emplace(SurfaceToClx(cropped, frames, 0));
+					const Size previewSize = GetHeroPreviewSize({ cropped.w(), bottom - top + 1 });
+					OwnedSurface scaled(previewSize.width, previewSize.height * frames);
+					for (int frame = 0; frame < frames; ++frame)
+						scaled.ScaleBlitFrom(cropped, MakeSdlRect(0, frame * (bottom - top + 1), cropped.w(), bottom - top + 1),
+						    MakeSdlRect(0, frame * previewSize.height, previewSize.width, previewSize.height));
+					HeroPreviewRaw.emplace(SurfaceToClx(scaled, frames, 0));
 				}
 			}
 		}
@@ -151,8 +168,7 @@ void RenderHeroPreview()
 	}
 	// Standing animation advances independently of menu FPS and game tick rate.
 	const uint32_t frame = ((SDL_GetTicks() - HeroPreviewStarted) / 100) % HeroPreviewMapped->numSprites();
-	UiImageClx image((*HeroPreviewMapped)[frame], MakeSdlRect(12, 15, 288, 210), UiFlags::AlignCenter);
-	image.setAllowUpscale(true);
+	UiImageClx image((*HeroPreviewMapped)[frame], MakeSdlRect(12, 55, 288, 130), UiFlags::AlignCenter);
 	UiRenderItem(image);
 }
 void SetHeroSummaryVisible(bool visible)
