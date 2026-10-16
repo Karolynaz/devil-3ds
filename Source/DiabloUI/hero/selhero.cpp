@@ -370,15 +370,15 @@ void RenderClassPreviews()
 		UiImageClx effect(bolt, MakeSdlRect(center - 24, 122 + flight * 55 / 450, 48, 24), UiFlags::AlignCenter);
 		UiRenderItem(effect);
 	}
-	DrawString(Surface(DiabloUiSurface()), ClassPreviewText, { { 20, 204 }, { 600, 32 } },
-	    { .flags = UiFlags::FontSize12 | UiFlags::ColorWhite | UiFlags::AlignCenter, .spacing = 0, .lineHeight = 14 });
+	DrawString(Surface(DiabloUiSurface()), ClassPreviewText, { { 20, 200 }, { 600, 36 } },
+	    { .flags = UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, .spacing = 1, .lineHeight = 16 });
 }
 
 void FocusClassPreview(size_t selection)
 {
 	if (ClassPreviewClasses.empty()) return;
 	ClassPreviewSelection = std::min(selection, ClassPreviewClasses.size() - 1);
-	ClassPreviewText = WordWrapString(_(ClassPreviewDescription(ClassPreviewClasses[ClassPreviewSelection])), 600, GameFont12, 0, CtrTextScale::TopScreen);
+	ClassPreviewText = WordWrapString(_(ClassPreviewDescription(ClassPreviewClasses[ClassPreviewSelection])), 600, GameFont12, 1, CtrTextScale::TopScreen);
 	if (!ClassPreviewPaletteLoaded)
 		ClassPreviewPaletteLoaded = LoadOptionalFileInMem("levels\\towndata\\town.pal", HeroPreviewGamePalette.data(), HeroPreviewGamePalette.size());
 	const size_t first = FirstClassPreview(ClassPreviewSelection, ClassPreviewClasses.size());

@@ -69,8 +69,6 @@ void GamemenuSmallMap(bool bActivate);
 void GamemenuMods(bool bActivate);
 void GamemenuModsBack(bool bActivate);
 void GamemenuModsOption(bool bActivate);
-void GamemenuModsNextPage(bool bActivate);
-void GamemenuModsPreviousPage(bool bActivate);
 void GamemenuTalk(bool bActivate);
 void GamemenuHostile(bool bActivate);
 void GamemenuBuildModsMenu();
@@ -122,11 +120,8 @@ TMenuItem sgOptionsMenu[] = {
 	// clang-format on
 };
 #ifdef __3DS__
-constexpr size_t ModsMenuSinglePlayerPageSize = 4;
-constexpr size_t ModsMenuMultiplayerPageSize = 3;
 std::vector<TMenuItem> sgModsMenu;
 std::vector<std::string> sgModsMenuLabels;
-size_t sgModsMenuPage = 0;
 #endif
 /** Specifies the menu names for music enabled and disabled. */
 const char *const MusicToggleNames[] = {
@@ -291,7 +286,7 @@ std::vector<OptionEntryBase *> GamemenuGetLiveModsOptions()
 
 std::string GamemenuFormatModsLabel(std::string_view name, std::string_view value)
 {
-	const int availableWidth = gnScreenWidth - 2 * 56 - 16;
+	const int availableWidth = gnScreenWidth - 2 * 56 - 48;
 	std::string label(name);
 	label.append(": ");
 	label.append(value);
@@ -312,23 +307,11 @@ void GamemenuBuildModsMenu()
 		OptionEntryBase *option;
 	};
 	const std::vector<OptionEntryBase *> options = GamemenuGetLiveModsOptions();
-	const size_t pageSize = gbIsMultiplayer ? ModsMenuMultiplayerPageSize : ModsMenuSinglePlayerPageSize;
-	const size_t pageCount = std::max<size_t>(1, (options.size() + pageSize - 1) / pageSize);
-	sgModsMenuPage = std::min(sgModsMenuPage, pageCount - 1);
-	const size_t firstOption = sgModsMenuPage * pageSize;
 	std::vector<MenuRow> rows;
-	const size_t optionCount = std::min(pageSize, options.size() - firstOption);
-	rows.reserve(optionCount + 3);
-	for (size_t i = firstOption; i < firstOption + optionCount; i++) {
-		OptionEntryBase *pOption = options[i];
+	rows.reserve(options.size() + 1);
+	for (OptionEntryBase *pOption : options) {
 		std::string label = GamemenuFormatModsLabel(pOption->GetName(), pOption->GetValueDescription());
 		rows.push_back({ std::move(label), &GamemenuModsOption, true, pOption });
-	}
-	if (pageCount > 1) {
-		rows.push_back({ std::string(_("Previous Page")) + " (" + std::to_string(sgModsMenuPage + 1) + "/" + std::to_string(pageCount) + ")",
-		    &GamemenuModsPreviousPage, sgModsMenuPage > 0, nullptr });
-		rows.push_back({ std::string(_("Next Page")) + " (" + std::to_string(sgModsMenuPage + 1) + "/" + std::to_string(pageCount) + ")",
-		    &GamemenuModsNextPage, sgModsMenuPage + 1 < pageCount, nullptr });
 	}
 	rows.push_back({ std::string(_("Previous Menu")), &GamemenuModsBack, true, nullptr });
 
@@ -348,7 +331,6 @@ void GamemenuBuildModsMenu()
 
 void GamemenuMods(bool /*bActivate*/)
 {
-	sgModsMenuPage = 0;
 	GamemenuBuildModsMenu();
 	gmenu_set_items(sgModsMenu.data(), nullptr);
 }
@@ -378,20 +360,6 @@ void GamemenuModsOption(bool /*bActivate*/)
 	sgpActivatedMenuItem->pszStr = sgModsMenuLabels[itemIndex].c_str();
 }
 
-void GamemenuModsNextPage(bool /*bActivate*/)
-{
-	++sgModsMenuPage;
-	GamemenuBuildModsMenu();
-	gmenu_set_items(sgModsMenu.data(), nullptr);
-}
-
-void GamemenuModsPreviousPage(bool /*bActivate*/)
-{
-	if (sgModsMenuPage > 0)
-		--sgModsMenuPage;
-	GamemenuBuildModsMenu();
-	gmenu_set_items(sgModsMenu.data(), nullptr);
-}
 #endif
 
 void GamemenuOptions(bool /*bActivate*/)

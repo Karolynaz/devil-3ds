@@ -106,7 +106,7 @@ with tempfile.TemporaryDirectory() as directory:
     subprocess.run([str(root/'test')], check=True)
 print('PASS: three-class layout, Hellfire paging, frozen unselected clips, one-shot actions, idle loop, stable anchors, missing/invalid clips (ASan/UBSan)')
 
-# The footer is limited to two 14px lines. Check shipped EN/LT glyph metrics;
+# The footer is limited to two 16px lines. Check shipped EN/LT glyph metrics;
 # the production word-wrap routine is separately covered by ctr_multiline.
 import ast
 import re
@@ -131,7 +131,7 @@ def native_width(text):
         if cp>>8 not in fonts: fonts[cp>>8]=(ROOT/f'assets/fonts/12-{cp>>8:02x}.clx').read_bytes()
         data=fonts[cp>>8];offset=struct.unpack_from('<I',data,4+4*(cp&255))[0]
         total+=struct.unpack_from('<H',data,offset+2)[0]
-    return total
+    return total + max(0,len(text)-1)
 for name in names:
     assert name in translations
     for text in (name,translations[name]):
@@ -142,5 +142,5 @@ for name in names:
                 assert lines[-1] and native_width(word)<=375
                 lines.append(word)
             else: lines[-1]=trial
-        assert len(lines)<=2 and len(lines)*14<=32, text
+        assert len(lines)<=2 and len(lines)*16<=36, text
 print('PASS: all six EN/LT class introductions fit the two-line footer with shipped native font metrics')

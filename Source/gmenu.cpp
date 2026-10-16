@@ -7,6 +7,7 @@
 #ifdef __3DS__
 #include "gamemenu.h"
 #include "diablo_msg.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
 #endif
 
 #include <algorithm>
@@ -56,7 +57,12 @@ constexpr int SliderValueLeft = SliderValueBoxLeft + SliderValueBorderWidth;
 constexpr int SliderValueWidth = SliderValueBoxWidth - (2 * SliderValueBorderWidth);
 constexpr int SliderValueHeight = 29;
 constexpr int SliderValuePaddingTop = 10;
-constexpr int SliderMarkerWidth = 27;
+constexpr int SliderMarkerSpriteWidth = 27;
+#ifdef __3DS__
+constexpr int SliderMarkerWidth = (SliderMarkerSpriteWidth * 8 + 4) / 5;
+#else
+constexpr int SliderMarkerWidth = SliderMarkerSpriteWidth;
+#endif
 
 constexpr int SliderFillMin = SliderMarkerWidth / 2;
 constexpr int SliderFillMax = SliderValueWidth - (SliderMarkerWidth / 2) - 1;
@@ -81,9 +87,50 @@ void (*gmenu_current_option)();
 int sgCurrentMenuIdx;
 
 #ifdef __3DS__
+constexpr int GMenuMaxVisibleRows = 7;
+int sgFirstVisibleMenuItem = 0;
+
+int GmenuVisibleRows()
+{
+	return std::min(sgCurrentMenuIdx, GMenuMaxVisibleRows);
+}
+
+int GmenuFirstVisibleRow(int first, int selected, int count)
+{
+	if (selected < first) first = selected;
+	if (selected >= first + GMenuMaxVisibleRows) first = selected - GMenuMaxVisibleRows + 1;
+	return std::clamp(first, 0, std::max(0, count - GMenuMaxVisibleRows));
+}
+
+void GmenuScrollToCurrent()
+{
+	if (sgpCurrItem != nullptr)
+		sgFirstVisibleMenuItem = GmenuFirstVisibleRow(sgFirstVisibleMenuItem, static_cast<int>(sgpCurrItem - sgpCurrentMenu), sgCurrentMenuIdx);
+}
+
 int GMenuTop()
 {
-	return GetUIRectangle().position.y + std::max(0, (GMenuTopScreenHeight - sgCurrentMenuIdx * GMenuItemHeight) / 2);
+	return GetUIRectangle().position.y + std::max(0, (GMenuTopScreenHeight - GmenuVisibleRows() * GMenuItemHeight) / 2);
+}
+
+void DrawGMenuSliderMarker(const Surface &out, ClxSprite sprite, Point position)
+{
+	static OwnedSurface scratch(64, 64);
+	if (scratch.w() < sprite.width() || scratch.h() < sprite.height())
+		scratch = OwnedSurface(std::max(64, int(sprite.width())), std::max(64, int(sprite.height())));
+	SDL_FillSurfaceRect(scratch.surface, nullptr, 1);
+	RenderClxSprite(scratch, sprite, { 0, 0 });
+	const int nativeX = CtrInverseColumn(out.region.x + position.x, 400);
+	const int firstX = CtrNativeColumn(nativeX, 400);
+	const int endX = CtrNativeColumn(nativeX + sprite.width(), 400);
+	for (int y = 0; y < sprite.height(); ++y) {
+		for (int x = firstX; x < endX; ++x) {
+			const int sourceX = CtrInverseColumn(x, 400) - nativeX;
+			const uint8_t color = scratch[{ sourceX, y }];
+			const Point destination { x - out.region.x, position.y + y };
+			if (color != 1 && out.InBounds(destination)) out.SetPixel(destination, color);
+		}
+	}
 }
 
 void DrawGMenuSpinner(const Surface &out, ClxSprite sprite, Point position)
@@ -130,6 +177,9 @@ void GmenuUpDown(bool isDown)
 			if (sgpCurrItem->enabled()) {
 				if (i != 0)
 					PlaySFX(SfxID::MenuMove);
+#ifdef __3DS__
+				GmenuScrollToCurrent();
+#endif
 				return;
 			}
 		}
@@ -174,7 +224,7 @@ int GmenuGetTextWidth(TMenuItem *pItem, GameFontTables font, int spacing)
 
 int GmenuGetSpacing(TMenuItem *pItem)
 {
-	const int availableWidth = gnScreenWidth - 2 * 56 - 16;
+	const int availableWidth = gnScreenWidth - 2 * 56 - 48;
 	if (pItem->userData != nullptr) {
 		for (int spacing = 1; spacing >= 0; spacing--) {
 			if (GmenuGetTextWidth(pItem, GameFont12, spacing) <= availableWidth)
@@ -198,7 +248,7 @@ GameFontTables GmenuGetFont(TMenuItem *pItem)
 	if (pItem->userData != nullptr)
 		return GameFont12;
 	// Reserve two 48-column spinners, their gaps, and an outer margin.
-	const int availableWidth = gnScreenWidth - 2 * 56 - 16;
+	const int availableWidth = gnScreenWidth - 2 * 56 - 48;
 	for (const GameFontTables font : { GameFont30, GameFont24 }) {
 		if (GmenuGetTextWidth(pItem, font, 2) <= availableWidth)
 			return font;
@@ -231,7 +281,8 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 		const uint16_t pos = SliderFillMin + (step * (SliderFillMax - SliderFillMin) / steps);
 		SDL_Rect rect = MakeSdlRect(SliderValueLeft + uiPositionX, y + 2, pos, 20);
 		SDL_FillSurfaceRect(out.surface, &rect, 205);
-		ClxDraw(out, { SliderValueLeft + pos - (SliderMarkerWidth / 2) + uiPositionX, y + 2 + 20 - 1 }, (*option_cel)[0]);
+		const ClxSprite marker = (*option_cel)[0];
+		DrawGMenuSliderMarker(out, marker, { SliderValueLeft + pos - SliderMarkerWidth / 2 + uiPositionX, y + 22 - marker.height() });
 #else
 		ClxDraw(out, { SliderValueBoxLeft + uiPositionX, y + 40 }, (*optbar_cel)[0]);
 		const uint16_t step = pItem->dwFlags & 0xFFF;
@@ -312,7 +363,7 @@ void gmenu_draw_pause(const Surface &out)
 		RedBack(out);
 	if (sgpCurrentMenu == nullptr) {
 #ifdef __3DS__
-		DrawDiabloMsgBackground(out, { { 180, 90 }, { 280, 60 } });
+		DrawDiabloMsgBackground(out, { { 0, 0 }, { out.w(), GMenuTopScreenHeight } });
 #endif
 		DrawString(out, _("Pause"), { { 0, 0 }, { gnScreenWidth, GetMainPanel().position.y } },
 		    { .flags = UiFlags::FontSize46 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter, .spacing = 2 });
@@ -345,7 +396,7 @@ void gmenu_init_menu()
 		sgpLogo = LoadCel("data\\diabsmal", 296);
 #endif
 	PentSpin_cel = LoadCel("data\\pentspin", 48);
-	option_cel = LoadCel("data\\option", SliderMarkerWidth);
+	option_cel = LoadCel("data\\option", SliderMarkerSpriteWidth);
 	optbar_cel = LoadCel("data\\optbar", SliderValueBoxWidth);
 #ifdef __3DS__
 	if (!pSPentSpn2Cels)
@@ -363,6 +414,9 @@ void gmenu_set_items(TMenuItem *pItem, void (*gmFunc)())
 	PauseMode = 0;
 	isDraggingSlider = false;
 	sgpCurrentMenu = pItem;
+#ifdef __3DS__
+	sgFirstVisibleMenuItem = 0;
+#endif
 	gmenu_current_option = gmFunc;
 	if (gmenu_current_option != nullptr) {
 		gmenu_current_option();
@@ -399,8 +453,7 @@ void gmenu_draw(const Surface &out)
 #endif
 #ifdef __3DS__
 		int y = GMenuTop();
-		DrawDiabloMsgBackground(out, { { 20, std::max(0, y - 8) },
-		    { out.w() - 40, std::min(240 - std::max(0, y - 8), sgCurrentMenuIdx * GMenuItemHeight + 16) } });
+		DrawDiabloMsgBackground(out, { { 0, 0 }, { out.w(), GMenuTopScreenHeight } });
 #else
 		const int uiPositionY = GetUIRectangle().position.y;
 		const ClxSprite sprite = (*sgpLogo)[LogoAnim_frame];
@@ -411,15 +464,31 @@ void gmenu_draw(const Surface &out)
 		const char *address = gamemenu_network_address();
 		// Keep the connection address below the menu when there is room. Long
 		// menus (including the full single-player Mods page) use this space.
-		if (address[0] != '\0' && y + sgCurrentMenuIdx * GMenuItemHeight <= 220) {
+		if (address[0] != '\0' && y + GmenuVisibleRows() * GMenuItemHeight <= 220) {
 			const int width = GetLineWidth(address, GameFont12, 1, nullptr, CtrTextScale::TopScreen);
 			DrawString(out, address, Point { (gnScreenWidth - width) / 2, 220 },
 			    { .flags = UiFlags::FontSize12 | UiFlags::ColorWhite, .spacing = 1 });
 		}
 #endif
+#ifdef __3DS__
+		if (sgCurrentMenuIdx > GMenuMaxVisibleRows) {
+			const int height = GmenuVisibleRows() * GMenuItemHeight;
+			const int thumbHeight = std::max(12, height * GmenuVisibleRows() / sgCurrentMenuIdx);
+			const int thumbY = y + (height - thumbHeight) * sgFirstVisibleMenuItem / (sgCurrentMenuIdx - GmenuVisibleRows());
+			FillRect(out, 620, y, 6, height, 0);
+			FillRect(out, 620, thumbY, 6, thumbHeight, 205);
+		}
+		TMenuItem *i = sgpCurrentMenu + sgFirstVisibleMenuItem;
+		TMenuItem *end = i + GmenuVisibleRows();
+#else
 		TMenuItem *i = sgpCurrentMenu;
+#endif
 		if (sgpCurrentMenu->fnMenu != nullptr) {
+#ifdef __3DS__
+			while (i < end) {
+#else
 			while (i->fnMenu != nullptr) {
+#endif
 				GmenuDrawMenuItem(out, i, y);
 				i++;
 				y += GMenuItemHeight;
@@ -502,8 +571,14 @@ bool gmenu_left_mouse(bool isDown)
 	if (MousePosition.y < menuTop) {
 		return true;
 	}
-	const int i = (MousePosition.y - menuTop) / GMenuItemHeight;
+	const int visibleRow = (MousePosition.y - menuTop) / GMenuItemHeight;
+#ifdef __3DS__
+	const int i = visibleRow + sgFirstVisibleMenuItem;
+	if (visibleRow >= GmenuVisibleRows()) {
+#else
+	const int i = visibleRow;
 	if (i >= sgCurrentMenuIdx) {
+#endif
 		return true;
 	}
 	TMenuItem *pItem = &sgpCurrentMenu[i];

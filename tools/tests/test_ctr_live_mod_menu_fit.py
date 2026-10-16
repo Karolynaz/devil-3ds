@@ -155,7 +155,7 @@ for name, value in cases:
     main += 'assert(std::count(label.begin(),label.end(),\'\\n\')<=1); TMenuItem item{label.c_str(),false,reinterpret_cast<void *>(1)}; '
     main += 'const auto font=GmenuGetFont(&item); const auto spacing=GmenuGetSpacing(&item); '
     main += 'assert(font==GameFont12 && spacing<=1); const int width=GmenuGetTextWidth(&item,font,spacing); '
-    main += 'if(width>gnScreenWidth-2*56-16){std::fprintf(stderr,"%s width %d font %d\\n",item.pszStr,width,font);return 1;} }\n'
+    main += 'if(width>gnScreenWidth-2*56-48){std::fprintf(stderr,"%s width %d font %d\\n",item.pszStr,width,font);return 1;} }\n'
 main += '}\n'
 
 with tempfile.TemporaryDirectory() as directory:
@@ -165,17 +165,12 @@ with tempfile.TemporaryDirectory() as directory:
     subprocess.run(['c++', '-std=c++17', str(cpp), '-o', str(exe)], check=True)
     subprocess.run([str(exe)], check=True)
 
-# Verify the menu remains paged and the fixed address row is suppressed when
-# menu rows extend into its 220px baseline.
-assert 'ModsMenuSinglePlayerPageSize = 4' in gamemenu
-assert 'ModsMenuMultiplayerPageSize = 3' in gamemenu
-assert 'y + sgCurrentMenuIdx * GMenuItemHeight <= 220' in gmenu
-single_player_rows = 4 + 3
-single_player_top = max(0, (240 - single_player_rows * 30) // 2)
-assert single_player_rows == 7 and single_player_top == 15
-assert single_player_top + single_player_rows * 30 > 220
-assert '.lineHeight = 12' in gmenu
-assert 'AlignCenter' in gmenu
+# All live options are built once; navigation scrolls the visible row window.
+assert 'GamemenuModsNextPage' not in gamemenu
+assert 'GamemenuModsPreviousPage' not in gamemenu
+assert 'for (OptionEntryBase *pOption : options)' in gamemenu
+assert 'GMenuMaxVisibleRows = 7' in gmenu
+assert 'y + GmenuVisibleRows() * GMenuItemHeight <= 220' in gmenu
 live_filter = function(gamemenu, 'std::vector<OptionEntryBase *> GamemenuGetLiveModsOptions()')
 assert 'pEntry == &gameplay.tickRate' in live_filter
 assert 'gbIsMultiplayer && HasAnyOf(flags, OptionEntryFlags::CantChangeInMultiPlayer)' in live_filter
@@ -184,9 +179,7 @@ for startup_option in ('runInTown', 'friendlyFire', 'multiplayerFullQuests'):
 toggle = function(gamemenu, 'void GamemenuModsOption(bool /*bActivate*/)')
 assert 'pBooleanOption->SetValue(!**pBooleanOption)' in toggle
 assert 'if (listSize != 0)' in toggle and '% listSize' in toggle
-assert 'sgModsMenuPage + 1 < pageCount' in gamemenu
-assert 'sgModsMenuPage > 0' in gamemenu
 title_filter = function((ROOT / 'Source/DiabloUI/settingsmenu.cpp').read_text(), 'bool IsLiveGameplayOption(const OptionEntryBase *pEntry)')
 assert 'pEntry != &gameplay.tickRate' in title_filter
 assert 'OptionEntryFlags::CantChangeInMultiPlayer' in title_filter
-print(f'PASS: {len(cases)} production 3DS Mods labels fit beside the selectors; long pages avoid the network address')
+print(f'PASS: {len(cases)} production 3DS Mods labels fit beside the selectors; scrolling rows avoid the scrollbar and network address')
