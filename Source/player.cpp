@@ -2095,19 +2095,26 @@ ClxSprite GetPlayerPortraitSprite(Player &player)
 }
 
 #ifdef __3DS__
-std::optional<OwnedClxSpriteList> LoadPlayerPreviewSprites(HeroClass heroClass, uint8_t graphics)
+std::optional<OwnedClxSpriteList> LoadPlayerPreviewSprites(HeroClass heroClass, uint8_t graphics, player_graphic graphic)
 {
 	const size_t armor = graphics >> 4;
 	const size_t weapon = graphics & 0xF;
 	if (heroClass > HeroClass::LAST || armor >= ArmourChar.size() || weapon >= WepChar.size())
 		return std::nullopt;
+	const char *animation;
+	switch (graphic) {
+	case player_graphic::Stand: animation = "as"; break;
+	case player_graphic::Attack: animation = "at"; break;
+	case player_graphic::Fire: animation = "fm"; break;
+	default: return std::nullopt;
+	}
 	const HeroClass spriteClass = GetPlayerSpriteClass(heroClass);
 	const PlayerSpriteData &spriteData = GetPlayerSpriteDataForClass(spriteClass);
 	const char prefix[3] = { spriteData.classChar, ArmourChar[armor], WepChar[weapon] };
 	char path[256];
-	GetPlayerGraphicsPath(spriteData.classPath, std::string_view(prefix, 3), "as", path);
+	GetPlayerGraphicsPath(spriteData.classPath, std::string_view(prefix, 3), animation, path);
 	auto loaded = LoadCl2ListOrSheetWithStatus(path,
-	    PointerOrValue<uint16_t> { GetPlayerSpriteWidth(spriteClass, player_graphic::Stand, static_cast<PlayerWeaponGraphic>(weapon)) });
+	    PointerOrValue<uint16_t> { GetPlayerSpriteWidth(spriteClass, graphic, static_cast<PlayerWeaponGraphic>(weapon)) });
 	if (!loaded || !loaded->isSheet() || loaded->numLists() <= static_cast<size_t>(Direction::South))
 		return std::nullopt;
 	const ClxSpriteList south = loaded->sheet()[static_cast<size_t>(Direction::South)];

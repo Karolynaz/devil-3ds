@@ -17,7 +17,7 @@ code = r'''
 #include <string_view>
 enum class HeroClass : uint8_t { Warrior, Rogue, Sorcerer, Monk, Bard, Barbarian, LAST=Barbarian };
 enum class Direction { South=0 };
-enum class player_graphic { Stand };
+enum class player_graphic { Stand, Attack, Fire, Walk };
 enum class PlayerWeaponGraphic : uint8_t {};
 constexpr std::array ArmourChar {'l','m','h'};
 constexpr std::array WepChar {'n','u','s','d','b','t','h','a','m'};
@@ -53,13 +53,18 @@ std::optional<std::array<uint8_t,256>> GetPlayerGraphicTRN(const char *) { retur
 void ClxApplyTrans(OwnedClxSpriteList &sprites,const uint8_t *) { ++sprites.translations; }
 template<class... T>std::string StrCat(T... value) { return (std::string{}+...+value); }
 bool LoadOptionalFileInMem(const char *path,uint8_t *,size_t count) { assert(count==256);classPath=path;return true; }
-''' + body + r'''
+''' + 'std::optional<OwnedClxSpriteList> LoadPlayerPreviewSprites(HeroClass, uint8_t, player_graphic = player_graphic::Stand);\n' + body + r'''
 int main() {
  auto warrior=LoadPlayerPreviewSprites(HeroClass::Warrior,0x23);
  assert(warrior && warrior->translations==2 && lastPath=="warrior/whdas");
  auto bard=LoadPlayerPreviewSprites(HeroClass::Bard,0);
  assert(bard && lastPath=="rogue/rlnas" && classPath=="plrgfx\\bard.trn");
+ auto attack=LoadPlayerPreviewSprites(HeroClass::Warrior,2,player_graphic::Attack);
+ assert(attack && lastPath=="warrior/wlsat");
+ auto cast=LoadPlayerPreviewSprites(HeroClass::Sorcerer,0,player_graphic::Fire);
+ assert(cast && lastPath=="sorceror/slnfm");
  const int before=loads;
+ assert(!LoadPlayerPreviewSprites(HeroClass::Warrior,0,player_graphic::Walk));
  assert(!LoadPlayerPreviewSprites(HeroClass::Warrior,0x30));
  assert(!LoadPlayerPreviewSprites(HeroClass::Warrior,0x0f));
  assert(!LoadPlayerPreviewSprites(static_cast<HeroClass>(255),0));

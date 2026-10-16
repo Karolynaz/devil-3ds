@@ -8,6 +8,7 @@
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -29,6 +30,10 @@
 #include "engine/assets.hpp"
 #ifdef __3DS__
 #include "engine/load_file.hpp"
+#include "engine/load_cl2.hpp"
+#include "engine/load_clx.hpp"
+#include "engine/render/text_render.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
 #include "engine/palette.h"
 #include "engine/render/clx_render.hpp"
 #include "player.h"
@@ -171,6 +176,219 @@ void RenderHeroPreview()
 	UiImageClx image((*HeroPreviewMapped)[frame], MakeSdlRect(12, 55, 288, 130), UiFlags::AlignCenter);
 	UiRenderItem(image);
 }
+// Menu-only clips; none of these animations instantiate a Player or a missile.
+struct ClassPreviewClip {
+	std::optional<OwnedClxSpriteList> raw;
+	std::optional<OwnedClxSpriteList> mapped;
+	uint32_t idleFrames = 0;
+	uint32_t actionFrames = 0;
+	bool attempted = false;
+};
+bool ClassPreviewVisible = false;
+bool ClassPreviewPaletteLoaded = false;
+std::vector<HeroClass> ClassPreviewClasses;
+std::array<ClassPreviewClip, static_cast<size_t>(HeroClass::LAST) + 1> ClassPreviews;
+std::array<ClassPreviewClip, 2> ClassProjectiles;
+std::array<SDL_Color, 256> ClassPreviewUiPalette {};
+std::array<uint8_t, 256> ClassPreviewTranslation {};
+bool ClassPreviewPaletteValid = false;
+size_t ClassPreviewSelection = 0;
+uint32_t ClassPreviewStarted = 0;
+std::string ClassPreviewText;
+
+size_t FirstClassPreview(size_t selection, size_t count)
+{
+	return count <= 3 ? 0 : std::min(selection > 0 ? selection - 1 : 0, count - 3);
+}
+
+uint32_t ClassPreviewFrame(uint32_t elapsed, uint32_t idleFrames, uint32_t actionFrames, bool selected)
+{
+	if (!selected || idleFrames == 0) return 0;
+	if (elapsed / 80 < actionFrames) return idleFrames + elapsed / 80;
+	return ((elapsed - actionFrames * 80) / 100) % idleFrames;
+}
+
+// Shared crop and anchor across idle/attack frames prevent the figure jumping
+// or changing size when a weapon appears and disappears.
+void PrepareClassPreview(ClassPreviewClip &clip, ClxSpriteList idle, std::optional<ClxSpriteList> action)
+{
+	const uint32_t idleFrames = idle.numSprites();
+	const uint32_t actionFrames = action ? action->numSprites() : 0;
+	if (idleFrames == 0 || idleFrames > 32 || actionFrames > 32) return;
+	constexpr int Canvas = 256;
+	const uint32_t frames = idleFrames + actionFrames;
+	OwnedSurface atlas(Canvas, Canvas * frames);
+	SDL_FillSurfaceRect(atlas.surface, nullptr, 0);
+	int left = Canvas, right = -1, top = Canvas, bottom = -1, idleTop = Canvas, idleBottom = -1;
+	for (uint32_t frame = 0; frame < frames; ++frame) {
+		const ClxSprite sprite = frame < idleFrames ? idle[frame] : (*action)[frame - idleFrames];
+		if (sprite.width() > Canvas || sprite.height() > Canvas) return;
+		RenderClxSprite(atlas, sprite, { (Canvas - sprite.width()) / 2, static_cast<int>((frame + 1) * Canvas) - sprite.height() });
+		for (int y = 0; y < Canvas; ++y) {
+			for (int x = 0; x < Canvas; ++x) {
+				if (*atlas.at(x, frame * Canvas + y) == 0) continue;
+				left = std::min(left, x); right = std::max(right, x);
+				top = std::min(top, y); bottom = std::max(bottom, y);
+				if (frame < idleFrames) { idleTop = std::min(idleTop, y); idleBottom = std::max(idleBottom, y); }
+			}
+		}
+	}
+	if (right < left || idleBottom < idleTop) return;
+	const int width = right - left + 1, height = bottom - top + 1;
+	// Aim for a 120px standing figure; constrain a wide sword swing to its slot.
+	const int idleHeight = idleBottom - idleTop + 1;
+	Size size { std::max(1, width * 120 / idleHeight), std::max(1, height * 120 / idleHeight) };
+	size = CtrFitImage(size, { 122, 164 });
+	OwnedSurface scaled(size.width, size.height * frames);
+	for (uint32_t frame = 0; frame < frames; ++frame)
+		scaled.ScaleBlitFrom(atlas, MakeSdlRect(left, frame * Canvas + top, width, height),
+		    MakeSdlRect(0, frame * size.height, size.width, size.height));
+	clip.raw.emplace(SurfaceToClx(scaled, frames, 0));
+	clip.idleFrames = idleFrames;
+	clip.actionFrames = actionFrames;
+}
+
+void EnsureClassPreview(HeroClass heroClass)
+{
+	auto &clip = ClassPreviews[static_cast<size_t>(heroClass)];
+	if (clip.attempted) return;
+	clip.attempted = true;
+	auto idle = LoadPlayerPreviewSprites(heroClass, 0);
+	if (!idle) return;
+	PlayerWeaponGraphic weapon = PlayerWeaponGraphic::Unarmed;
+	if (heroClass == HeroClass::Warrior || heroClass == HeroClass::Bard) weapon = PlayerWeaponGraphic::Sword;
+	else if (heroClass == HeroClass::Rogue) weapon = PlayerWeaponGraphic::Bow;
+	else if (heroClass == HeroClass::Barbarian) weapon = PlayerWeaponGraphic::Axe;
+	auto action = LoadPlayerPreviewSprites(heroClass, static_cast<uint8_t>(weapon),
+	    heroClass == HeroClass::Sorcerer ? player_graphic::Fire : player_graphic::Attack);
+	PrepareClassPreview(clip, ClxSpriteList { *idle }, action ? std::optional<ClxSpriteList> { ClxSpriteList { *action } } : std::nullopt);
+}
+
+void EnsureClassProjectile(size_t index)
+{
+	auto &clip = ClassProjectiles[index];
+	if (clip.attempted) return;
+	clip.attempted = true;
+#ifdef UNPACKED_MPQS
+	auto loaded = LoadClxListOrSheetWithStatus(index == 0 ? "missiles\\arrows.clx" : "missiles\\fireba.clx");
+#else
+	auto loaded = LoadCl2ListOrSheetWithStatus(index == 0 ? "missiles\\arrows" : "missiles\\fireba1", PointerOrValue<uint16_t> { 96 });
+#endif
+	if (!loaded) return;
+	if (loaded->isSheet() && loaded->numLists() == 0) return;
+	const ClxSpriteList sprites = loaded->isSheet() ? loaded->sheet()[0] : loaded->list();
+	if (sprites.numSprites() == 0 || sprites.numSprites() > 32) return;
+	// Arrows store one frame per direction, rather than an animated sequence.
+	const uint32_t frames = index == 0 ? 1 : sprites.numSprites();
+	OwnedSurface atlas(96, 96 * frames);
+	SDL_FillSurfaceRect(atlas.surface, nullptr, 0);
+	int left = 96, right = -1, top = 96, bottom = -1;
+	for (uint32_t frame = 0; frame < frames; ++frame) {
+		const ClxSprite sprite = sprites[frame];
+		if (sprite.width() > 96 || sprite.height() > 96) return;
+		RenderClxSprite(atlas, sprite, { (96 - sprite.width()) / 2, static_cast<int>((frame + 1) * 96) - sprite.height() });
+		for (int y = 0; y < 96; ++y) for (int x = 0; x < 96; ++x) {
+			if (*atlas.at(x, frame * 96 + y) == 0) continue;
+			left = std::min(left, x); right = std::max(right, x);
+			top = std::min(top, y); bottom = std::max(bottom, y);
+		}
+	}
+	if (right < left) return;
+	OwnedSurface cropped(right - left + 1, (bottom - top + 1) * frames);
+	for (uint32_t frame = 0; frame < frames; ++frame)
+		cropped.BlitFrom(atlas, MakeSdlRect(left, frame * 96 + top, cropped.w(), bottom - top + 1), { 0, static_cast<int>(frame * (bottom - top + 1)) });
+	clip.raw.emplace(SurfaceToClx(cropped, frames, 0));
+}
+
+const char *ClassPreviewDescription(HeroClass heroClass)
+{
+	switch (heroClass) {
+	case HeroClass::Warrior: return N_("A strong melee fighter, skilled with swords and shields.");
+	case HeroClass::Rogue: return N_("A swift archer who strikes from a distance with deadly accuracy.");
+	case HeroClass::Sorcerer: return N_("A master of magic who destroys enemies with powerful spells.");
+	case HeroClass::Monk: return N_("A disciplined fighter, deadly with staves and bare hands.");
+	case HeroClass::Bard: return N_("A versatile adventurer, skilled with blades and magic.");
+	case HeroClass::Barbarian: return N_("A mighty warrior who overwhelms enemies with heavy weapons.");
+	default: return "";
+	}
+}
+
+void MapClassPreview(ClassPreviewClip &clip)
+{
+	if (clip.raw && !clip.mapped) {
+		clip.mapped.emplace(clip.raw->clone());
+		ClxApplyTrans(*clip.mapped, ClassPreviewTranslation.data());
+	}
+}
+
+void RenderClassPreviews()
+{
+	if (ClassPreviewClasses.empty() || !ClassPreviewPaletteLoaded) return;
+	if (!ClassPreviewPaletteValid || std::memcmp(ClassPreviewUiPalette.data(), logical_palette.data(), sizeof(ClassPreviewUiPalette)) != 0) {
+		ClassPreviewTranslation.fill(0);
+		for (size_t i = 1; i < 256; ++i) {
+			int best = 3 * 256 * 256;
+			for (size_t j = 1; j < 256; ++j) {
+				const int r = int(HeroPreviewGamePalette[i][0]) - logical_palette[j].r;
+				const int g = int(HeroPreviewGamePalette[i][1]) - logical_palette[j].g;
+				const int b = int(HeroPreviewGamePalette[i][2]) - logical_palette[j].b;
+				const int distance = r*r + g*g + b*b;
+				if (distance < best) { best = distance; ClassPreviewTranslation[i] = static_cast<uint8_t>(j); }
+			}
+		}
+		for (auto &clip : ClassPreviews) clip.mapped.reset();
+		for (auto &clip : ClassProjectiles) clip.mapped.reset();
+		ClassPreviewUiPalette = logical_palette;
+		ClassPreviewPaletteValid = true;
+	}
+	const size_t first = FirstClassPreview(ClassPreviewSelection, ClassPreviewClasses.size());
+	const size_t count = std::min<size_t>(3, ClassPreviewClasses.size());
+	const uint32_t elapsed = SDL_GetTicks() - ClassPreviewStarted;
+	for (size_t slot = 0; slot < count; ++slot) {
+		const size_t index = first + slot;
+		const HeroClass heroClass = ClassPreviewClasses[index];
+		auto &clip = ClassPreviews[static_cast<size_t>(heroClass)];
+		const int center = static_cast<int>((2 * slot + 1) * 640 / (2 * count));
+		MapClassPreview(clip);
+		if (!clip.mapped) {
+			UiImageClx portrait(UiGetHeroDialogSprite(static_cast<size_t>(heroClass)), MakeSdlRect(center - 96, 45, 192, 135), UiFlags::AlignCenter);
+			UiRenderItem(portrait);
+			continue;
+		}
+		const ClxSprite sprite = (*clip.mapped)[ClassPreviewFrame(elapsed, clip.idleFrames, clip.actionFrames, index == ClassPreviewSelection)];
+		UiImageClx image(sprite, MakeSdlRect(center - 98, 180 - sprite.height(), 196, sprite.height()), UiFlags::AlignCenter);
+		UiRenderItem(image);
+		if (index != ClassPreviewSelection || clip.actionFrames == 0) continue;
+		if (heroClass != HeroClass::Rogue && heroClass != HeroClass::Sorcerer) continue;
+		const uint32_t release = clip.actionFrames * 80 / 2;
+		if (elapsed < release || elapsed - release >= 450) continue;
+		auto &projectile = ClassProjectiles[heroClass == HeroClass::Rogue ? 0 : 1];
+		MapClassPreview(projectile);
+		if (!projectile.mapped) continue;
+		const uint32_t flight = elapsed - release;
+		const ClxSprite bolt = (*projectile.mapped)[(flight / 60) % projectile.mapped->numSprites()];
+		UiImageClx effect(bolt, MakeSdlRect(center - 24, 122 + flight * 55 / 450, 48, 24), UiFlags::AlignCenter);
+		UiRenderItem(effect);
+	}
+	DrawString(Surface(DiabloUiSurface()), ClassPreviewText, { { 20, 204 }, { 600, 32 } },
+	    { .flags = UiFlags::FontSize12 | UiFlags::ColorWhite | UiFlags::AlignCenter, .spacing = 0, .lineHeight = 14 });
+}
+
+void FocusClassPreview(size_t selection)
+{
+	if (ClassPreviewClasses.empty()) return;
+	ClassPreviewSelection = std::min(selection, ClassPreviewClasses.size() - 1);
+	ClassPreviewText = WordWrapString(_(ClassPreviewDescription(ClassPreviewClasses[ClassPreviewSelection])), 600, GameFont12, 0, CtrTextScale::TopScreen);
+	if (!ClassPreviewPaletteLoaded)
+		ClassPreviewPaletteLoaded = LoadOptionalFileInMem("levels\\towndata\\town.pal", HeroPreviewGamePalette.data(), HeroPreviewGamePalette.size());
+	const size_t first = FirstClassPreview(ClassPreviewSelection, ClassPreviewClasses.size());
+	for (size_t i = first; i < std::min(first + 3, ClassPreviewClasses.size()); ++i)
+		EnsureClassPreview(ClassPreviewClasses[i]);
+	EnsureClassProjectile(0);
+	EnsureClassProjectile(1);
+	ClassPreviewStarted = SDL_GetTicks();
+}
+
 void SetHeroSummaryVisible(bool visible)
 {
 	if (!visible) { HeroPreviewVisible = false; SELHERO_DIALOG_HERO_IMG->Show(); }
@@ -213,6 +431,13 @@ void SelheroFree()
 	HeroPreviewMapped.reset();
 	HeroPreviewKey.reset();
 	HeroPreviewVisible = false;
+	ClassPreviewVisible = false;
+	ClassPreviewClasses.clear();
+	ClassPreviewText.clear();
+	for (auto &clip : ClassPreviews) clip = ClassPreviewClip {};
+	for (auto &clip : ClassProjectiles) clip = ClassPreviewClip {};
+	ClassPreviewPaletteLoaded = false;
+	ClassPreviewPaletteValid = false;
 #endif
 	vecSelHeroDialog.clear();
 
@@ -223,6 +448,14 @@ void SelheroFree()
 
 void SelheroSetStats()
 {
+#ifdef __3DS__
+	if (ClassPreviewVisible) {
+		HeroPreviewVisible = false;
+		SELHERO_DIALOG_HERO_IMG->Hide();
+		for (auto *element : HeroSummaryElements) element->Hide();
+		return;
+	}
+#endif
 #ifdef __3DS__
 	SetHeroSummaryVisible(true);
 #endif
@@ -379,6 +612,12 @@ void SelheroListSelect(size_t value)
 		vecSelDlgItems.push_back(std::make_unique<UiArtTextButton>(_("Cancel"), &UiFocusNavigationEsc, rect3, UiFlags::AlignCenter | UiFlags::FontSize30 | UiFlags::ColorUiGold));
 #endif
 
+#ifdef __3DS__
+		ClassPreviewVisible = true;
+		ClassPreviewClasses.clear();
+		for (const auto &item : vecSelHeroDlgItems)
+			ClassPreviewClasses.push_back(static_cast<HeroClass>(item->m_value));
+#endif
 		UiInitList(SelheroClassSelectorFocus, SelheroClassSelectorSelect, SelheroClassSelectorEsc, vecSelDlgItems, true);
 		memset(&selhero_heroInfo.name, 0, sizeof(selhero_heroInfo.name));
 		selhero_heroInfo.saveNumber = pfile_ui_get_first_unused_save_num();
@@ -449,6 +688,9 @@ void SelheroClassSelectorFocus(size_t value)
 	selhero_heroInfo.vitality = defaults.vitality;
 
 	SelheroSetStats();
+#ifdef __3DS__
+	FocusClassPreview(value);
+#endif
 }
 
 bool ShouldPrefillHeroName()
@@ -475,6 +717,10 @@ void AddSelHeroBackground()
 
 void SelheroClassSelectorSelect(size_t value)
 {
+#ifdef __3DS__
+	ClassPreviewVisible = false;
+	SelheroSetStats();
+#endif
 	auto hClass = static_cast<HeroClass>(vecSelHeroDlgItems[value]->m_value);
 	if (gbIsSpawn && (hClass == HeroClass::Rogue || hClass == HeroClass::Sorcerer || (hClass == HeroClass::Bard && !HaveBardAssets()))) {
 		RemoveSelHeroBackground();
@@ -765,6 +1011,9 @@ void selhero_Init()
 
 void selhero_List_Init()
 {
+#ifdef __3DS__
+	ClassPreviewVisible = false;
+#endif
 	const Point uiPosition = GetUIRectangle().position;
 
 	size_t selectedItem = 0;
@@ -868,7 +1117,8 @@ static void UiSelHeroDialog(
 			UiRenderItems(vecSelHeroDialog);
 			RenderDifficultyIndicators();
 #ifdef __3DS__
-			RenderHeroPreview();
+			if (ClassPreviewVisible) RenderClassPreviews();
+			else RenderHeroPreview();
 #endif
 			UiPollAndRender();
 		}

@@ -11073,3 +11073,33 @@ msgstr "Jungiamasi prie žaidimo..."
 
 msgid "Host Game"
 msgstr "Sukurti žaidimą"
+
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "A strong melee fighter, skilled with swords and shields."
+msgstr "Stiprus artimos kovos karys, puikiai valdantis kardus ir skydus."
+
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "A swift archer who strikes from a distance with deadly accuracy."
+msgstr "Vikri lankininkė, iš toli šaudanti mirtinai taikliai."
+
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "A master of magic who destroys enemies with powerful spells."
+msgstr "Magijos meistras, naikinantis priešus galingais burtais."
+
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "A disciplined fighter, deadly with staves and bare hands."
+msgstr "Drausmingas kovotojas, mirtinas su lazda ir plikomis rankomis."
+
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "A versatile adventurer, skilled with blades and magic."
+msgstr "Įvairiapusis nuotykių ieškotojas, įvaldęs ašmenis ir magiją."
+
+
+#: Source/DiabloUI/hero/selhero.cpp
+msgid "A mighty warrior who overwhelms enemies with heavy weapons."
+msgstr "Galingas karys, triuškinantis priešus sunkiais ginklais."
