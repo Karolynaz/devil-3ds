@@ -535,12 +535,10 @@ void PressControllerButton(ControllerButton button)
 		switch (button) {
 		case ControllerButton_BUTTON_DPAD_UP:
 			if (!IsStashOpen && !IsPlayerInStore() && !qtextflag && !SpellSelectFlag) {
-				if (CharFlag) {
-					CloseCharPanel();
-				} else {
-					OpenCharPanel();
-					FocusOnCharInfo();
-				}
+				CloseCharPanel();
+				QuestLogIsOpen = false;
+				SpellbookFlag = false;
+				ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
 			}
 			return;
 		case ControllerButton_BUTTON_DPAD_LEFT:
