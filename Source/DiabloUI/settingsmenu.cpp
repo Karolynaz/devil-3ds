@@ -622,13 +622,13 @@ void UiSettingsMenu()
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("B: Cancel / Back"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("X: Cast Spell / Use Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Y: Spell / Skill Selection"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("L: Drink Potions 1-4"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("R: Drink Potions 5-8"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("L: Hold for Spell Combinations"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("R: Cast Bound Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Circle Pad: Move"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Up: Show Character panel"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Up: Open Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Down: Show Map"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Left: Show Quests"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Right: Show Spell Book"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Left: Drink Potions 1-4"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("D-Pad Right: Drink Potions 5-8"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("SELECT: Open Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("START: In-Game Menu"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view {}, static_cast<int>(SpecialMenuEntry::None), UiFlags::ElementDisabled));
@@ -637,6 +637,7 @@ void UiSettingsMenu()
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("A: Pickup / Place"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("A (Hold): Use Item / Sell Item"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Y: Drop Item from Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Spell Book: Y to Bind Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("B: Close Panel"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			itemToSelect = 1;
 		} break;
