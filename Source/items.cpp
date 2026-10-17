@@ -1807,8 +1807,8 @@ void printItemMiscGenericGamepad(const Item &item, const bool isOil, bool isCast
 void printItemMiscGamepad(const Item &item, bool isOil, bool isCastOnTarget)
 {
 #ifdef __3DS__
-	const std::string_view activateButton = _("Hold A");
-	const std::string_view castButton = "X";
+	const std::string_view activateButton = _("Hold (A)");
+	const std::string_view castButton = "(X)";
 #else
 	if (GamepadType == GamepadLayout::Generic) {
 		printItemMiscGenericGamepad(item, isOil, isCastOnTarget);

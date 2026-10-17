@@ -664,7 +664,7 @@ void DrawInfoBox(const Surface &out)
 	    || SDL_GetTicks() - GameStartHintTime >= 10000)
 		ShowGameStartHint = false;
 	if (InfoString.empty() && ShowGameStartHint)
-		DrawString(out, _("SELECT: Open panels\nSTART: Meniu"), CtrBottomInfoBox,
+		DrawString(out, _("(SELECT): Inventory\n(START): Menu"), CtrBottomInfoBox,
 		    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::KerningFitSpacing,
 		      .spacing = 1, .lineHeight = 18 });
 #endif

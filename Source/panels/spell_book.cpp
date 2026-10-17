@@ -258,7 +258,7 @@ void DrawCtrBinding(const Surface &out)
 	DrawString(out, pgettext("spell", GetSpellData(bindingSpell).sNameText), { { 16, 34 }, { 368, 16 } },
 	    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter, .spacing = 0 });
 	constexpr Point positions[] = { { 74, 59 }, { 142, 59 }, { 278, 59 }, { 210, 145 }, { 278, 145 }, { 74, 145 }, { 142, 145 } };
-	constexpr const char *labels[] = { "X", "R", "L + R", "L + A", "L + B", "L + X", "L + Y" };
+	constexpr const char *labels[] = { "(X)", "(R)", "(L) + (R)", "(L) + (A)", "(L) + (B)", "(L) + (X)", "(L) + (Y)" };
 	for (size_t slot = 0; slot < 7; ++slot) {
 		const Point p = positions[slot];
 		FillRect(out, p.x, p.y, 37, 38, 0);
@@ -272,10 +272,10 @@ void DrawCtrBinding(const Surface &out)
 			SetSpellTrans(type);
 			DrawSmallSpellIcon(out, p + Displacement { 0, 37 }, spell);
 		}
-		DrawString(out, labels[slot], { { p.x - 10, p.y + 41 }, { 57, 16 } },
+		DrawString(out, labels[slot], { { p.x - 14, p.y + 41 }, { 65, 16 } },
 		    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter });
 	}
-	DrawString(out, _("B: Cancel"), { { 16, 214 }, { 368, 16 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter });
+	DrawString(out, _("(B): Cancel"), { { 16, 214 }, { 368, 16 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter });
 }
 
 void DrawSpellBook3DS(const Surface &out)

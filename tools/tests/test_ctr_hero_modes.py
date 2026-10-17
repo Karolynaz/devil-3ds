@@ -25,6 +25,10 @@ uint8_t giNumberOfLevels=17;
 struct Options{struct Mods{int reloads=0;void SetHellfireEnabled(bool enabled){reloads++;gbIsHellfire=enabled;}}Mods;}options;
 Options &GetOptions(){return options;}
 bool available=true,held=false;
+bool HeroListActive=true,selhero_isSavegame=false;
+struct SDL_Event {int button;bool up;};
+struct ControllerButtonEvent {int button;bool up;};
+std::vector<ControllerButtonEvent> ToControllerButtonEvents(SDL_Event &event) {return {{event.button,event.up}};}
 bool HaveHellfire(){return available;}
 constexpr int ControllerButton_BUTTON_LEFTSHOULDER=7;
 bool IsControllerButtonPressed(int key){assert(key==7);return held;}
@@ -56,10 +60,21 @@ void play_movie(const char*path,bool closable){assert(readers==0&&gbIsHellfire&&
 code+='\n'.join(function(f,s) for f,s in [
  ('Source/game_mode.cpp','void SetCtrHeroGameMode(bool hellfire)'),
  ('Source/DiabloUI/hero/selhero.cpp','bool CreatingDiabloHero()'),
+ ('Source/DiabloUI/hero/selhero.cpp','bool ConsumeHeroModeModifierEvent('),
  ('Source/DiabloUI/hero/selhero.cpp','bool SelHeroGetHeroInfo(_uiheroinfo *pInfo)'),
  ('Source/pfile.cpp','void pfile_show_pending_hellfire_intro(uint32_t saveNum)')])
 code+=r'''
 int main(){
+ // L down and up never reach the paging handler while New Hero is focused.
+ SDL_Event modifier{7,false},release{7,true},select{1,false};
+ assert(ConsumeHeroModeModifierEvent(modifier));
+ assert(ConsumeHeroModeModifierEvent(release));
+ assert(!ConsumeHeroModeModifierEvent(select));
+ held=true;assert(CreatingDiabloHero());held=false;assert(!CreatingDiabloHero());
+ selhero_isSavegame=true;assert(!ConsumeHeroModeModifierEvent(modifier));selhero_isSavegame=false;
+ HeroListActive=false;assert(!ConsumeHeroModeModifierEvent(modifier));HeroListActive=true;
+ available=false;assert(!ConsumeHeroModeModifierEvent(modifier));available=true;
+
  SetCtrHeroGameMode(false);assert(options.Mods.reloads==0&&giNumberOfLevels==17&&!gbIsHellfireSaveGame);
  SetCtrHeroGameMode(true);assert(options.Mods.reloads==1&&giNumberOfLevels==25&&gbIsHellfireSaveGame);
  SetCtrHeroGameMode(true);assert(options.Mods.reloads==1);

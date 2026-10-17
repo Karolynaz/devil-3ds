@@ -815,7 +815,7 @@ void DrawLevelButton(const Surface &out)
 	if (IsLevelUpButtonVisible()) {
 		const int nCel = LevelButtonDown ? 2 : 1;
 #ifdef __3DS__
-		DrawString(out, _("SELECT: Assign points"), { { 61, 208 }, { 330, 24 } },
+		DrawString(out, _("(SELECT): Assign points"), { { 61, 208 }, { 330, 24 } },
 		    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorDialogWhite | UiFlags::KerningFitSpacing });
 		RenderClxSprite(out, (*pChrButtons)[nCel], { 12, 207 });
 #else
@@ -995,7 +995,7 @@ void DrawDeathText(const Surface &out)
 	DrawString(out, _("You have died"), line1Rect,
 	    { .flags = UiFlags::FontSize30 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
 	      .spacing = 2 });
-	DrawString(out, _("Press A to Return To Main Menu"), line2Rect,
+	DrawString(out, _("Press (A) to Return To Main Menu"), line2Rect,
 	    { .flags = UiFlags::FontSize24 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
 	      .spacing = 2 });
 #else

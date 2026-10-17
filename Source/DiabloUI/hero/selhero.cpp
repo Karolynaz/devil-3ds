@@ -440,6 +440,19 @@ bool CreatingDiabloHero()
 	return !HaveHellfire() || IsControllerButtonPressed(ControllerButton_BUTTON_LEFTSHOULDER);
 }
 
+// Reserve L for the mode modifier on New Hero. Forwarding it to the
+// generic menu handler would page away before A can select that mode.
+bool ConsumeHeroModeModifierEvent(SDL_Event &event)
+{
+	if (!HeroListActive || selhero_isSavegame || !HaveHellfire())
+		return false;
+	for (const ControllerButtonEvent button : ToControllerButtonEvents(event)) {
+		if (button.button == ControllerButton_BUTTON_LEFTSHOULDER)
+			return true;
+	}
+	return false;
+}
+
 void UpdateHeroListPresentation()
 {
 	if (!HeroListActive) return;
@@ -447,8 +460,9 @@ void UpdateHeroListPresentation()
 	if (selhero_isSavegame) {
 		hint = selhero_heroInfo.hellfire ? _("Hellfire · Press (Y) to delete") : _("Press (Y) to delete");
 	} else {
-		hint = HaveHellfire() ? _("Hold L for a Diablo (non-Hellfire) character") : std::string_view {};
-		SELHERO_DIALOG_HERO_IMG->m_rect = MakeSdlRect(GetUIRectangle().position.x + 176, 82, 288, 76);
+		hint = HaveHellfire() ? _("Hold (L) to create non-hellfire Diablo character") : std::string_view {};
+		SELHERO_DIALOG_HERO_IMG->m_rect = MakeSdlRect(0, 0, 640, 240);
+		SELHERO_DIALOG_HERO_IMG->setAllowUpscale(true);
 		if (CreatingDiabloHero() && DiabloNewHeroArt && DiabloNewHeroArt->numSprites() > 3)
 			SELHERO_DIALOG_HERO_IMG->setSprite((*DiabloNewHeroArt)[3]);
 		else
@@ -1229,7 +1243,11 @@ static void UiSelHeroDialog(
 			if (ClassPreviewVisible) RenderClassPreviews();
 			else RenderHeroPreview();
 #endif
+#ifdef __3DS__
+			UiPollAndRender(ConsumeHeroModeModifierEvent);
+#else
 			UiPollAndRender();
+#endif
 		}
 		SelheroFree();
 

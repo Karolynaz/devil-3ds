@@ -15,7 +15,7 @@ using namespace devilution;
 void check(bool ok) { if (!ok) std::abort(); }
 int main() {
     check(CtrCanvasSize == Size(640, 480));
-    check(CtrEnlargeImage({180, 76}, {400, 240}) == Size(360, 152));
+    check(CtrEnlargeImage({180, 76}, {400, 240}) == Size(400, 168));
     check(CtrEnlargeImage({400, 240}, {400, 240}) == Size(400, 240));
     // No camera size depends on the hardware slider.
     check(CtrWorldWidth() == 400 && CtrWorldHeight() == 240);

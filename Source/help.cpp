@@ -33,7 +33,7 @@ const char *const HelpText[] = {
 	N_("Tab:   Display Auto-map"),
 	N_("Space: Hide all info screens"),
 	N_("S: Open Speedbook"),
-	N_("B: Open Spellbook"),
+	N_("(B): Open Spellbook"),
 	N_("I: Open Inventory screen"),
 	N_("C: Open Character screen"),
 	N_("Q: Open Quest log"),

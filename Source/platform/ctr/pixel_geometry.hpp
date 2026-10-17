@@ -9,11 +9,13 @@ constexpr int CtrNativeColumn(int x, int screenWidth) { return x * 640 / screenW
 constexpr int CtrInverseColumn(int x, int screenWidth) { return ((x + 1) * screenWidth + 639) / 640 - 1; }
 constexpr Size CtrEnlargeImage(Size source, Size bounds)
 {
-	if (source.width <= 0 || source.height <= 0) return { 0, 0 };
-	const int xScale = bounds.width / source.width;
-	const int yScale = bounds.height / source.height;
-	const int scale = xScale < yScale ? xScale : yScale;
-	return scale > 0 ? Size { source.width * scale, source.height * scale } : Size { 0, 0 };
+	if (source.width <= 0 || source.height <= 0 || bounds.width <= 0 || bounds.height <= 0)
+		return { 0, 0 };
+	// Fill the available width/height proportionally, including fractional
+	// enlargement: a 180x76 portrait becomes 400x168 on the top screen.
+	if (source.width * bounds.height > source.height * bounds.width)
+		return { bounds.width, (bounds.width * source.height / source.width > 0 ? bounds.width * source.height / source.width : 1) };
+	return { (bounds.height * source.width / source.height > 0 ? bounds.height * source.width / source.height : 1), bounds.height };
 }
 constexpr Size CtrFitImage(Size source, Size bounds)
 {
