@@ -63,6 +63,7 @@
 #include "panels/console.hpp"
 #include "panels/partypanel.hpp"
 #include "panels/quest_log.hpp"
+#include "panels/spell_book.hpp"
 #include "panels/spell_list.hpp"
 #include "plrmsg.h"
 #include "qol/chatlog.h"
