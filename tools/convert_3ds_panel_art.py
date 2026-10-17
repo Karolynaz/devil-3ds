@@ -11,6 +11,7 @@ import subprocess
 
 
 ART = {
+    'spell_binding.png': 'ctr_spell_binding.pal8',
     'new_character_bg.png': 'ctr_character_background.pal8',
     'new_quests_bg.png': 'ctr_quest_background.pal8',
     'new_spells_bg.png': 'ctr_spells_background.pal8',

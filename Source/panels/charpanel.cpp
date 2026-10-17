@@ -285,7 +285,8 @@ void DrawChr3DS(const Surface &out)
 	// Keep the player name at the same native size as the panel labels.
 	DrawString(out, InspectPlayer->_pName, { { 12, 18 }, { 235, 18 } },
 	    { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
-	label(InspectPlayer->getClassName(), { { 251, 18 }, { 137, 18 } });
+	DrawString(out, InspectPlayer->getClassName(), { { 251, 18 }, { 137, 18 } },
+	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight });
 	DrawHorizontalLine(out, { 12, 36 }, 376, PAL16_BEIGE + 8);
 	label(_("Level"), { { 12, 42 }, { 74, 16 } });
 	value(2, { { 87, 42 }, { 106, 16 } });
@@ -298,7 +299,7 @@ void DrawChr3DS(const Surface &out)
 	DrawHorizontalLine(out, { 12, 78 }, 376, PAL16_BEIGE + 8);
 	label(_("Life"), { { 12, 86 }, { 52, 17 } });
 	const StyledText maxLife = (*panelEntries[21].statDisplayFunc)();
-	DrawString(out, maxLife.text, { { 65, 86 }, { 40, 17 } },
+	DrawString(out, maxLife.text, { { 56, 86 }, { 40, 17 } },
 	    { .flags = maxLife.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
 	label(_("Mana"), { { 108, 86 }, { 56, 17 } });
 	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
@@ -311,12 +312,9 @@ void DrawChr3DS(const Surface &out)
 		// The compact panel has one value column: show the effective attribute,
 		// including equipment bonuses, rather than the base allocation value.
 		const StyledText current = (*panelEntries[index + 1].statDisplayFunc)();
-		// Dialog glyphs use a different palette from the small stat font.
-		const UiFlags color = current.style == UiFlags::ColorBlue ? UiFlags::ColorDialogYellow
-		    : current.style == UiFlags::ColorRed ? UiFlags::ColorDialogRed
-		                                        : UiFlags::ColorDialogWhite;
-		DrawString(out, current.text, { { 132, y - 4 }, { 42, 22 } },
-		    { .flags = UiFlags::FontSizeDialog | color | UiFlags::AlignRight });
+		const int valueWidth = !IsInspectingPlayer() && InspectPlayer->_pStatPts > 0 ? 42 : 70;
+		DrawString(out, current.text, { { 132, y }, { valueWidth, 18 } },
+		    { .flags = current.style | UiFlags::AlignRight, .spacing = 0 });
 		const auto attr = static_cast<CharacterAttribute>(i);
 		if (!IsInspectingPlayer() && InspectPlayer->_pStatPts > 0
 		    && InspectPlayer->GetBaseAttributeValue(attr) < InspectPlayer->GetMaximumAttributeValue(attr)) {

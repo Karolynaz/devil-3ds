@@ -1496,11 +1496,11 @@ void DrawView(const Surface &out, Point startPosition)
 			if (IsStashOpen)
 				DrawCtrStashItems(*TopPanelBuffer);
 			if (!IsStashOpen) {
-				DrawString(*TopPanelBuffer, _("L: Character"), { { 16, 22 }, { 170, 24 } },
+				DrawString(*TopPanelBuffer, _("(L) Character"), { { 16, 22 }, { 170, 24 } },
 				    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
-				DrawString(*TopPanelBuffer, _("R: Spell Book"), { { 218, 22 }, { 170, 24 } },
+				DrawString(*TopPanelBuffer, _("(R) Spell Book"), { { 218, 22 }, { 170, 24 } },
 				    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
-				DrawString(*TopPanelBuffer, _("Y: Drop"), { { 16, 207 }, { 150, 18 } },
+				DrawString(*TopPanelBuffer, _("(Y) Drop"), { { 16, 207 }, { 150, 18 } },
 				    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
 			}
 			out.ScaleBlitFromPreservingDownscale(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
@@ -2034,6 +2034,8 @@ void DrawCtrBottomHud(const Surface &out)
 	DrawCtrBottomBackground(hud);
 	DrawCtrInvBelt(hud);
 	DrawInfoBox(hud);
+	if (SpellbookFlag)
+		DrawCtrSpellDescription(hud);
 	auto drawBarValue = [&hud](int currValue, int maxValue, int centerX, int y) {
 		const std::string text = StrCat(currValue, "/", maxValue);
 		const UiFlags color = UiFlags::ColorGold;

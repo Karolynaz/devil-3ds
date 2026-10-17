@@ -71,6 +71,7 @@ void LoadBackground(size_t index)
 	    "data\\ctr_inventory_warrior_stash.pal8",
 	    "data\\ctr_inventory_rogue_stash.pal8",
 	    "data\\ctr_inventory_sorcerer_stash.pal8",
+	    "data\\ctr_spell_binding.pal8",
 	};
 	auto image = LoadAsset(Paths[index]);
 	if (!image || image->size != BackgroundBytes)

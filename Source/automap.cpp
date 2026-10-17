@@ -1579,9 +1579,8 @@ Rectangle MinimapRect {};
 void UpdateMinimapRect()
 {
 #ifdef __3DS__
-	// Logical 400x240 world -> physical 400x240 top screen. Including the
-	// border this is about 133x80 pixels, one ninth of the visible area.
-	MinimapRect = Rectangle { { GetViewportWidth() - 137, 4 }, { 133, 76 } };
+	// Borderless panel, flush with the top-right of the native viewport.
+	MinimapRect = Rectangle { { GetViewportWidth() - 133, 0 }, { 133, 76 } };
 	return;
 #endif
 	// Set the dimensions and screen position of the minimap relative to the screen dimensions
@@ -1823,6 +1822,7 @@ void DrawAutomap(const Surface &out)
 		// Background fill
 		DrawHalfTransparentRectTo(out, MinimapRect.position.x, MinimapRect.position.y, MinimapRect.size.width, MinimapRect.size.height);
 
+#ifndef __3DS__
 		const uint8_t frameShadowColor = PAL16_YELLOW + 12;
 
 		// Shadow
@@ -1836,6 +1836,7 @@ void DrawAutomap(const Surface &out)
 		DrawHorizontalLine(out, MinimapRect.position + Displacement { -2, MinimapRect.size.height }, MinimapRect.size.width + 3, MapColorsDim);
 		DrawVerticalLine(out, MinimapRect.position + Displacement { -2, -1 }, MinimapRect.size.height + 1, MapColorsDim);
 		DrawVerticalLine(out, MinimapRect.position + Displacement { MinimapRect.size.width, -1 }, MinimapRect.size.height + 1, MapColorsDim);
+#endif
 
 		if (AutoMapShowItems)
 			SearchAutomapItem(out, myPlayerOffset, 8, [](Point position) {

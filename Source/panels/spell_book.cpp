@@ -4,6 +4,8 @@
 #include "platform/ctr/ui.hpp"
 #endif
 
+#include <algorithm>
+#include <vector>
 #include <cstdint>
 #include <expected>
 #include <optional>
@@ -55,13 +57,52 @@ const SpellID SpellPages[SpellBookPages][SpellBookPageEntries] = {
 	{ SpellID::Invalid, SpellID::Invalid, SpellID::Invalid, SpellID::Invalid, SpellID::Invalid, SpellID::Invalid, SpellID::Invalid }
 };
 
+#ifdef __3DS__
+const std::vector<SpellID> &KnownCtrSpells()
+{
+	const Player &player = *InspectPlayer;
+	const uint64_t known = player._pMemSpells | player._pISpells | player._pAblSpells;
+	static std::vector<SpellID> result;
+	static uint64_t cachedKnown = 0;
+	static SpellID cachedSkill = SpellID::Invalid;
+	const auto skill = GetPlayerStartingLoadoutForClass(player._pClass).skill;
+	if (known == cachedKnown && skill == cachedSkill)
+		return result;
+	cachedKnown = known;
+	cachedSkill = skill;
+	result.clear();
+	result.reserve(static_cast<size_t>(SpellID::LAST));
+	const auto append = [&](SpellID spell) {
+		if (IsValidSpell(spell) && spell != SpellID::Null && (known & GetSpellBitmask(spell)) != 0
+		    && std::find(result.begin(), result.end(), spell) == result.end())
+			result.push_back(spell);
+	};
+	append(GetPlayerStartingLoadoutForClass(player._pClass).skill);
+	for (const auto &page : SpellPages)
+		for (const auto spell : page)
+			append(spell);
+	// Include granted abilities and staff spells outside the original fixed pages.
+	for (int spell = 1; spell <= static_cast<int>(SpellID::LAST); ++spell)
+		append(static_cast<SpellID>(spell));
+	return result;
+}
+#endif
+
 SpellID GetSpellFromSpellPage(size_t page, size_t entry)
 {
+#ifdef __3DS__
+	const auto &spells = KnownCtrSpells();
+	if (entry >= CtrSpellRowsPerPage || page >= (spells.size() + CtrSpellRowsPerPage - 1) / CtrSpellRowsPerPage)
+		return SpellID::Invalid;
+	const size_t index = page * CtrSpellRowsPerPage + entry;
+	return entry < CtrSpellRowsPerPage && index < spells.size() ? spells[index] : SpellID::Invalid;
+#else
 	if (page >= SpellBookPages || entry >= SpellBookPageEntries)
 		return SpellID::Invalid;
 	if (page == 0 && entry == 0)
 		return GetPlayerStartingLoadoutForClass(InspectPlayer->_pClass).skill;
 	return SpellPages[page][entry];
+#endif
 }
 
 constexpr Size SpellBookDescription { 250, 43 };
@@ -122,27 +163,146 @@ StringOrView GetSpellPowerText(SpellID spell, int spellLevel)
 }
 
 #ifdef __3DS__
+bool bindingOpen = false;
+SpellID bindingSpell = SpellID::Invalid;
+SpellType bindingType = SpellType::Invalid;
+
+SpellType CtrSpellSource(SpellID spell)
+{
+	const auto mask = GetSpellBitmask(spell);
+	if ((InspectPlayer->_pAblSpells & mask) != 0)
+		return SpellType::Skill;
+	if ((InspectPlayer->_pISpells & mask) != 0)
+		return SpellType::Charges;
+	return SpellType::Spell;
+}
+
+Rectangle CompactTabRect(int page)
+{
+	const int pages = CtrSpellbookPageCount();
+	const int step = 368 / pages;
+	return { { 16 + page * step, CtrSpellTabsY }, { step - 4, CtrSpellTabHeight } };
+}
+
+SpellID FocusedCtrSpell()
+{
+	const Point point = CtrScreenToTop(MousePosition);
+	if (point.y >= CtrSpellRowsY && point.y < CtrSpellRowsY + CtrSpellRowsPerPage * CtrSpellRowHeight) {
+		const auto spell = GetSpellFromSpellPage(SpellbookTab, (point.y - CtrSpellRowsY) / CtrSpellRowHeight);
+		if (IsValidSpell(spell))
+			return spell;
+	}
+	return GetSpellFromSpellPage(SpellbookTab, 0);
+}
+
+std::string_view SpellDescription(SpellID spell)
+{
+	switch (spell) {
+	case SpellID::Firebolt: return _("Launches a small bolt of fire at an enemy.");
+	case SpellID::Healing: return _("Restores your life.");
+	case SpellID::Lightning: return _("Sends lightning through enemies in a line.");
+	case SpellID::Flash: return _("Blasts enemies standing close to you.");
+	case SpellID::Identify: return _("Reveals the magical properties of an item.");
+	case SpellID::FireWall: return _("Creates a burning wall that hurts creatures crossing it.");
+	case SpellID::TownPortal: return _("Opens a portal between the dungeon and town.");
+	case SpellID::StoneCurse: return _("Turns an enemy to stone for a short time.");
+	case SpellID::Infravision: return _("Reveals nearby creatures, even behind walls.");
+	case SpellID::Phasing: return _("Teleports you a short distance to a random location.");
+	case SpellID::ManaShield: return _("Uses mana to absorb damage instead of life.");
+	case SpellID::Fireball: return _("Fires an exploding ball of fire.");
+	case SpellID::Guardian: return _("Summons a guardian that spits fire at nearby enemies.");
+	case SpellID::ChainLightning: return _("Sends bolts of lightning toward nearby enemies.");
+	case SpellID::FlameWave: return _("Sweeps a wide wave of fire across the dungeon.");
+	case SpellID::Nova: return _("Releases lightning in all directions.");
+	case SpellID::Inferno: return _("Projects a short stream of fire.");
+	case SpellID::Golem: return _("Summons a stone ally to fight for you.");
+	case SpellID::Rage: return _("Temporarily boosts your fighting power, followed by exhaustion.");
+	case SpellID::Teleport: return _("Moves you instantly to the selected location.");
+	case SpellID::Apocalypse: return _("Strikes nearby enemies with powerful explosions.");
+	case SpellID::Etherealize: return _("Temporarily makes you immune to physical attacks.");
+	case SpellID::ItemRepair: return _("Repairs equipment, but may reduce its maximum durability.");
+	case SpellID::StaffRecharge: return _("Restores staff charges, but may reduce its maximum charges.");
+	case SpellID::TrapDisarm: return _("Attempts to disarm a trap.");
+	case SpellID::Elemental: return _("Sends a fiery elemental toward an enemy.");
+	case SpellID::ChargedBolt: return _("Releases several wandering sparks of lightning.");
+	case SpellID::HolyBolt: return _("Fires a holy bolt effective against undead.");
+	case SpellID::Resurrect: return _("Revives another player who has died.");
+	case SpellID::Telekinesis: return _("Interacts with a distant item, door or object.");
+	case SpellID::HealOther: return _("Restores another player's life.");
+	case SpellID::BloodStar: return _("Fires a magical star, consuming mana and some life.");
+	case SpellID::BoneSpirit: return _("Damages an enemy for a third of its current life.");
+	case SpellID::Mana: return _("Restores mana.");
+	case SpellID::Magi: return _("Fully restores mana.");
+	case SpellID::Jester: return _("Unleashes an unpredictable magical effect.");
+	case SpellID::LightningWall: return _("Creates a wall of crackling lightning.");
+	case SpellID::Immolation: return _("Releases fireballs in all directions.");
+	case SpellID::Warp: return _("Teleports you toward the nearest stairs.");
+	case SpellID::Reflect: return _("Reflects some melee damage back at attackers.");
+	case SpellID::Berserk: return _("Turns a monster against other monsters.");
+	case SpellID::RingOfFire: return _("Creates a ring of fire around you.");
+	case SpellID::Search: return _("Highlights nearby items on the ground.");
+	case SpellID::RuneOfFire: return _("Places a fire trap on the ground.");
+	case SpellID::RuneOfLight: return _("Places a lightning trap on the ground.");
+	case SpellID::RuneOfNova: return _("Places a trap that releases a lightning nova.");
+	case SpellID::RuneOfImmolation: return _("Places a trap that launches fireballs.");
+	case SpellID::RuneOfStone: return _("Places a trap that turns its victim to stone.");
+	default: return _("Select a spell or skill to see its description.");
+	}
+}
+
+void DrawCtrBinding(const Surface &out)
+{
+	DrawCtrPanelBackground(out, CtrPanelBackground::SpellBinding);
+	DrawString(out, _("Press a button or combination to bind"), { { 16, 16 }, { 368, 16 } },
+	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter, .spacing = 0 });
+	DrawString(out, pgettext("spell", GetSpellData(bindingSpell).sNameText), { { 16, 34 }, { 368, 16 } },
+	    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter, .spacing = 0 });
+	constexpr Point positions[] = { { 74, 59 }, { 142, 59 }, { 278, 59 }, { 210, 145 }, { 278, 145 }, { 74, 145 }, { 142, 145 } };
+	constexpr const char *labels[] = { "X", "R", "L + R", "L + A", "L + B", "L + X", "L + Y" };
+	for (size_t slot = 0; slot < 7; ++slot) {
+		const Point p = positions[slot];
+		FillRect(out, p.x, p.y, 37, 38, 0);
+		SpellID spell = InspectPlayer->_pSplHotKey[slot];
+		SpellType type = InspectPlayer->_pSplTHotKey[slot];
+		if (slot == 0 && !IsValidSpell(spell)) {
+			spell = InspectPlayer->_pRSpell;
+			type = InspectPlayer->_pRSplType;
+		}
+		if (IsValidSpell(spell)) {
+			SetSpellTrans(type);
+			DrawSmallSpellIcon(out, p + Displacement { 0, 37 }, spell);
+		}
+		DrawString(out, labels[slot], { { p.x - 10, p.y + 41 }, { 57, 16 } },
+		    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter });
+	}
+	DrawString(out, _("B: Cancel"), { { 16, 214 }, { 368, 16 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter });
+}
+
 void DrawSpellBook3DS(const Surface &out)
 {
 	DrawCtrPanelBackground(out, CtrPanelBackground::Spells);
-	if (gbIsHellfire) {
-		// The supplied panel has four tabs. Replace its strip with five native
-		// frames so Hellfire's fifth page does not straddle the old borders.
-		out.BlitFrom(out, MakeSdlRect(10, 28, 380, 23), { 10, CtrSpellTabsY - 3 });
+	SpellbookTab = std::clamp(SpellbookTab, 0, CtrSpellbookPageCount() - 1);
+	if (bindingOpen) {
+		DrawCtrBinding(out);
+		return;
 	}
-	DrawString(out, _("Spell Book"), { { 12, 22 }, { 376, 24 } },
-	    { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+	// Remove the artwork's original fixed page frames; draw only populated pages.
+	out.BlitFrom(out, MakeSdlRect(10, 180, 380, 23), { 10, CtrSpellTabsY - 3 });
+	DrawString(out, _("Spell Book"), { { 20, 14 }, { 360, 14 } },
+	    { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
+	DrawString(out, _("Press (Y) to bind skill"), { { 20, 29 }, { 360, 14 } },
+	    { .flags = UiFlags::AlignCenter | UiFlags::ColorWhite, .spacing = 0 });
 	const Player &player = *InspectPlayer;
 	const uint64_t spells = player._pMemSpells | player._pISpells | player._pAblSpells;
-	for (size_t entry = 0; entry < SpellBookPageEntries; ++entry) {
+	for (size_t entry = 0; entry < CtrSpellRowsPerPage; ++entry) {
 		const SpellID spell = GetSpellFromSpellPage(SpellbookTab, entry);
 		const int y = CtrSpellRowsY + entry * CtrSpellRowHeight;
 		if (!IsValidSpell(spell) || (spells & GetSpellBitmask(spell)) == 0)
 			continue;
 		const SpellType type = GetSBookTrans(spell, true);
-		const bool selected = spell == player._pRSpell && type == player._pRSplType && !IsInspectingPlayer();
+		const bool selected = spell == FocusedCtrSpell() && !IsInspectingPlayer();
 		if (selected)
-			DrawHalfTransparentRectTo(out, 12, y, 376, CtrSpellRowHeight, PAL16_RED + 7);
+			DrawHalfTransparentRectTo(out, 20, y, 360, CtrSpellRowHeight, PAL16_RED + 7);
 		const Surface icon = SidePanelBuffer->subregion(0, 0, 40, 40);
 		FillRect(icon, 0, 0, 40, 40, 0);
 		SetSpellTrans(type);
@@ -151,32 +311,32 @@ void DrawSpellBook3DS(const Surface &out)
 			SetSpellTrans(SpellType::Skill);
 			DrawSmallSpellIconBorder(icon, { 0, 37 });
 		}
-		out.ScaleBlitFrom(icon, MakeSdlRect(0, 0, 37, 38), MakeSdlRect(10, y + 1, 22, 23));
-		DrawString(out, pgettext("spell", GetSpellData(spell).sNameText), { { 40, y }, { 265, 12 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing, .spacing = 0 });
+		out.ScaleBlitFrom(icon, MakeSdlRect(0, 0, 37, 38), MakeSdlRect(20, y + 3, 26, 27));
+		DrawString(out, pgettext("spell", GetSpellData(spell).sNameText), { { 54, y }, { 236, 12 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing, .spacing = 0 });
 		const SpellType infoType = GetSBookTrans(spell, false);
 		if (infoType == SpellType::Skill) {
-			DrawString(out, _("Skill"), { { 40, y + 12 }, { 346, 12 } }, { .flags = UiFlags::ColorWhitegold });
+			DrawString(out, _("Skill"), { { 54, y + 12 }, { 324, 12 } }, { .flags = UiFlags::ColorWhitegold });
 		} else if (infoType == SpellType::Charges) {
 			const int charges = player.InvBody[INVLOC_HAND_LEFT]._iCharges;
-			DrawString(out, FormatRuntime(ngettext("Staff ({:d} charge)", "Staff ({:d} charges)", charges), charges), { { 40, y + 12 }, { 346, 12 } }, { .flags = UiFlags::ColorWhitegold });
+			DrawString(out, FormatRuntime(ngettext("Staff ({:d} charge)", "Staff ({:d} charges)", charges), charges), { { 54, y + 12 }, { 324, 12 } }, { .flags = UiFlags::ColorWhitegold });
 		} else {
 			const int level = player.GetSpellLevel(spell);
-			DrawString(out, FormatRuntime(pgettext("spellbook", "Level {:d}"), level), { { 305, y }, { 81, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
-			DrawString(out, FormatRuntime(pgettext("spellbook", "Mana: {:d}"), GetManaAmount(player, spell) >> 6), { { 40, y + 12 }, { 117, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, FormatRuntime(pgettext("spellbook", "Level {:d}"), level), { { 297, y }, { 81, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, FormatRuntime(pgettext("spellbook", "Mana: {:d}"), GetManaAmount(player, spell) >> 6), { { 54, y + 12 }, { 117, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
 			const StringOrView power = GetSpellPowerText(spell, level);
-			DrawString(out, power, { { 159, y + 12 }, { 227, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, power, { { 167, y + 12 }, { 211, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
 		}
 	}
-	const int pages = gbIsHellfire ? 5 : 4;
+	const int pages = CtrSpellbookPageCount();
 	for (int page = 0; page < pages; ++page) {
-		const Rectangle button = CtrSpellTabRect(page, gbIsHellfire);
+		const Rectangle button = CompactTabRect(page);
 		// Two 50% black blends leave roughly a quarter of the original stone
 		// visible through the tab, without painting over the supplied frame.
 		DrawHalfTransparentRectTo(out, button.position.x, button.position.y, button.size.width, button.size.height);
 		DrawHalfTransparentRectTo(out, button.position.x, button.position.y, button.size.width, button.size.height);
 		if (page == SpellbookTab)
 			DrawHalfTransparentRectTo(out, button.position.x, button.position.y, button.size.width, button.size.height, PAL16_RED + 10);
-		if (gbIsHellfire) {
+		{
 			DrawHorizontalLine(out, button.position, button.size.width, PAL16_BEIGE + 10);
 			DrawVerticalLine(out, button.position, button.size.height, PAL16_BEIGE + 10);
 			DrawHorizontalLine(out, button.position + Displacement { 0, button.size.height - 1 }, button.size.width, PAL16_BEIGE + 3);
@@ -189,6 +349,83 @@ void DrawSpellBook3DS(const Surface &out)
 
 } // namespace
 
+#ifdef __3DS__
+int CtrSpellbookPageCount()
+{
+	return std::max(1, static_cast<int>((KnownCtrSpells().size() + CtrSpellRowsPerPage - 1) / CtrSpellRowsPerPage));
+}
+
+int CtrSpellbookRowCount()
+{
+	const int count = static_cast<int>(KnownCtrSpells().size());
+	return std::clamp(count - SpellbookTab * CtrSpellRowsPerPage, 0, CtrSpellRowsPerPage);
+}
+
+bool CtrSpellBindingActive()
+{
+	return bindingOpen;
+}
+
+int CtrSpellBindingSlot(ControllerButton button, bool modifierHeld)
+{
+	if (modifierHeld) {
+		switch (button) {
+		case ControllerButton_BUTTON_RIGHTSHOULDER: return 2;
+		case ControllerButton_BUTTON_A: return 3;
+		case ControllerButton_BUTTON_B: return 4;
+		case ControllerButton_BUTTON_X: return 5;
+		case ControllerButton_BUTTON_Y: return 6;
+		default: return -1;
+		}
+	}
+	if (button == ControllerButton_BUTTON_X) return 0;
+	if (button == ControllerButton_BUTTON_RIGHTSHOULDER) return 1;
+	return -1;
+}
+
+bool HandleCtrSpellBinding(ControllerButton button, bool modifierHeld)
+{
+	if (!SpellbookFlag || IsInspectingPlayer()) {
+		bindingOpen = false;
+		return false;
+	}
+	if (!bindingOpen) {
+		if (button != ControllerButton_BUTTON_Y)
+			return false;
+		bindingSpell = FocusedCtrSpell();
+		if (IsValidSpell(bindingSpell)) {
+			bindingType = CtrSpellSource(bindingSpell);
+			bindingOpen = true;
+		}
+		return true;
+	}
+	const int slot = CtrSpellBindingSlot(button, modifierHeld);
+	if (slot >= 0) {
+		MyPlayer->_pSplHotKey[slot] = bindingSpell;
+		MyPlayer->_pSplTHotKey[slot] = bindingType;
+		if (slot == 0) {
+			MyPlayer->_pRSpell = bindingSpell;
+			MyPlayer->_pRSplType = bindingType;
+		}
+		// Existing per-character hotkey serialization persists these seven slots.
+		bindingOpen = false;
+		RedrawEverything();
+	} else if (button == ControllerButton_BUTTON_B || button == ControllerButton_BUTTON_BACK) {
+		bindingOpen = false;
+	}
+	return true;
+}
+
+void DrawCtrSpellDescription(const Surface &out)
+{
+	const Rectangle box = CtrBottomInfoBox;
+	FillRect(out, box.position.x, box.position.y, box.size.width, box.size.height, 0);
+	const SpellID spell = bindingOpen ? bindingSpell : FocusedCtrSpell();
+	const std::string text = WordWrapString(SpellDescription(spell), box.size.width - 12, GameFont12, 0);
+	DrawString(out, text, box.inset({ 6, 6 }), { .flags = UiFlags::ColorWhite, .spacing = 0 });
+}
+#endif
+
 std::expected<void, std::string> InitSpellBook()
 {
 	ASSIGN_OR_RETURN(spellBookBackground, LoadCelWithStatus("data\\spellbk", static_cast<uint16_t>(SidePanelSize.width)));
@@ -198,6 +435,9 @@ std::expected<void, std::string> InitSpellBook()
 
 void FreeSpellBook()
 {
+#ifdef __3DS__
+	bindingOpen = false;
+#endif
 	FreeSmallSpellIcons();
 	spellBookButtons = std::nullopt;
 	spellBookBackground = std::nullopt;
@@ -277,7 +517,9 @@ void CheckSBook()
 	// enough to the height of the space given to spell descriptions that we can reuse that value and subtract the
 	// padding from the end of the area.
 #ifdef __3DS__
-	const Rectangle iconArea { { 12, CtrSpellRowsY }, { 376, CtrSpellRowHeight * 7 } };
+	if (bindingOpen)
+		return;
+	const Rectangle iconArea { { 20, CtrSpellRowsY }, { 360, CtrSpellRowHeight * CtrSpellRowsPerPage } };
 	constexpr int rowHeight = CtrSpellRowHeight;
 #else
 	const Rectangle iconArea = { GetPanelPosition(UiPanels::Spell, { 11, 18 }), Size { 37, (SpellBookDescription.height * 7) - 5 } };
@@ -306,8 +548,8 @@ void CheckSBook()
 	// end up with an extra pixel somewhere around the buttons. Vanilla Diablo had the buttons left-aligned, devilutionX
 	// instead justifies the buttons and puts the gap between buttons 2/3. See DrawSpellBook
 #ifdef __3DS__
-	for (int page = 0; page < (gbIsHellfire ? 5 : 4); ++page) {
-		if (CtrSpellTabRect(page, gbIsHellfire).contains(mousePos)) {
+	for (int page = 0; page < CtrSpellbookPageCount(); ++page) {
+		if (CompactTabRect(page).contains(mousePos)) {
 			SpellbookTab = page;
 			break;
 		}

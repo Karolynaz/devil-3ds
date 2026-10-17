@@ -14,6 +14,7 @@ enum class CtrPanelBackground {
 	InventoryWarriorStash,
 	InventoryRogueStash,
 	InventorySorcererStash,
+	SpellBinding,
 	Count,
 };
 

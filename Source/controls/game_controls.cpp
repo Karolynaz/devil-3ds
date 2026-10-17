@@ -247,6 +247,8 @@ bool CanDeferToMovementHandler(const PadmapperOptions::Action &action)
 }
 
 #ifdef __3DS__
+uint32_t CtrConsumedSpellButtons = 0;
+
 struct StashItemButtonState {
 	bool active = false;
 	bool finished = true;
@@ -390,6 +392,12 @@ void ReleaseControllerButton(ControllerButton button)
 	else if (button == ControllerButton_BUTTON_B)
 		button = ControllerButton_BUTTON_A;
 
+	const uint32_t buttonMask = uint32_t { 1 } << static_cast<unsigned>(button);
+	if ((CtrConsumedSpellButtons & buttonMask) != 0) {
+		CtrConsumedSpellButtons &= ~buttonMask;
+		return;
+	}
+
 	if (button == ControllerButton_BUTTON_A) {
 		if (ButtonAHold.active) {
 			const bool wasTriggered = ButtonAHold.triggered;
@@ -514,6 +522,12 @@ void PressControllerButton(ControllerButton button)
 			}
 			return;
 		}
+	}
+
+	const bool modifierHeld = IsControllerButtonPressed(ControllerButton_BUTTON_LEFTSHOULDER);
+	if (HandleCtrSpellBinding(button, modifierHeld)) {
+		CtrConsumedSpellButtons |= uint32_t { 1 } << static_cast<unsigned>(button);
+		return;
 	}
 
 	const bool uiOpen = invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore() || qtextflag || IsStashOpen || SpellSelectFlag;
@@ -651,6 +665,18 @@ void PressControllerButton(ControllerButton button)
 			break;
 		}
 	} else if (!InGameMenu()) {
+		if (modifierHeld) {
+			const int slot = CtrSpellBindingSlot(button, true);
+			if (slot >= 0) {
+				CtrConsumedSpellButtons |= uint32_t { 1 } << static_cast<unsigned>(button);
+				ControllerActionHeld = GameActionType_NONE;
+				LastPlayerAction = PlayerActionType::None;
+				if (IsValidSpeedSpell(slot))
+					QuickCast(slot);
+				return;
+			}
+		}
+
 		switch (button) {
 		case ControllerButton_BUTTON_A:
 			ControllerActionHeld = GameActionType_PRIMARY_ACTION;
@@ -667,9 +693,13 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_X:
-			ControllerActionHeld = GameActionType_CAST_SPELL;
-			LastPlayerAction = PlayerActionType::None;
-			PerformSpellAction();
+			if (IsValidSpeedSpell(0)) {
+				QuickCast(0);
+			} else {
+				ControllerActionHeld = GameActionType_CAST_SPELL;
+				LastPlayerAction = PlayerActionType::None;
+				PerformSpellAction();
+			}
 			return;
 
 		case ControllerButton_BUTTON_Y:
@@ -677,31 +707,23 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_LEFTSHOULDER:
-			DrinkPotion3DS(0, 4);
-			return;
+			return; // Modifier; wait for the second button.
 
 		case ControllerButton_BUTTON_RIGHTSHOULDER:
-			DrinkPotion3DS(4, MaxBeltItems);
+			if (IsValidSpeedSpell(1))
+				QuickCast(1);
 			return;
 
 		case ControllerButton_BUTTON_DPAD_UP:
-			OpenCharPanel();
-			if (CharFlag) {
-				if (pcurs == CURSOR_DISARM)
-					NewCursor(CURSOR_HAND);
-				FocusOnCharInfo();
-			}
+			ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });
 			return;
 
 		case ControllerButton_BUTTON_DPAD_LEFT:
-			StartQuestlog();
+			DrinkPotion3DS(0, 4);
 			return;
 
 		case ControllerButton_BUTTON_DPAD_RIGHT:
-			CharFlag = false;
-			invflag = false;
-			QuestLogIsOpen = false;
-			SpellbookFlag = true;
+			DrinkPotion3DS(4, MaxBeltItems);
 			return;
 
 		case ControllerButton_BUTTON_DPAD_DOWN:

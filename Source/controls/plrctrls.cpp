@@ -1834,13 +1834,22 @@ void SpellBookMove(AxisDirection dir)
 	static AxisDirectionRepeater repeater;
 	dir = repeater.Get(dir);
 #ifdef __3DS__
-	if (dir.y != AxisDirectionY_NONE) {
+	if (CtrSpellBindingActive())
+		return;
+	SpellbookTab = std::clamp(SpellbookTab, 0, CtrSpellbookPageCount() - 1);
+	if (dir.x == AxisDirectionX_LEFT && SpellbookTab > 0)
+		--SpellbookTab;
+	else if (dir.x == AxisDirectionX_RIGHT && SpellbookTab + 1 < CtrSpellbookPageCount())
+		++SpellbookTab;
+	if (dir.y != AxisDirectionY_NONE || dir.x != AxisDirectionX_NONE) {
 		const Point p = CtrScreenToTop(MousePosition);
-		int row = std::clamp((p.y - CtrSpellRowsY) / CtrSpellRowHeight, 0, 6);
-		row = std::clamp(row + (dir.y == AxisDirectionY_UP ? -1 : 1), 0, 6);
-		SetCursorPos(CtrTopToScreen({ 20, CtrSpellRowsY + row * CtrSpellRowHeight + 12 }));
+		const int last = std::max(0, CtrSpellbookRowCount() - 1);
+		int row = std::clamp((p.y - CtrSpellRowsY) / CtrSpellRowHeight, 0, last);
+		if (dir.y != AxisDirectionY_NONE)
+			row = std::clamp(row + (dir.y == AxisDirectionY_UP ? -1 : 1), 0, last);
+		SetCursorPos(CtrTopToScreen({ 30, CtrSpellRowsY + row * CtrSpellRowHeight + 12 }));
 	}
-#endif
+#else
 	if (dir.x == AxisDirectionX_LEFT) {
 		if (SpellbookTab > 0)
 			SpellbookTab--;
@@ -1848,6 +1857,7 @@ void SpellBookMove(AxisDirection dir)
 		if ((gbIsHellfire && SpellbookTab < 4) || (!gbIsHellfire && SpellbookTab < 3))
 			SpellbookTab++;
 	}
+#endif
 }
 
 /**

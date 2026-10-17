@@ -37,14 +37,10 @@ int main() {
     leftPanelOpen=true;assert(GetAutomapPanelOffsetX()==0);
     leftPanelOpen=false;rightPanelOpen=false;
     UpdateMinimapRect();
-    // Including the map frame/shadow, the physical footprint is 133x80,
-    // positioned in the top-right third without reaching screen edges.
-    const int left=MinimapRect.position.x-2;
-    const int right=MinimapRect.position.x+MinimapRect.size.width+2;
-    assert(right-left>=132 && right-left<=138);
-    assert(MinimapRect.size.height+4==80);
-    assert(left>=260 && right<=399);
-    assert(MinimapRect.position.y-2>=0);
+    // Borderless dark panel is flush with the top and right screen edges.
+    assert(MinimapRect.position.x==267 && MinimapRect.position.y==0);
+    assert(MinimapRect.size.width==133 && MinimapRect.size.height==76);
+    assert(MinimapRect.position.x+MinimapRect.size.width==400);
     Surface out;
     for(int y=0;y<240;++y) for(int x=0;x<400;++x) SetMapPixel(out,{x,y},42);
     for(int y=0;y<240;++y) for(int x=0;x<400;++x)
@@ -60,4 +56,4 @@ with tempfile.TemporaryDirectory() as tmp:
     source.write_text(CPP+extract('Source/automap.cpp','int GetAutomapPanelOffsetX()')+'\n'+extract('Source/automap.cpp','void UpdateMinimapRect()')+'\n'+extract('Source/engine/render/automap_render.cpp','void SetMapPixel(')+TEST)
     subprocess.run([os.environ.get('CXX','c++'),'-std=c++17','-D__3DS__','-I'+str(ROOT/'Source'),str(source),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
-print('PASS: 133x80 map footprint; map pixels stay inside the panel')
+print('PASS: 133x76 borderless map footprint; map pixels stay inside the panel')

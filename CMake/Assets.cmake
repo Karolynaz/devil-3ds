@@ -245,6 +245,7 @@ if(NINTENDO_3DS)
     data/ctr_character_background.pal8
     data/ctr_quest_background.pal8
     data/ctr_spells_background.pal8
+    data/ctr_spell_binding.pal8
     data/ctr_inventory_warrior.pal8
     data/ctr_inventory_rogue.pal8
     data/ctr_inventory_sorcerer.pal8

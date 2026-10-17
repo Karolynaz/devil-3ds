@@ -91,8 +91,8 @@ int GetLineWidth(std::string_view s,GameFontTables,int spacing){int w=0;for(unsi
 void DrawString(const Surface&,std::string_view s,Rectangle r,Options o){draws.push_back({std::string(s),r,o.flags});}
 void checkValues(){
  auto lookup=[](int x,int y)->const Draw& {for(const auto&d:draws)if(d.rect.position==Point{x,y})return d;std::abort();};
- for(int i=0;i<4;++i){const auto&d=lookup(132,106+i*24);assert(d.text==std::to_string(player.GetCurrentAttributeValue(static_cast<CharacterAttribute>(i))));}
- assert(lookup(65,86).text=="2000");assert(lookup(164,86).text=="2000");
+ for(int i=0;i<4;++i){const auto&d=lookup(132,110+i*24);assert(d.text==std::to_string(player.GetCurrentAttributeValue(static_cast<CharacterAttribute>(i))));}
+ assert(lookup(56,86).text=="2000");assert(lookup(164,86).text=="2000");
  assert(lookup(291,42).text=="999999");assert(lookup(87,42).text=="40");
  assert(lookup(102,59).text=="2000000000");assert(lookup(296,59).text=="2000000000");
  assert(lookup(170,208).text=="4");
@@ -110,11 +110,15 @@ void checkValues(){
 int main(){
  DrawChr3DS({});checkValues();
  const auto name=std::find_if(draws.begin(),draws.end(),[](const Draw&d){return d.rect.position==Point{12,18};});assert(name!=draws.end()&&name->text=="Hero"&&name->rect.size.height==18);assert(!HasAnyOf(name->flags,UiFlags::FontSizeDialog));
- bool yellow=false;for(const auto&d:draws)if(d.rect.position==Point{132,106})yellow=HasAnyOf(d.flags,UiFlags::ColorDialogYellow);assert(yellow);
+ bool yellow=false;for(const auto&d:draws)if(d.rect.position==Point{132,110})yellow=HasAnyOf(d.flags,UiFlags::ColorBlue);assert(yellow);
  draws.clear();player._pStrength=35;player._pMagic=40;player._pDexterity=750;player._pVitality=750;
  minDamage=1000;maxDamage=2000;
  DrawChr3DS({});checkValues();
- bool red=false,white=false;for(const auto&d:draws){if(d.rect.position==Point{132,106})red=HasAnyOf(d.flags,UiFlags::ColorDialogRed);if(d.rect.position==Point{132,130})white=HasAnyOf(d.flags,UiFlags::ColorDialogWhite);}assert(red&&white);
+ bool red=false,white=false;for(const auto&d:draws){if(d.rect.position==Point{132,110})red=HasAnyOf(d.flags,UiFlags::ColorRed);if(d.rect.position==Point{132,134})white=HasAnyOf(d.flags,UiFlags::ColorWhite);}assert(red&&white);
+ // Without allocation buttons, all four attributes share the mana right edge.
+ draws.clear();player._pStatPts=0;DrawChr3DS({});
+ for(const auto&d:draws)if(d.rect.position.x==132){assert(d.rect.position.x+d.rect.size.width==202);assert(HasAnyOf(d.flags,UiFlags::AlignRight));assert(!HasAnyOf(d.flags,UiFlags::FontSizeDialog));}
+ const auto clazz=std::find_if(draws.begin(),draws.end(),[](const Draw&d){return d.rect.position==Point{251,18};});assert(clazz!=draws.end()&&HasAnyOf(clazz->flags,UiFlags::AlignRight));
  // Current and maximum resources remain distinct; NoMana hides unusable mana.
  assert((*panelEntries[22].statDisplayFunc)().text=="1000");
  assert((*panelEntries[24].statDisplayFunc)().text=="500");
