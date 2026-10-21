@@ -1834,8 +1834,10 @@ void SpellBookMove(AxisDirection dir)
 	static AxisDirectionRepeater repeater;
 	dir = repeater.Get(dir);
 #ifdef __3DS__
-	if (CtrSpellBindingActive())
+	if (CtrSpellBindingActive()) {
+		MoveCtrSpellBinding(dir);
 		return;
+	}
 	SpellbookTab = std::clamp(SpellbookTab, 0, CtrSpellbookPageCount() - 1);
 	if (dir.x == AxisDirectionX_LEFT && SpellbookTab > 0)
 		--SpellbookTab;

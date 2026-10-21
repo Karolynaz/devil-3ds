@@ -11185,5 +11185,5 @@ msgid "Reset World"
 msgstr "Atkurti pasaulį"
 
 #: Source/DiabloUI/hero/selhero.cpp
-msgid "Reset World: new maps and respawned monsters. Your level, stats, items and spells stay."
-msgstr "Atkurti pasaulį: nauji žemėlapiai ir prikelti monstrai. Veikėjo lygis, atributai, daiktai ir burtai išlieka."
+msgid "Reset World: change map layouts and respawn monsters. Your level, stats, items and spells stay."
+msgstr "Atkurti pasaulį: pakeisti žemėlapių išdėstymą ir prikelti monstrus. Veikėjo lygis, atributai, daiktai ir burtai išlieka."

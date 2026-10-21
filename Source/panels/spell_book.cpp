@@ -2,6 +2,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
 #endif
 
 #include <algorithm>
@@ -12,6 +13,7 @@
 #include <string>
 
 #include "control/control.hpp"
+#include "diablo.h"
 #include "engine/backbuffer_state.hpp"
 #include "engine/clx_sprite.hpp"
 #include "engine/load_cel.hpp"
@@ -250,21 +252,39 @@ std::string_view SpellDescription(SpellID spell)
 	}
 }
 
+std::string CtrSpellShortcutText(SpellID spell, SpellType type)
+{
+	constexpr const char *labels[] = { "(X)", "(Y)", "(L)", "(R)" };
+	const Player &player = *InspectPlayer;
+	std::string result;
+	for (int slot = 0; slot < CtrSpellShortcutCount; ++slot) {
+		const SpellID assigned = slot == 0 ? player._pRSpell : player._pSplHotKey[slot];
+		const SpellType source = slot == 0 ? player._pRSplType : player._pSplTHotKey[slot];
+		if (assigned != spell || source != type)
+			continue;
+		if (!result.empty()) result += ' ';
+		result += labels[slot];
+	}
+	return result;
+}
+
 void DrawCtrBinding(const Surface &out)
 {
 	DrawCtrPanelBackground(out, CtrPanelBackground::SpellBinding);
-	DrawString(out, _("Press a button or combination to bind"), { { 16, 16 }, { 368, 16 } },
+	DrawString(out, _("Choose a spell shortcut"), { { 16, 12 }, { 368, 16 } },
 	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter, .spacing = 0 });
-	DrawString(out, pgettext("spell", GetSpellData(bindingSpell).sNameText), { { 16, 34 }, { 368, 16 } },
+	DrawString(out, _("Use (X), (Y), (L), (R), or select + (A)"), { { 16, 27 }, { 368, 14 } },
 	    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter, .spacing = 0 });
-	constexpr Point positions[] = { { 74, 59 }, { 142, 59 }, { 278, 59 }, { 210, 145 }, { 278, 145 }, { 74, 145 }, { 142, 145 } };
-	constexpr const char *labels[] = { "(X)", "(R)", "(L) + (R)", "(L) + (A)", "(L) + (B)", "(L) + (X)", "(L) + (Y)" };
-	for (size_t slot = 0; slot < 7; ++slot) {
-		const Point p = positions[slot];
+	DrawString(out, pgettext("spell", GetSpellData(bindingSpell).sNameText), { { 16, 43 }, { 368, 14 } },
+	    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter, .spacing = 0 });
+	const int hoveredSlot = CtrSpellBindingHit(CtrScreenToTop(MousePosition));
+	constexpr const char *labels[] = { "(X)", "(Y)", "(L)", "(R)" };
+	for (size_t slot = 0; slot < CtrSpellShortcutCount; ++slot) {
+		const Point p = CtrSpellBindingPositions[slot];
 		FillRect(out, p.x, p.y, 37, 38, 0);
 		SpellID spell = InspectPlayer->_pSplHotKey[slot];
 		SpellType type = InspectPlayer->_pSplTHotKey[slot];
-		if (slot == 0 && !IsValidSpell(spell)) {
+		if (slot == 0) {
 			spell = InspectPlayer->_pRSpell;
 			type = InspectPlayer->_pRSplType;
 		}
@@ -272,10 +292,14 @@ void DrawCtrBinding(const Surface &out)
 			SetSpellTrans(type);
 			DrawSmallSpellIcon(out, p + Displacement { 0, 37 }, spell);
 		}
+		if (static_cast<int>(slot) == hoveredSlot) {
+			DrawHalfTransparentRectTo(out, p.x, p.y, 37, 38, PAL16_RED + 7);
+			UnsafeDrawBorder2px(out, CtrSpellBindingRect(slot), PAL16_RED + 3);
+		}
 		DrawString(out, labels[slot], { { p.x - 14, p.y + 41 }, { 65, 16 } },
 		    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter });
 	}
-	DrawString(out, _("(B): Cancel"), { { 16, 214 }, { 368, 16 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter });
+	DrawString(out, _("(A): Assign    (B): Cancel"), { { 16, 214 }, { 368, 16 } }, { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter });
 }
 
 void DrawSpellBook3DS(const Surface &out)
@@ -288,12 +312,22 @@ void DrawSpellBook3DS(const Surface &out)
 	}
 	// Remove the artwork's original fixed page frames; draw only populated pages.
 	out.BlitFrom(out, MakeSdlRect(10, 180, 380, 23), { 10, CtrSpellTabsY - 3 });
-	DrawString(out, _("Spell Book"), { { 20, 14 }, { 360, 14 } },
+	DrawString(out, _("Spells & Skills"), { { 20, 14 }, { 360, 14 } },
 	    { .flags = UiFlags::AlignCenter | UiFlags::ColorWhitegold });
-	DrawString(out, _("Press (Y) to bind skill"), { { 20, 29 }, { 360, 14 } },
+	DrawString(out, _("(A): Select primary · (Y): Bind quick spell"), { { 20, 29 }, { 360, 14 } },
 	    { .flags = UiFlags::AlignCenter | UiFlags::ColorWhite, .spacing = 0 });
 	const Player &player = *InspectPlayer;
 	const uint64_t spells = player._pMemSpells | player._pISpells | player._pAblSpells;
+	int shortcutWidth = 28;
+	for (size_t entry = 0; entry < CtrSpellRowsPerPage; ++entry) {
+		const SpellID spell = GetSpellFromSpellPage(SpellbookTab, entry);
+		if (IsValidSpell(spell))
+			shortcutWidth = std::max(shortcutWidth, std::min(84, GetLineWidth(CtrSpellShortcutText(spell, CtrSpellSource(spell)), GameFont12, 0)));
+	}
+	const int iconX = 20 + shortcutWidth + 8;
+	const int nameX = iconX + 34;
+	const int nameWidth = 378 - nameX;
+	const int detailWidth = nameWidth / 2 - 2;
 	for (size_t entry = 0; entry < CtrSpellRowsPerPage; ++entry) {
 		const SpellID spell = GetSpellFromSpellPage(SpellbookTab, entry);
 		const int y = CtrSpellRowsY + entry * CtrSpellRowHeight;
@@ -311,20 +345,25 @@ void DrawSpellBook3DS(const Surface &out)
 			SetSpellTrans(SpellType::Skill);
 			DrawSmallSpellIconBorder(icon, { 0, 37 });
 		}
-		out.ScaleBlitFrom(icon, MakeSdlRect(0, 0, 37, 38), MakeSdlRect(20, y + 3, 26, 27));
-		DrawString(out, pgettext("spell", GetSpellData(spell).sNameText), { { 54, y }, { 236, 12 } }, { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing, .spacing = 0 });
-		const SpellType infoType = GetSBookTrans(spell, false);
+		out.ScaleBlitFrom(icon, MakeSdlRect(0, 0, 37, 38), MakeSdlRect(iconX, y + 3, 26, 27));
+		const SpellType infoType = CtrSpellSource(spell);
+		std::string name { pgettext("spell", GetSpellData(spell).sNameText) };
+		const std::string shortcuts = CtrSpellShortcutText(spell, infoType);
+		DrawString(out, WordWrapString(shortcuts, shortcutWidth, GameFont12, 0),
+		    { { 20, y }, { shortcutWidth, CtrSpellRowHeight } },
+		    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter | UiFlags::VerticalCenter, .spacing = 0, .lineHeight = 12 });
+		DrawString(out, WordWrapString(name, nameWidth, GameFont12, 0), { { nameX, y }, { nameWidth, 24 } },
+		    { .flags = UiFlags::ColorWhite, .spacing = 0, .lineHeight = 12 });
 		if (infoType == SpellType::Skill) {
-			DrawString(out, _("Skill"), { { 54, y + 12 }, { 324, 12 } }, { .flags = UiFlags::ColorWhitegold });
+			DrawString(out, _("Skill"), { { nameX, y + 24 }, { nameWidth, 12 } }, { .flags = UiFlags::ColorWhitegold });
 		} else if (infoType == SpellType::Charges) {
 			const int charges = player.InvBody[INVLOC_HAND_LEFT]._iCharges;
-			DrawString(out, FormatRuntime(ngettext("Staff ({:d} charge)", "Staff ({:d} charges)", charges), charges), { { 54, y + 12 }, { 324, 12 } }, { .flags = UiFlags::ColorWhitegold });
+			DrawString(out, FormatRuntime(ngettext("Staff ({:d} charge)", "Staff ({:d} charges)", charges), charges), { { nameX, y + 24 }, { nameWidth, 12 } }, { .flags = UiFlags::ColorWhitegold });
 		} else {
 			const int level = player.GetSpellLevel(spell);
-			DrawString(out, FormatRuntime(pgettext("spellbook", "Level {:d}"), level), { { 297, y }, { 81, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
-			DrawString(out, FormatRuntime(pgettext("spellbook", "Mana: {:d}"), GetManaAmount(player, spell) >> 6), { { 54, y + 12 }, { 117, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, FormatRuntime(_("Lv {:d} · Mana: {:d}"), level, GetManaAmount(player, spell) >> 6), { { nameX, y + 24 }, { detailWidth, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
 			const StringOrView power = GetSpellPowerText(spell, level);
-			DrawString(out, power, { { 167, y + 12 }, { 211, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
+			DrawString(out, power, { { nameX + detailWidth + 4, y + 24 }, { nameWidth - detailWidth - 4, 12 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
 		}
 	}
 	const int pages = CtrSpellbookPageCount();
@@ -366,21 +405,48 @@ bool CtrSpellBindingActive()
 	return bindingOpen;
 }
 
-int CtrSpellBindingSlot(ControllerButton button, bool modifierHeld)
+void MoveCtrSpellBinding(AxisDirection direction)
 {
-	if (modifierHeld) {
-		switch (button) {
-		case ControllerButton_BUTTON_RIGHTSHOULDER: return 2;
-		case ControllerButton_BUTTON_A: return 3;
-		case ControllerButton_BUTTON_B: return 4;
-		case ControllerButton_BUTTON_X: return 5;
-		case ControllerButton_BUTTON_Y: return 6;
-		default: return -1;
+	const int current = CtrSpellBindingHit(CtrScreenToTop(MousePosition));
+	if (direction.x == AxisDirectionX_NONE && direction.y == AxisDirectionY_NONE)
+		return;
+	int next = current < 0 ? 0 : current;
+	if (current >= 0) {
+		const Point origin = CtrSpellBindingPositions[current];
+		int bestScore = 100000;
+		for (int slot = 0; slot < CtrSpellShortcutCount; ++slot) {
+			const Point p = CtrSpellBindingPositions[slot];
+			const int dx = p.x - origin.x;
+			const int dy = p.y - origin.y;
+			if (direction.y != AxisDirectionY_NONE) {
+				if ((direction.y == AxisDirectionY_UP && dy >= 0)
+				    || (direction.y == AxisDirectionY_DOWN && dy <= 0))
+					continue;
+			} else if (dy != 0 || (direction.x == AxisDirectionX_LEFT && dx >= 0)
+			    || (direction.x == AxisDirectionX_RIGHT && dx <= 0)) {
+				continue;
+			}
+			const int score = dx * dx + dy * dy;
+			if (score < bestScore) {
+				bestScore = score;
+				next = slot;
+			}
 		}
 	}
-	if (button == ControllerButton_BUTTON_X) return 0;
-	if (button == ControllerButton_BUTTON_RIGHTSHOULDER) return 1;
-	return -1;
+	SetCursorPos(CtrTopToScreen(CtrSpellBindingRect(next).Center()));
+}
+
+int CtrSpellBindingSlot(ControllerButton button, bool modifierHeld)
+{
+	// Shoulder buttons are independent spell shortcuts, never modifiers.
+	(void)modifierHeld;
+	switch (button) {
+	case ControllerButton_BUTTON_X: return 0;
+	case ControllerButton_BUTTON_Y: return 1;
+	case ControllerButton_BUTTON_LEFTSHOULDER: return 2;
+	case ControllerButton_BUTTON_RIGHTSHOULDER: return 3;
+	default: return -1;
+	}
 }
 
 bool HandleCtrSpellBinding(ControllerButton button, bool modifierHeld)
@@ -396,10 +462,13 @@ bool HandleCtrSpellBinding(ControllerButton button, bool modifierHeld)
 		if (IsValidSpell(bindingSpell)) {
 			bindingType = CtrSpellSource(bindingSpell);
 			bindingOpen = true;
+			SetCursorPos(CtrTopToScreen(CtrSpellBindingRect(0).Center()));
 		}
 		return true;
 	}
-	const int slot = CtrSpellBindingSlot(button, modifierHeld);
+	const int slot = button == ControllerButton_BUTTON_A
+	    ? CtrSpellBindingHit(CtrScreenToTop(MousePosition))
+	    : CtrSpellBindingSlot(button, modifierHeld);
 	if (slot >= 0) {
 		MyPlayer->_pSplHotKey[slot] = bindingSpell;
 		MyPlayer->_pSplTHotKey[slot] = bindingType;
@@ -407,7 +476,7 @@ bool HandleCtrSpellBinding(ControllerButton button, bool modifierHeld)
 			MyPlayer->_pRSpell = bindingSpell;
 			MyPlayer->_pRSplType = bindingType;
 		}
-		// Existing per-character hotkey serialization persists these seven slots.
+		// Existing per-character hotkey serialization persists these four slots.
 		bindingOpen = false;
 		RedrawEverything();
 	} else if (button == ControllerButton_BUTTON_B || button == ControllerButton_BUTTON_BACK) {
@@ -416,13 +485,41 @@ bool HandleCtrSpellBinding(ControllerButton button, bool modifierHeld)
 	return true;
 }
 
+void DrawCtrHudSpellIcons(const Surface &out)
+{
+	static std::optional<OwnedSurface> icon;
+	if (!icon) icon.emplace(37, 38);
+	const Player &player = *MyPlayer;
+	for (int slot = 0; slot < CtrSpellShortcutCount; ++slot) {
+		const SpellID spell = slot == 0 ? player._pRSpell : player._pSplHotKey[slot];
+		SpellType type = slot == 0 ? player._pRSplType : player._pSplTHotKey[slot];
+		if (!IsValidSpell(spell)) continue;
+		const uint64_t owned = type == SpellType::Skill ? player._pAblSpells
+		    : type == SpellType::Spell ? player._pMemSpells
+		    : type == SpellType::Charges ? player._pISpells
+		    : type == SpellType::Scroll ? player._pScrlSpells : 0;
+		if ((owned & GetSpellBitmask(spell)) == 0
+		    || (type == SpellType::Spell && CheckSpell(player, spell, type, true) != SpellCheckResult::Success)
+		    || (leveltype == DTYPE_TOWN && !GetSpellData(spell).isAllowedInTown()))
+			type = SpellType::Invalid;
+		FillRect(*icon, 0, 0, 37, 38, 0);
+		SetSpellTrans(type);
+		DrawSmallSpellIcon(*icon, { 0, 37 }, spell);
+		const Rectangle target = CtrHudSpellSlot(slot);
+		const Size size = CtrEnlargeImage({ 37, 38 }, target.size);
+		out.ScaleBlitFrom(*icon, MakeSdlRect(0, 0, 37, 38),
+		    MakeSdlRect(target.position.x + (target.size.width - size.width) / 2,
+		        target.position.y, size.width, size.height));
+	}
+}
+
 void DrawCtrSpellDescription(const Surface &out)
 {
 	const Rectangle box = CtrBottomInfoBox;
 	FillRect(out, box.position.x, box.position.y, box.size.width, box.size.height, 0);
 	const SpellID spell = bindingOpen ? bindingSpell : FocusedCtrSpell();
 	const std::string text = WordWrapString(SpellDescription(spell), box.size.width - 12, GameFont12, 0);
-	DrawString(out, text, box.inset({ 6, 6 }), { .flags = UiFlags::ColorWhite, .spacing = 0 });
+	DrawString(out, text, box.inset({ 6, 6 }), { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter | UiFlags::VerticalCenter, .spacing = 0 });
 }
 #endif
 
@@ -539,6 +636,10 @@ void CheckSBook()
 			}
 			player._pRSpell = sn;
 			player._pRSplType = st;
+#ifdef __3DS__
+			player._pSplHotKey[0] = sn;
+			player._pSplTHotKey[0] = st;
+#endif
 			RedrawEverything();
 		}
 		return;

@@ -28,5 +28,6 @@ inline void DrawCtrPanelFrame(const Surface &out)
 
 void DrawCtrBottomBackground(const Surface &out);
 void DrawCtrBottomHud(const Surface &out);
+void PrepareCtrHudOverlay(int experiencePixels, bool visible, bool dimmed);
 
 } // namespace devilution

@@ -2330,13 +2330,28 @@ size_t HotkeysSize(size_t nHotkeys = NumHotkeys)
 	return sizeof(uint8_t) + (nHotkeys * sizeof(int32_t)) + (nHotkeys * sizeof(uint8_t)) + sizeof(int32_t) + sizeof(uint8_t);
 }
 
+#ifdef __3DS__
+void MigrateCtrSpellShortcuts(Player &myPlayer)
+{
+	const SpellID oldR = myPlayer._pSplHotKey[1];
+	const SpellType oldRType = myPlayer._pSplTHotKey[1];
+	std::fill(myPlayer._pSplHotKey + 1, myPlayer._pSplHotKey + NumHotkeys, SpellID::Invalid);
+	std::fill(myPlayer._pSplTHotKey + 1, myPlayer._pSplTHotKey + NumHotkeys, SpellType::Invalid);
+	myPlayer._pSplHotKey[3] = oldR;
+	myPlayer._pSplTHotKey[3] = oldRType;
+}
+#endif
+
 void LoadHotkeys()
 {
-	LoadHelper file(OpenSaveArchive(gSaveNumber), "hotkeys");
-	if (!file.IsValid())
-		return;
-
 	Player &myPlayer = *MyPlayer;
+	LoadHelper file(OpenSaveArchive(gSaveNumber), "hotkeys");
+	if (!file.IsValid()) {
+#ifdef __3DS__
+		MigrateCtrSpellShortcuts(myPlayer);
+#endif
+		return;
+	}
 	size_t nHotkeys = 4; // Defaults to old save format number
 
 	// Refill the spell arrays with no selection
@@ -2370,6 +2385,12 @@ void LoadHotkeys()
 	// Load the selected spell last
 	myPlayer._pRSpell = static_cast<SpellID>(file.NextLE<int32_t>());
 	myPlayer._pRSplType = static_cast<SpellType>(file.NextLE<uint8_t>());
+#ifdef __3DS__
+	LoadHelper ctrMapping(OpenSaveArchive(gSaveNumber), "ctrbind4");
+	if (!ctrMapping.IsValid() || ctrMapping.NextLE<uint8_t>() != 1) {
+		MigrateCtrSpellShortcuts(myPlayer);
+	}
+#endif
 }
 
 void SaveHotkeys(SaveWriter &saveWriter, const Player &player)
@@ -2390,6 +2411,10 @@ void SaveHotkeys(SaveWriter &saveWriter, const Player &player)
 	// Write the selected spell last
 	file.WriteLE<int32_t>(static_cast<int8_t>(player._pRSpell));
 	file.WriteLE<uint8_t>(static_cast<uint8_t>(player._pRSplType));
+#ifdef __3DS__
+	SaveHelper ctrMapping(saveWriter, "ctrbind4", 1);
+	ctrMapping.WriteLE<uint8_t>(1);
+#endif
 }
 
 void LoadHeroItems(Player &player)

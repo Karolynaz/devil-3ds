@@ -2535,7 +2535,7 @@ void InitPadmapActions()
 	    "DisplaySpells",
 	    N_("Speedbook"),
 	    N_("Open Speedbook."),
-	    ControllerButton_BUTTON_A,
+	    CTR_DEFAULT_BUTTON(ControllerButton_BUTTON_A),
 	    [] {
 		    ProcessGameAction(GameAction { GameActionType_TOGGLE_QUICK_SPELL_MENU });
 	    },
@@ -2667,7 +2667,7 @@ void InitPadmapActions()
 	    "PadHotspellMenu",
 	    N_("Gamepad hotspell menu"),
 	    N_("Hold to set or use spell hotkeys."),
-	    ControllerButton_BUTTON_BACK,
+	    CTR_DEFAULT_BUTTON(ControllerButton_BUTTON_BACK),
 	    [] { PadHotspellMenuActive = true; },
 	    [] { PadHotspellMenuActive = false; });
 	options.Padmapper.AddAction(

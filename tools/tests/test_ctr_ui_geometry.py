@@ -63,9 +63,21 @@ int main() {
       previous=tab;
     }
   }
-  check(CtrBottomHealthBar.position == Point(20, 82));
-  check(CtrBottomManaBar.position == Point(274, 82));
-  check(CtrBottomExperienceBar.size == Size(224, 14));
+  check(CtrBottomHealthBar.position == Point(20, 68));
+  check(CtrBottomManaBar.position == Point(275, 68));
+  check(CtrBottomExperienceBar.size == Size(206, 2));
+  check(CtrBottomExperienceBar.position == Point(57,169));
+  check(CtrBottomInfoBox.position == Point(64,51) && CtrBottomInfoBox.size == Size(192,113));
+  for(int slot=0;slot<8;++slot) {
+    const auto r=CtrBottomBeltSlot(slot);
+    check(r.position==Point(63+slot*24+(slot>=4?4:0),10));
+    check(r.size==Size(22,22));
+  }
+  for(int slot=0;slot<4;++slot) {
+    const auto r=CtrHudSpellSlot(slot);
+    check(r.position==Point(62+slot*50,176) && r.size==Size(45,45));
+    check(CtrHudBadgePositions[slot].y+CtrHudBadgeSize==240);
+  }
 }
 '''
 

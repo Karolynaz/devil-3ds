@@ -361,6 +361,7 @@ function(add_cia_target target RSF IMAGE SOUND)
                         COMMAND ${STRIP} -o $<TARGET_FILE:${target}>-stripped $<TARGET_FILE:${target}>
                         COMMAND ${MAKEROM}     -f cia
                                             -target t
+                                            -major ${CTR_CIA_MAJOR} -minor ${CTR_CIA_MINOR} -micro ${CTR_CIA_MICRO}
                                             -exefslogo
                                             -o ${target_we}.cia
                                             -elf $<TARGET_FILE:${target}>-stripped

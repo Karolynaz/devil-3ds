@@ -13,6 +13,7 @@
 #include "engine/palette.h"
 #include "engine/render/primitive_render.hpp"
 #include "platform/ctr/ui_geometry.hpp"
+#include "platform/ctr/display.hpp"
 #include "platform/ctr/world_surface.hpp"
 #include "DiabloUI/ui_flags.hpp"
 #include "engine/render/text_render.hpp"
@@ -130,6 +131,29 @@ void DrawCtrPanelBackground(const Surface &out, CtrPanelBackground background)
 	out.BlitFrom(*Backgrounds[index], { 0, 0, BackgroundWidth, BackgroundHeight }, { 0, 0 });
 }
 
+void PrepareCtrHudOverlay(int experiencePixels, bool visible, bool dimmed)
+{
+	static std::array<std::optional<std::array<uint8_t, CtrHudBadgeSize * CtrHudBadgeSize * 4>>, 4> badges;
+	static bool attempted = false;
+	if (!attempted) {
+		attempted = true;
+		constexpr const char *paths[] = { "data\\hud\\button_x.rgba", "data\\hud\\button_y.rgba", "data\\hud\\button_l.rgba", "data\\hud\\button_r.rgba" };
+		for (size_t slot = 0; slot < badges.size(); ++slot) {
+			auto file = LoadAsset(paths[slot]);
+			if (!file || file->size != CtrHudBadgeSize * CtrHudBadgeSize * 4) continue;
+			badges[slot].emplace();
+			std::memcpy(badges[slot]->data(), file->data.get(), file->size);
+		}
+	}
+	CtrHudOverlay overlay;
+	for (size_t slot = 0; slot < badges.size(); ++slot)
+		overlay.badges[slot] = badges[slot] ? badges[slot]->data() : nullptr;
+	overlay.experiencePixels = std::clamp(experiencePixels, 0, CtrBottomExperienceBar.size.width);
+	overlay.visible = visible;
+	overlay.opacity = dimmed ? 128 : 255;
+	CTR_SetHudOverlay(overlay);
+}
+
 void DrawCtrBottomBackground(const Surface &out)
 {
 	if (!BottomBackgroundLoadAttempted)
@@ -145,8 +169,10 @@ void DrawCtrBarArtwork(const Surface &out, CtrBarArtwork bar, Point position, fl
 		LoadBar(index);
 	if (!Bars[index])
 		return;
-	const int width = bar == CtrBarArtwork::Experience ? ExperienceBarWidth : VerticalBarWidth;
-	const int height = bar == CtrBarArtwork::Experience ? ExperienceBarHeight : VerticalBarHeight;
+	const int sourceWidth = Bars[index]->w();
+	const int sourceHeight = Bars[index]->h();
+	const int width = bar == CtrBarArtwork::Experience ? CtrBottomExperienceBar.size.width : CtrBottomHealthBar.size.width;
+	const int height = bar == CtrBarArtwork::Experience ? CtrBottomExperienceBar.size.height : CtrBottomHealthBar.size.height;
 	const bool vertical = bar != CtrBarArtwork::Experience;
 	const int fillPixels = static_cast<int>(std::lround(std::clamp(fill, 0.0f, 1.0f) * (vertical ? height : width)));
 	if (fillPixels == 0)
@@ -155,11 +181,11 @@ void DrawCtrBarArtwork(const Surface &out, CtrBarArtwork bar, Point position, fl
 	// preserve red/blue hues; borders and the fill height remain unchanged.
 	const unsigned phase = SDL_GetTicks() / 90 + (bar == CtrBarArtwork::Mana ? 16 : 0);
 	for (int y = 0; y < (vertical ? fillPixels : height); ++y) {
-		const int sourceY = vertical ? height - fillPixels + y : y;
+		const int sourceY = (vertical ? height - fillPixels + y : y) * sourceHeight / height;
 		const uint8_t *srcRow = Bars[index]->at(0, sourceY);
 		for (int x = 0; x < (vertical ? width : fillPixels); ++x) {
 			// Reveal native artwork pixels; changing fill must not stretch the ornament.
-			const int sourceX = x;
+			const int sourceX = x * sourceWidth / width;
 			uint8_t color = srcRow[sourceX];
 			if (vertical && x >= 3 && x < width - 3 && y >= 3 && y < fillPixels - 3) {
 				const unsigned wave = (x * 2 + y + phase) & 31;

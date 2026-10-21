@@ -1,5 +1,6 @@
 #include "platform/ctr/display.hpp"
 #include "platform/ctr/pixel_geometry.hpp"
+#include "platform/ctr/ui_geometry.hpp"
 #include "platform/ctr/world_view.hpp"
 #include <SDL.h>
 #include <3ds.h>
@@ -177,6 +178,7 @@ void BlitFramebuffer(uint8_t *framebuffer, GSPGPU_FramebufferFormat format, cons
 // The world for the next present (one-shot), see CTR_SetWorldFrame.
 bool worldFramePending = false;
 CtrWorldFrame worldFrame {};
+CtrHudOverlay hudOverlay {};
 template <GSPGPU_FramebufferFormat Format>
 inline void StoreColor(uint8_t *dst, uint32_t r, uint32_t g, uint32_t b)
 {
@@ -203,6 +205,45 @@ inline void StorePaletteColor(uint8_t *dst, uint8_t index)
 		*reinterpret_cast<uint16_t *>(dst) = color.rgb565;
 	} else {
 		*reinterpret_cast<uint32_t *>(dst) = color.rgba8;
+	}
+}
+
+// Overlay the exported badges after palette conversion, so their original
+// alpha and the solid #6F6721 experience color are retained on the 3DS screen.
+template <GSPGPU_FramebufferFormat Format>
+void BlitHudOverlay(uint8_t *framebuffer, const CtrHudOverlay &overlay)
+{
+	constexpr int BytesPerPixel = Format == GSP_BGR8_OES ? 3 : Format == GSP_RGB565_OES ? 2 : 4;
+	const auto pixel = [&](int x, int y) { return framebuffer + (x * 240 + 239 - y) * BytesPerPixel; };
+	const auto blend = [&](int x, int y, const uint8_t *rgba) {
+		const uint32_t alpha = rgba[3] * overlay.opacity / 255;
+		if (alpha == 0) return;
+		uint8_t *dst = pixel(x, y);
+		uint32_t r, g, b;
+		if constexpr (Format == GSP_BGR8_OES) { r = dst[2]; g = dst[1]; b = dst[0]; }
+		else if constexpr (Format == GSP_RGB565_OES) {
+			const auto color = *reinterpret_cast<uint16_t *>(dst);
+			r = ((color >> 11) & 31) * 255 / 31;
+			g = ((color >> 5) & 63) * 255 / 63;
+			b = (color & 31) * 255 / 31;
+		} else {
+			const auto color = *reinterpret_cast<uint32_t *>(dst);
+			r = color >> 24; g = (color >> 16) & 255; b = (color >> 8) & 255;
+		}
+		StoreColor<Format>(dst, (rgba[0] * alpha + r * (255 - alpha) + 127) / 255,
+		    (rgba[1] * alpha + g * (255 - alpha) + 127) / 255,
+		    (rgba[2] * alpha + b * (255 - alpha) + 127) / 255);
+	};
+	const uint8_t experience[] = { 0x6F, 0x67, 0x21, 255 };
+	for (int y = 0; y < CtrBottomExperienceBar.size.height; ++y)
+		for (int x = 0; x < std::clamp(overlay.experiencePixels, 0, CtrBottomExperienceBar.size.width); ++x)
+			blend(CtrBottomExperienceBar.position.x + x, CtrBottomExperienceBar.position.y + y, experience);
+	for (int slot = 0; slot < 4; ++slot) {
+		if (overlay.badges[slot] == nullptr) continue;
+		for (int y = 0; y < CtrHudBadgeSize; ++y)
+			for (int x = 0; x < CtrHudBadgeSize; ++x)
+				blend(CtrHudBadgePositions[slot].x + x, CtrHudBadgePositions[slot].y + y,
+				    overlay.badges[slot] + (y * CtrHudBadgeSize + x) * 4);
 	}
 }
 
@@ -266,6 +307,11 @@ void CTR_ConfigureFramePresenter(bool dualScreen)
 	worldFramePending = false;
 }
 
+void CTR_SetHudOverlay(const CtrHudOverlay &overlay)
+{
+	hudOverlay = overlay;
+}
+
 bool CTR_PresentFrame(const SDL_Surface *surface)
 {
 	// The world is for this present only. A later frame (for example a menu)
@@ -314,6 +360,14 @@ bool CTR_PresentFrame(const SDL_Surface *surface)
 		BlitFramebuffer<400>(fbLeft, topFormat, srcPixels, srcPitch);
 	}
 	BlitFramebuffer<320>(fbBottom, bottomFormat, srcPixels + 240 * srcPitch, srcPitch);
+	if (hasWorld && hudOverlay.visible) {
+		switch (bottomFormat) {
+		case GSP_BGR8_OES: BlitHudOverlay<GSP_BGR8_OES>(fbBottom, hudOverlay); break;
+		case GSP_RGB565_OES: BlitHudOverlay<GSP_RGB565_OES>(fbBottom, hudOverlay); break;
+		case GSP_RGBA8_OES: BlitHudOverlay<GSP_RGBA8_OES>(fbBottom, hudOverlay); break;
+		default: break;
+		}
+	}
 	gfxFlushBuffers();
 	gspWaitForVBlank();
 	gfxScreenSwapBuffers(GFX_TOP, false);

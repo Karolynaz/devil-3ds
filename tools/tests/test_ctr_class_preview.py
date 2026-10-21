@@ -18,12 +18,15 @@ def function(signature):
 code = r'''
 #include <algorithm>
 #include <cassert>
+#include <cstdlib>
 #include <cstdint>
 #include <optional>
 #include <vector>
 #include "platform/ctr/pixel_geometry.hpp"
 #include "engine/point.hpp"
 using namespace devilution;
+#undef assert
+#define assert(condition) do { if (!(condition)) std::abort(); } while(false)
 struct Sprite {
  int w,h;std::vector<uint8_t> pixels;
  int width() const{return w;} int height() const{return h;}
@@ -96,6 +99,12 @@ int main(){
  ClassPreviewClip compact;PrepareClassPreview(compact,idle,attack,90);
  assert(compact.raw);
  for(auto &f:compact.raw->frames){assert(f.w<=90&&f.h<=164);assert(bottom(f)==bottom((*compact.raw)[0]));}
+ // A wide sword animation must not shrink the warrior's idle body.
+ ClassPreviewClip warrior;PrepareClassPreview(warrior,idle,attack,200);
+ assert(warrior.raw);
+ auto visibleHeight=[](const Sprite &s){int top=s.h,low=-1;for(int y=0;y<s.h;y++)for(int x=0;x<s.w;x++)if(s.pixels[y*s.w+x]){top=std::min(top,y);low=std::max(low,y);}return low-top+1;};
+ assert(visibleHeight((*warrior.raw)[0])==120);
+ assert(visibleHeight((*compact.raw)[0])<visibleHeight((*warrior.raw)[0]));
  ClassPreviewClip fallback;PrepareClassPreview(fallback,idle,std::nullopt);
  assert(fallback.raw&&fallback.actionFrames==0&&fallback.idleFrames==2);
  ClassPreviewClip invalid;PrepareClassPreview(invalid,ClxSpriteList{},attack);assert(!invalid.raw);
@@ -109,7 +118,7 @@ with tempfile.TemporaryDirectory() as directory:
     subprocess.run([str(root/'test')], check=True)
 print('PASS: four-class Hellfire lineup, optional extra-class paging, frozen unselected clips, one-shot actions, idle loop, stable anchors, missing/invalid clips (ASan/UBSan)')
 
-# The footer is limited to two 16px lines. Check shipped EN/LT glyph metrics;
+# The footer is limited to three 16px lines. Check shipped EN/LT glyph metrics;
 # the production word-wrap routine is separately covered by ctr_multiline.
 import ast
 import re
@@ -141,9 +150,9 @@ for name in names:
         lines=['']
         for word in text.split():
             trial=(lines[-1]+' '+word).strip()
-            if native_width(trial)>375:
-                assert lines[-1] and native_width(word)<=375
+            if native_width(trial)>300:
+                assert lines[-1] and native_width(word)<=300
                 lines.append(word)
             else: lines[-1]=trial
-        assert len(lines)<=2 and len(lines)*16<=36, text
-print('PASS: all six EN/LT class introductions fit the two-line footer with shipped native font metrics')
+        assert len(lines)<=3 and len(lines)*16<=52, text
+print('PASS: all six EN/LT class introductions fit the bottom-screen footer with shipped native font metrics')

@@ -252,6 +252,10 @@ if(NINTENDO_3DS)
     data/ctr_inventory_warrior_stash.pal8
     data/ctr_inventory_rogue_stash.pal8
     data/ctr_inventory_sorcerer_stash.pal8
+    data/hud/button_x.rgba
+    data/hud/button_y.rgba
+    data/hud/button_l.rgba
+    data/hud/button_r.rgba
     data/ctr_bottom_ui.pal8
     data/ctr_health_bar.pal8
     data/ctr_mana_bar.pal8

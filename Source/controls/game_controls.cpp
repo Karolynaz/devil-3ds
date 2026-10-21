@@ -663,18 +663,6 @@ void PressControllerButton(ControllerButton button)
 			break;
 		}
 	} else if (!InGameMenu()) {
-		if (modifierHeld) {
-			const int slot = CtrSpellBindingSlot(button, true);
-			if (slot >= 0) {
-				CtrConsumedSpellButtons |= uint32_t { 1 } << static_cast<unsigned>(button);
-				ControllerActionHeld = GameActionType_NONE;
-				LastPlayerAction = PlayerActionType::None;
-				if (IsValidSpeedSpell(slot))
-					QuickCast(slot);
-				return;
-			}
-		}
-
 		switch (button) {
 		case ControllerButton_BUTTON_A:
 			ControllerActionHeld = GameActionType_PRIMARY_ACTION;
@@ -691,26 +679,19 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_X:
-			if (IsValidSpeedSpell(0)) {
-				QuickCast(0);
-			} else {
-				ControllerActionHeld = GameActionType_CAST_SPELL;
-				LastPlayerAction = PlayerActionType::None;
-				PerformSpellAction();
-			}
+			ControllerActionHeld = GameActionType_CAST_SPELL;
+			LastPlayerAction = PlayerActionType::None;
+			PerformSpellAction();
 			return;
 
 		case ControllerButton_BUTTON_Y:
-			ProcessGameAction(GameAction { GameActionType_TOGGLE_QUICK_SPELL_MENU });
-			return;
-
 		case ControllerButton_BUTTON_LEFTSHOULDER:
-			return; // Modifier; wait for the second button.
-
-		case ControllerButton_BUTTON_RIGHTSHOULDER:
-			if (IsValidSpeedSpell(1))
-				QuickCast(1);
+		case ControllerButton_BUTTON_RIGHTSHOULDER: {
+			const int slot = CtrSpellBindingSlot(button, false);
+			if (slot >= 0 && IsValidSpeedSpell(slot))
+				QuickCast(slot);
 			return;
+		}
 
 		case ControllerButton_BUTTON_DPAD_UP:
 			ProcessGameAction(GameAction { GameActionType_TOGGLE_INVENTORY });

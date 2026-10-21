@@ -273,7 +273,7 @@ void EnsureClassPreview(HeroClass heroClass)
 	auto action = LoadPlayerPreviewSprites(heroClass, static_cast<uint8_t>(weapon),
 	    heroClass == HeroClass::Sorcerer ? player_graphic::Fire : player_graphic::Attack);
 	PrepareClassPreview(clip, ClxSpriteList { *idle }, action ? std::optional<ClxSpriteList> { ClxSpriteList { *action } } : std::nullopt,
-	    ClassPreviewClasses.size() >= 4 ? 90 : 122);
+	    heroClass == HeroClass::Warrior ? 200 : (ClassPreviewClasses.size() >= 4 ? 90 : 122));
 }
 
 void EnsureClassProjectile(size_t index)
@@ -369,7 +369,10 @@ void RenderClassPreviews()
 			continue;
 		}
 		const ClxSprite sprite = (*clip.mapped)[ClassPreviewFrame(elapsed, clip.idleFrames, clip.actionFrames, index == ClassPreviewSelection)];
-		UiImageClx image(sprite, MakeSdlRect(center - slotWidth / 2, 180 - sprite.height(), slotWidth, sprite.height()), UiFlags::AlignCenter);
+		// The warrior's sword swing is wider than his standing body. Give the
+		// animation its full width instead of shrinking the body to the slot.
+		const int imageWidth = heroClass == HeroClass::Warrior ? std::max(slotWidth, (sprite.width() * 640 + 399) / 400) : slotWidth;
+		UiImageClx image(sprite, MakeSdlRect(center - imageWidth / 2, 180 - sprite.height(), imageWidth, sprite.height()), UiFlags::AlignCenter);
 		UiRenderItem(image);
 		if (index != ClassPreviewSelection || clip.actionFrames == 0) continue;
 		if (heroClass != HeroClass::Rogue && heroClass != HeroClass::Sorcerer) continue;
@@ -383,7 +386,7 @@ void RenderClassPreviews()
 		UiImageClx effect(bolt, MakeSdlRect(center - 24, 122 + flight * 55 / 450, 48, 24), UiFlags::AlignCenter);
 		UiRenderItem(effect);
 	}
-	DrawString(Surface(DiabloUiSurface()), ClassPreviewText, { { 20, 200 }, { 600, 36 } },
+	DrawString(Surface(DiabloUiSurface()), ClassPreviewText, { { 20, 422 }, { 600, 52 } },
 	    { .flags = UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, .spacing = 1, .lineHeight = 16 });
 }
 
@@ -391,7 +394,7 @@ void FocusClassPreview(size_t selection)
 {
 	if (ClassPreviewClasses.empty()) return;
 	ClassPreviewSelection = std::min(selection, ClassPreviewClasses.size() - 1);
-	ClassPreviewText = WordWrapString(_(ClassPreviewDescription(ClassPreviewClasses[ClassPreviewSelection])), 600, GameFont12, 1, CtrTextScale::TopScreen);
+	ClassPreviewText = WordWrapString(_(ClassPreviewDescription(ClassPreviewClasses[ClassPreviewSelection])), 600, GameFont12, 1, CtrTextScale::BottomScreen);
 	if (!ClassPreviewPaletteLoaded)
 		ClassPreviewPaletteLoaded = LoadOptionalFileInMem("levels\\towndata\\town.pal", HeroPreviewGamePalette.data(), HeroPreviewGamePalette.size());
 	const size_t first = FirstClassPreview(ClassPreviewSelection, ClassPreviewClasses.size());
@@ -638,7 +641,7 @@ void SelheroListSelect(size_t value)
 		vecSelDlgItems.clear();
 
 #ifdef __3DS__
-		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 20), 248, 600, 26 };
+		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 20), 206, 600, 28 };
 		vecSelDlgItems.push_back(std::make_unique<UiArtText>(_("Choose Class").data(), rect1, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiSilver, 3));
 
 		vecSelHeroDlgItems.clear();
@@ -661,12 +664,12 @@ void SelheroListSelect(size_t value)
 			const PlayerData &playerData = GetPlayerDataForClass(heroClass);
 			vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_(playerData.className), static_cast<int>(heroClass)));
 		}
-		// Center the visible class list in the 240-pixel bottom screen.
+		// Center the list above the bottom-screen class description.
 		const int visibleClasses = static_cast<int>(std::min<size_t>(vecSelHeroDlgItems.size(), 6));
-		const int itemY = 240 + (240 - visibleClasses * itemH) / 2;
+		const int itemY = 240 + (172 - visibleClasses * itemH) / 2;
 		vecSelDlgItems.push_back(std::make_unique<UiList>(vecSelHeroDlgItems, std::min<size_t>(vecSelHeroDlgItems.size(), 6), uiPosition.x + 150, itemY, 340, itemH, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
 
-		const SDL_Rect rectScrollBar = { (Sint16)(uiPosition.x + 500), 280, 25, 144 };
+		const SDL_Rect rectScrollBar = { (Sint16)(uiPosition.x + 500), itemY, 25, visibleClasses * itemH };
 		vecSelDlgItems.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0], *ArtScrollBarArrow, rectScrollBar));
 #else
 		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), (Sint16)(uiPosition.y + 211), 365, 33 };
@@ -733,7 +736,7 @@ void SelheroListSelect(size_t value)
 		vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_("Load Game"), 0));
 		vecSelHeroDlgItems.push_back(std::make_unique<UiListItem>(_("Reset World"), 1));
 		vecSelDlgItems.push_back(std::make_unique<UiList>(vecSelHeroDlgItems, vecSelHeroDlgItems.size(), uiPosition.x + 70, 318, 500, 36, UiFlags::AlignCenter | UiFlags::FontSize24 | UiFlags::ColorUiGold));
-		CopyUtf8(HeroLoadHint, WordWrapString(_("Reset World: new maps and respawned monsters. Your level, stats, items and spells stay."), 600, GameFont12, 1, CtrTextScale::BottomScreen), sizeof(HeroLoadHint));
+		CopyUtf8(HeroLoadHint, WordWrapString(_("Reset World: change map layouts and respawn monsters. Your level, stats, items and spells stay."), 600, GameFont12, 1, CtrTextScale::BottomScreen), sizeof(HeroLoadHint));
 		vecSelDlgItems.push_back(std::make_unique<UiArtText>(HeroLoadHint, MakeSdlRect(uiPosition.x + 20, 402, 600, 76), UiFlags::AlignCenter | UiFlags::FontSize12 | UiFlags::ColorUiSilver, 1, 17));
 #else
 		const SDL_Rect rect1 = { (Sint16)(uiPosition.x + 242), (Sint16)(uiPosition.y + 211), 365, 33 };

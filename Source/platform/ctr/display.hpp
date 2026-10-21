@@ -29,6 +29,14 @@ struct CtrWorldFrame {
 /** @brief Sets the world for the next present only. A null pixels pointer cancels any pending scene. */
 void CTR_SetWorldFrame(const CtrWorldFrame &frame);
 
+struct CtrHudOverlay {
+	const uint8_t *badges[4] {};
+	int experiencePixels = 0;
+	bool visible = false;
+	uint8_t opacity = 255;
+};
+// Native RGBA decorations preserve the Figma color/alpha beyond the game palette.
+void CTR_SetHudOverlay(const CtrHudOverlay &overlay);
 void CTR_ConfigureFramePresenter(bool dualScreen);
 bool CTR_PresentFrame(const SDL_Surface *surface);
 

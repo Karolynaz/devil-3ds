@@ -5,6 +5,7 @@
 
 #ifdef __3DS__
 #include "controls/controller_buttons.h"
+#include "controls/axis_direction.h"
 #endif
 #include "engine/clx_sprite.hpp"
 #include "engine/surface.hpp"
@@ -19,9 +20,11 @@ void DrawSpellBook(const Surface &out);
 int CtrSpellbookPageCount();
 int CtrSpellbookRowCount();
 bool CtrSpellBindingActive();
+void MoveCtrSpellBinding(AxisDirection direction);
 bool HandleCtrSpellBinding(ControllerButton button, bool modifierHeld);
 int CtrSpellBindingSlot(ControllerButton button, bool modifierHeld);
 void DrawCtrSpellDescription(const Surface &out);
+void DrawCtrHudSpellIcons(const Surface &out);
 #endif
 
 } // namespace devilution

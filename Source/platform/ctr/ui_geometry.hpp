@@ -11,14 +11,14 @@ constexpr Size CtrTopSize { 400, 240 };
 constexpr Size CtrLegacyPanelSize { 320, 352 };
 constexpr int CtrItemSlotPixels = 16;
 constexpr int CtrItemSlotPitch = 17;
-constexpr Rectangle CtrBottomHealthBar { { 20, 82 }, { 26, 84 } };
-constexpr Rectangle CtrBottomManaBar { { 274, 82 }, { 26, 84 } };
-constexpr Rectangle CtrBottomExperienceBar { { 48, 206 }, { 224, 14 } };
-constexpr Rectangle CtrBottomInfoBox { { 64, 75 }, { 191, 118 } };
+constexpr Rectangle CtrBottomHealthBar { { 20, 68 }, { 25, 93 } };
+constexpr Rectangle CtrBottomManaBar { { 275, 68 }, { 25, 93 } };
+constexpr Rectangle CtrBottomExperienceBar { { 57, 169 }, { 206, 2 } };
+constexpr Rectangle CtrBottomInfoBox { { 64, 51 }, { 192, 113 } };
 
 constexpr Rectangle CtrBottomBeltSlot(int slot)
 {
-	return { { 69 + slot * 23 + (slot >= 4 ? 1 : 0), 36 }, { 21, 21 } };
+	return { { 63 + slot * 24 + (slot >= 4 ? 4 : 0), 10 }, { 22, 22 } };
 }
 constexpr Rectangle CtrStatButtons[4] = {
 	{ { 179, 108 }, { 22, 20 } },
@@ -26,9 +26,34 @@ constexpr Rectangle CtrStatButtons[4] = {
 	{ { 179, 156 }, { 22, 20 } },
 	{ { 179, 180 }, { 22, 20 } },
 };
+// Spell binding slots share one geometry for rendering, hit tests and focus.
+constexpr Rectangle CtrHudSpellSlot(int slot)
+{
+	return { { 62 + slot * 50, 176 }, { 45, 45 } };
+}
+// Render bounds include Figma's 4px badge shadow. Half-pixel X rounds right.
+constexpr Point CtrHudBadgePositions[] = { { 73, 217 }, { 122, 217 }, { 174, 217 }, { 225, 217 } };
+constexpr int CtrHudBadgeSize = 23;
+
+constexpr int CtrSpellShortcutCount = 4;
+constexpr Point CtrSpellBindingPositions[] = {
+	{ 61, 100 }, { 141, 100 }, { 221, 100 }, { 301, 100 }
+};
+constexpr Rectangle CtrSpellBindingRect(int slot)
+{
+	return { CtrSpellBindingPositions[slot], { 37, 38 } };
+}
+inline int CtrSpellBindingHit(Point point)
+{
+	for (int slot = 0; slot < CtrSpellShortcutCount; ++slot)
+		if (CtrSpellBindingRect(slot).contains(point))
+			return slot;
+	return -1;
+}
+
 constexpr int CtrSpellRowsY = 46;
-constexpr int CtrSpellRowHeight = 32;
-constexpr int CtrSpellRowsPerPage = 5;
+constexpr int CtrSpellRowHeight = 40;
+constexpr int CtrSpellRowsPerPage = 4;
 constexpr int CtrSpellTabsY = 214;
 constexpr int CtrSpellTabFirstX = 16;
 constexpr int CtrSpellTabWidth = 85;

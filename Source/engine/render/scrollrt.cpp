@@ -2030,10 +2030,10 @@ void DrawCtrBottomHud(const Surface &out)
 	FillRect(hud, 0, 0, 320, 240, 0);
 	DrawCtrBarArtwork(hud, CtrBarArtwork::Health, CtrBottomHealthBar.position, std::clamp(MyPlayer->_pHPPer, 0, 81) / 81.0f);
 	DrawCtrBarArtwork(hud, CtrBarArtwork::Mana, CtrBottomManaBar.position, std::clamp(MyPlayer->_pManaPer, 0, 81) / 81.0f);
-	DrawCtrBarArtwork(hud, CtrBarArtwork::Experience, CtrBottomExperienceBar.position,
-	    static_cast<float>(CtrExperienceFill()) / CtrBottomExperienceBar.size.width);
 	DrawCtrBottomBackground(hud);
 	DrawCtrInvBelt(hud);
+	DrawCtrHudSpellIcons(hud);
+	PrepareCtrHudOverlay(CtrExperienceFill(), !gmenu_is_active(), MyPlayerIsDead);
 	DrawInfoBox(hud);
 	if (SpellbookFlag)
 		DrawCtrSpellDescription(hud);
@@ -2138,8 +2138,6 @@ void DrawAndBlit()
 #endif
 	DrawView(out, ViewPosition);
 #ifdef __3DS__
-	if (!gmenu_is_active() && !invflag && !CharFlag && !QuestLogIsOpen && !SpellbookFlag && !IsPlayerInStore() && !qtextflag)
-		DrawSpell(out);
 	DrawCtrBottomHud(out);
 #else
 	if (drawCtrlPan) {

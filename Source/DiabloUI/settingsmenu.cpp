@@ -621,8 +621,8 @@ void UiSettingsMenu()
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(A): Action / Attack / Talk"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(B): Cancel / Back"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(X): Cast Spell / Use Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(Y): Spell / Skill Selection"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(L): Hold for Spell Combinations"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(Y): Cast Bound Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(L): Cast Bound Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(R): Cast Bound Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(Circle Pad): Move"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(D-Pad Up): Open Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
