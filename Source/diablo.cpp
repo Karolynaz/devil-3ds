@@ -2482,7 +2482,6 @@ void InitPadmapActions()
 	    [] { UseBeltItem(BeltItemType::Healing); },
 	    nullptr,
 	    CanPlayerTakeAction);
-#undef CTR_DEFAULT_BUTTON
 	options.Padmapper.AddAction(
 	    "UseManaPotion",
 	    N_("Use mana potion"),
@@ -2670,6 +2669,7 @@ void InitPadmapActions()
 	    CTR_DEFAULT_BUTTON(ControllerButton_BUTTON_BACK),
 	    [] { PadHotspellMenuActive = true; },
 	    [] { PadHotspellMenuActive = false; });
+#undef CTR_DEFAULT_BUTTON
 	options.Padmapper.AddAction(
 	    "PadMenuNavigator",
 	    N_("Gamepad menu navigator"),
