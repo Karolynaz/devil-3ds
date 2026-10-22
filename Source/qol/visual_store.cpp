@@ -12,6 +12,7 @@
 #include "control/control.hpp"
 #include "controls/plrctrls.h"
 #include "cursor.h"
+#include "diablo_msg.hpp"
 #include "engine/clx_sprite.hpp"
 #include "engine/load_clx.hpp"
 #include "engine/points_in_rectangle_range.hpp"
@@ -673,13 +674,13 @@ void CheckVisualStoreItem(Point mousePosition, bool isCtrlHeld, bool isShiftHeld
 	int price = item._iIvalue;
 	uint32_t totalGold = MyPlayer->_pGold + Stash.gold;
 	if (totalGold < static_cast<uint32_t>(price)) {
-		// InitDiabloMsg(EMSG_NOT_ENOUGH_GOLD);
+		InitDiabloMsg(_("Not enough gold."));
 		return;
 	}
 
 	// Check if player has room for the item
 	if (!StoreAutoPlace(item, false)) {
-		// InitDiabloMsg(EMSG_INVENTORY_FULL);
+		InitDiabloMsg(_("Not enough room in inventory."));
 		return;
 	}
 

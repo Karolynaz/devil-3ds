@@ -55,13 +55,19 @@ pre+=r'''
 Player Players[2];
 struct Missile{int _misource=0;bool _miDelFlag=false;};
 struct AddMissileParameter{Point dst;};
-constexpr int MyPlayerId=0,CMD_DISARMXY=1,CURSOR_HAND=0;
+constexpr int MyPlayerId=0,CMD_DISARMXY=1,CURSOR_HAND=0,CURSOR_HEALOTHER=2,CURSOR_RESURRECT=3;
+int cursor=0,heals=0,resurrects=0;
 int disarms=0;Point disarmed;
 Object*FindObjectAtPosition(Point p){for(auto&o:Objects)if(o.position==p)return &o;return nullptr;}
 void NetSendCmdLoc(int,bool,int,Point p){disarms++;disarmed=p;}
-void NewCursor(int cursor){check(cursor==CURSOR_HAND);}
+void NewCursor(int value){cursor=value;}
+bool TryIconCurs(){if(!PlayerUnderCursor)return false;if(cursor==CURSOR_HEALOTHER){check(!PlayerUnderCursor->hasNoLife());heals++;}else if(cursor==CURSOR_RESURRECT){check(PlayerUnderCursor->hasNoLife());resurrects++;}else return false;return true;}
 '''
-code=pre+fn('bool SelectCtrSpellTarget(')+fn('void CastCtrSpellShortcut(')+fn('void UpdateSpellTarget(')+trap+r'''
+def missile_fn(sig):
+ a=missiles.index(sig);b=missiles.index('{',a);c=b+1;d=1
+ while d:d+=(missiles[c]=='{')-(missiles[c]=='}');c+=1
+ return missiles[a:c]
+code=pre+fn('bool SelectCtrSpellTarget(')+fn('void CastCtrSpellShortcut(')+fn('void UpdateSpellTarget(')+trap+missile_fn('void AddHealOther(')+missile_fn('void AddResurrect(')+r'''
 int main(){
  ActiveMonsterCount=4;for(int i=0;i<4;i++)ActiveMonsters[i]=i;
  Monsters[0].position.future={14,10};Monsters[1].position.future={9,10};Monsters[2].position.future={12,10};Monsters[3].position.future={11,10};Monsters[3].blocked=true;
@@ -95,10 +101,18 @@ int main(){
  check(missile._miDelFlag&&disarms==1&&disarmed==Point(12,10));
  Objects[1]._oTrapFlag=false;AddTrapDisarm(missile,parameter);check(disarms==1);
  missile._misource=1;Objects[1]._oTrapFlag=true;AddTrapDisarm(missile,parameter);check(disarms==1);
+ // Animation completion must re-resolve the ally even if the frame focus changed.
+ missile._misource=0;ControlMode=ControlTypes::Gamepad;
+ Players[1].activeLevel=true;Players[1].dead=false;PlayerUnderCursor=nullptr;pcursmonst=0;
+ AddHealOther(missile,parameter);check(heals==1&&resurrects==0&&cursor==CURSOR_HAND&&PlayerUnderCursor==&Players[1]);
+ Players[1].dead=true;PlayerUnderCursor=nullptr;AddResurrect(missile,parameter);check(resurrects==1&&cursor==CURSOR_HAND);
+ Players[1].plractive=false;PlayerUnderCursor=&Players[1];AddHealOther(missile,parameter);check(heals==1&&cursor==CURSOR_HAND&&PlayerUnderCursor==nullptr);
+ missile._misource=1;AddResurrect(missile,parameter);check(resurrects==1);
+
 }
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'t.cpp').write_text(code)
  subprocess.run(['c++','-std=c++17','-fsanitize=address,undefined','-I'+str(ROOT/'Source'),str(p/'t.cpp'),'-o',str(p/'t')],check=True)
  subprocess.run([str(p/'t')],check=True)
-print('PASS: nearest enemy in all directions, invalid/blocked/talking targets, trapped objects, self spells and four shared cast slots (ASan/UBSan)')
+print('PASS: nearest enemy in all directions, invalid/blocked/talking targets, trapped objects, ground placement, allies through animation completion and four single-cast slots (ASan/UBSan)')

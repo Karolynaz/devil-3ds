@@ -2487,9 +2487,17 @@ void AddHealOther(Missile &missile, AddMissileParameter & /*parameter*/)
 
 	missile._miDelFlag = true;
 	if (&player == MyPlayer) {
+#ifdef __3DS__
+		// The spell animation may outlive the interaction focus. Resolve the
+		// nearest eligible ally using this spell, independent of the primary.
+		UpdateSpellTarget(SpellID::HealOther);
+#endif
 		NewCursor(CURSOR_HEALOTHER);
 		if (ControlMode != ControlTypes::KeyboardAndMouse)
 			TryIconCurs();
+#ifdef __3DS__
+		NewCursor(CURSOR_HAND);
+#endif
 	}
 }
 
@@ -2753,9 +2761,17 @@ void AddResurrect(Missile &missile, AddMissileParameter & /*parameter*/)
 	Player &player = Players[missile._misource];
 
 	if (&player == MyPlayer) {
+#ifdef __3DS__
+		// The spell animation may outlive the interaction focus. Resolve the
+		// nearest eligible ally using this spell, independent of the primary.
+		UpdateSpellTarget(SpellID::Resurrect);
+#endif
 		NewCursor(CURSOR_RESURRECT);
 		if (ControlMode != ControlTypes::KeyboardAndMouse)
 			TryIconCurs();
+#ifdef __3DS__
+		NewCursor(CURSOR_HAND);
+#endif
 	}
 	missile._miDelFlag = true;
 }

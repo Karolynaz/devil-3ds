@@ -14,9 +14,10 @@ Source baseline: `a976cd7` (3.27). This is a code audit plus native host regress
 | --- | --- | --- |
 | Casting | Holding (X) repeated casts; the other three bindings were single use. | Four buttons share the same single-use dispatch; the primary cast no longer leaves a repeating spell action. |
 | Placement | Ground spells could inherit a monster/player focus despite needing a location. | Clear actor focus and derive the tile from facing before dispatch. |
-| Cooperative spells | Heal Other/Resurrect depended on the primary spell's previous actor selection. | Select an eligible nearby live/dead ally using the actual spell, active level, visibility and missile path. Reject a missing ally before quick casting. |
+| Cooperative spells | Heal Other/Resurrect depended on the primary spell's previous actor selection. | Select an eligible nearby live/dead ally using the actual spell, active level, visibility and missile path. Reject a missing ally before quick casting, and re-resolve an eligible ally when the spell animation completes so a changed world focus cannot swallow the effect. |
 | Visual shop | The 3DS inventory early return intercepted (A) over the vendor grid/buttons. | Dispatch the vendor interaction before the generic inventory branch. |
 | Visual shop | (Y) could run the normal inventory ground-drop action. | Route it to the vendor sale flow. Holding (A) no longer sells or uses an inventory item while browsing the vendor. |
+| Visual shop | Failed purchases silently returned without telling the player why. | Display an explicit insufficient gold or inventory space message. |
 | Visual shop | Additional stock pages existed without any caller for their page functions. | (L)/(R) change vendor pages; show a page indicator. |
 | Sales | Gold capacity was unchecked and the cached gold total was not updated. | Check capacity including the sold item's released cells before removing it; add the actual credited amount to the gold total. |
 | Sales | Confirmation could refer to a different item after inventory changes. | Revalidate item identity, price, vendor and inventory index. Cancel/second confirm cannot sell again. |
