@@ -1,6 +1,6 @@
 BasicInfo:
   Title                   : Devil-3Ds
-  ProductCode             : CTR-P-DIABLO
+  ProductCode             : CTR-P-D3DS
   Logo                    : Homebrew # Nintendo / Licensed / Distributed / iQue / iQueForSystem
 
 RomFs:
@@ -9,7 +9,7 @@ RomFs:
 
 TitleInfo:
   Category                : Application
-  UniqueId                : 0x3F395
+  UniqueId                : 0xD3D50 # Devil-3Ds; distinct from DevilutionX 0x3F395
 
 Option:
   UseOnSD                 : true # true if App is to be installed to SD

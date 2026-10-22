@@ -45,9 +45,40 @@ def verify_cia_version(package, version):
     print(f"CIA installer version verified: {major}.{minor}.{micro} ({actual})")
 
 
+def verify_cia_identity(package, expected):
+    header, _, _, certificates, ticket_size, tmd_size = struct.unpack_from("<IHHIII", package)
+    align = lambda n: (n + 63) & ~63
+    ticket = align(header) + align(certificates)
+    tmd = ticket + align(ticket_size)
+    content = tmd + align(tmd_size)
+    def signed_body(offset):
+        signature = struct.unpack_from(">I", package, offset)[0]
+        size = {0x10000: 0x240, 0x10001: 0x140, 0x10002: 0x80,
+                0x10003: 0x240, 0x10004: 0x140, 0x10005: 0x80}.get(signature)
+        if size is None:
+            raise ValueError("Unsupported CIA signature")
+        return offset + size
+    fields = [("ticket", ">Q", signed_body(ticket) + 0x9C),
+              ("TMD", ">Q", signed_body(tmd) + 0x4C),
+              ("NCCH partition", "<Q", content + 0x108),
+              ("NCCH program", "<Q", content + 0x118),
+              ("requested program", "<Q", content + 0x400),
+              ("allowed program", "<Q", content + 0x800)]
+    for name, fmt, offset in fields:
+        actual = struct.unpack_from(fmt, package, offset)[0]
+        if actual != expected:
+            raise ValueError(f"CIA {name} ID {actual:016X} differs from Devil-3Ds {expected:016X}")
+    if expected == 0x0004000003F39500:
+        raise ValueError("Devil-3Ds must not reuse the legacy DevilutionX Title ID")
+    print(f"Independent CIA identity verified: {expected:016X}")
+
+
 def main():
     root = Path(__file__).resolve().parents[1]
     build = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "build"
+    rsf = (root / "Packaging/ctr/template.rsf").read_text()
+    unique_id = int(re.search(r"UniqueId\s*:\s*(0x[0-9A-Fa-f]+)", rsf).group(1), 16)
+    title_id = 0x0004000000000000 | (unique_id << 8)
     mods_cmake = (root / "CMake/Mods.cmake").read_text()
     match = re.search(r"set\(hellfire_mod\s+(.*?)\)", mods_cmake, re.S)
     if not match:
@@ -68,6 +99,7 @@ def main():
             if not content or content not in package:
                 raise SystemExit(f"{name}: missing bundled asset {asset.relative_to(root)}")
         if name.endswith(".cia"):
+            verify_cia_identity(package, title_id)
             verify_network_services(package)
             verify_cia_version(package, (root / "PORT_VERSION").read_text())
         print(f"{name}: verified {len(assets)} bundled assets ({len(package)} bytes)")

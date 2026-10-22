@@ -1,4 +1,7 @@
 #include "utils/sdl2_to_1_2_backports.h"
+#ifdef __3DS__
+#include "platform/ctr/data_path.hpp"
+#endif
 
 #include <algorithm>
 #include <cstddef>
@@ -797,7 +800,7 @@ extern "C" char *SDL_GetBasePath()
 		}
 	}
 #elif defined(__3DS__)
-	retval = SDL_strdup("file:sdmc:/3ds/devilutionx/");
+	return SDL_strdup(devilution::CtrDataPath());
 #elif defined(__amigaos__)
 	retval = SDL_strdup("PROGDIR:");
 #else
@@ -874,7 +877,7 @@ extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
 	size_t len = 0;
 
 #if defined(__3DS__)
-	retval = SDL_strdup("sdmc:/3ds/devilutionx/");
+	retval = SDL_strdup(devilution::CtrDataPath());
 	return retval;
 #elif defined(__amigaos__)
 	retval = SDL_strdup("PROGDIR:");

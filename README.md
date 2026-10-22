@@ -16,14 +16,19 @@ P. S. This is not „hey chatgpt. make me diablo 3ds. no mistakes“ release. Sp
 
 ## Installation
 
-You need a Nintendo 3DS set up to run homebrew + FBI and your own Diablo game data. The original game data is **not included**.
+You need a Nintendo 3DS set up to run homebrew and your own Diablo game data. The original game data is **not included**.
 
-1. Download `devil-3ds.cia` or `devil-3ds.3dsx` from [Releases](https://github.com/Karolynaz/devil-3ds/releases/latest).
-3. Create `/3ds/devilutionx/` on the SD card and copy `DIABDAT.MPQ` from your Diablo installation into it. For the shareware edition, use `spawn.mpq` instead.
-2. Put `Devil-3Ds.cia` to the SD card and install it with FBI. When updating, install the new CIA or replace the 3DSX; keep the data folder and saves.
-3. For **Hellfire**, also copy `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq` and `hfvoice.mpq` into the same data folder. But I don't own Hellfire, so didn't tested.
-4. Launch **Devil-3Ds**. 
-5. The `/3ds/devilutionx/` data folder name is retained for compatibility with existing installations and saves. Both download formats include the custom interface assets and Lithuanian translation. Performance varies between original and New 3DS hardware.
+1. Download `devil-3ds.cia` or `devil-3ds.3dsx` from a **3.27 or later** [release](https://github.com/Karolynaz/devil-3ds/releases) or the [3DS build artifacts](https://github.com/Karolynaz/devil-3ds/actions/workflows/3ds.yml).
+2. Install the CIA with FBI, or put the 3DSX in `/3ds/devil-3ds/` for the Homebrew Launcher. Devil-3Ds uses its own CIA Title ID and installs alongside DevilutionX.
+3. Create `/3ds/devil3ds/` on the SD card and copy `DIABDAT.MPQ` from your Diablo installation into it. For the shareware edition, use `spawn.mpq` instead.
+4. For **Hellfire**, keep `DIABDAT.MPQ` and also copy `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq` and `hfvoice.mpq` into the same folder.
+5. Launch **Devil-3Ds**. When updating, install the new CIA or replace the 3DSX; keep your data folder and saves.
+
+**Version note:** the separate CIA identity and new default directory apply from **3.27**. Earlier builds use `/3ds/devilutionx/` and share the old CIA identity.
+
+**Existing installations:** if `/3ds/devil3ds/` does not exist but `/3ds/devilutionx/` does, the game automatically uses the old folder, including its saves and `diablo.ini`. You do not need to create a new folder or move your files. If both folders exist, `/3ds/devil3ds/` takes priority. New installations store game data, saves and settings together in `/3ds/devil3ds/`.
+
+Both download formats include the custom interface assets and Lithuanian translation. Performance varies between original and New 3DS hardware.
 
 ## Controls
 
