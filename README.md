@@ -59,7 +59,7 @@ You need a Nintendo 3DS set up to run homebrew + FBI and your own Diablo game da
 | Change stash page | L / R while the stash is open |
 | Open the stash gold withdrawal prompt | SELECT while the stash is open |
 
-Panels cycle in this order: **Quests → Character → Inventory → Spell Book**, wrapping at either end. In **Spells & Skills**, press (A) to select the primary (X) spell or (Y) to assign a shortcut. Assign (X), (Y), (L), or (R) directly, or select a slot with the cursor and press (A). The lower screen displays information about the highlighted enemy, NPC or item. The title-screen settings also include a **Controls** reference.
+Panels cycle in this order: **Quests → Character → Inventory → Spell Book**, wrapping at either end. In **Spells & Skills**, press (A) to open the shortcut assignment screen. Assign (X), (Y), (L), or (R) directly, or select a slot with the cursor and press (A). Tap a lower-screen spell icon to cast it. Hold a belt potion or scroll to use it; drag between belt slots to move or swap items. The lower screen displays information about the highlighted enemy, NPC or item. The title-screen settings also include a **Controls** reference.
 
 ## Credits
 

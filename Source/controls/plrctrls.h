@@ -44,6 +44,7 @@ bool InGameMenu();
 
 #ifdef __3DS__
 bool Is3DSInventoryPanelOpen();
+void CastCtrSpellShortcut(size_t slot);
 #endif
 
 void SetPointAndClick(bool value);

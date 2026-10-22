@@ -637,7 +637,7 @@ void UiSettingsMenu()
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(A): Pickup / Place"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Hold (A): Use Item / Sell Item"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(Y): Drop Item from Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Spell Book: (Y) to Bind Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Spells & Skills: (A) to Bind"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(B): Close Panel"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
 			itemToSelect = 1;
 		} break;

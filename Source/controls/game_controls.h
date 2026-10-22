@@ -68,6 +68,9 @@ AxisDirection GetMoveDirection();
 bool HandleControllerButtonEvent(const SDL_Event &event, const ControllerButtonEvent ctrlEvent, GameAction &action);
 
 #ifdef __3DS__
+bool Handle3DSHudTouch(Uint32 eventType, Uint8 button);
+void Update3DSHudTouch();
+int CtrHudDraggedBeltSlot();
 void Update3DSStashItemAction();
 void Update3DSButtonAHold();
 void Cancel3DSButtonAHold();

@@ -127,11 +127,14 @@ int main() {
         assert(CtrSpellBindingHit(CtrSpellBindingPositions[slot])==slot);
     }
     assert(CtrSpellBindingHit({0,0})==-1);
+    // Y is inert in the list; A opens binding without selecting primary.
+    bindingOpen=false;
+    assert(HandleCtrSpellBinding(ControllerButton_BUTTON_Y,false)&&!bindingOpen);
     // Cursor navigation visits every slot and A binds the focused target.
     const int route[]={0,1,2,3};
     focused=SpellID::Fireball;
     for(int slot:route) {
-        HandleCtrSpellBinding(ControllerButton_BUTTON_Y,false);
+        HandleCtrSpellBinding(ControllerButton_BUTTON_A,false);
         MousePosition=CtrSpellBindingRect(slot).Center();
         assert(HandleCtrSpellBinding(ControllerButton_BUTTON_A,false)&&!bindingOpen);
         assert(player._pSplHotKey[slot]==focused);
@@ -144,7 +147,7 @@ int main() {
     for(int slot:{2,1,0}) {
         MoveCtrSpellBinding({AxisDirectionX_LEFT,AxisDirectionY_NONE});assert(CtrSpellBindingHit(MousePosition)==slot);
     }
-    HandleCtrSpellBinding(ControllerButton_BUTTON_Y,false);
+    HandleCtrSpellBinding(ControllerButton_BUTTON_A,false);
     MousePosition={0,0};
     HandleCtrSpellBinding(ControllerButton_BUTTON_A,false);assert(bindingOpen);
     HandleCtrSpellBinding(ControllerButton_BUTTON_B,false);assert(!bindingOpen);
@@ -154,7 +157,7 @@ int main() {
     focused=SpellID::Fireball;
     for(int slot=0;slot<CtrSpellShortcutCount;++slot) {
         bindingOpen=false;
-        assert(HandleCtrSpellBinding(ControllerButton_BUTTON_Y,false)&&bindingOpen);
+        assert(HandleCtrSpellBinding(ControllerButton_BUTTON_A,false)&&bindingOpen);
         assert(CtrSpellBindingSlot(buttons[slot],false)==slot);
         assert(CtrSpellBindingSlot(buttons[slot],true)==slot);
         assert(HandleCtrSpellBinding(buttons[slot],true)&&!bindingOpen);
@@ -169,20 +172,20 @@ int main() {
     assert(CtrSpellShortcutText(SpellID::Healing,SpellType::Spell)=="(X)");
     assert(CtrSpellShortcutText(focused,SpellType::Spell)=="(Y) (L) (R)");
     player._pRSpell=focused;
-    HandleCtrSpellBinding(ControllerButton_BUTTON_Y,false);
+    HandleCtrSpellBinding(ControllerButton_BUTTON_A,false);
     HandleCtrSpellBinding(ControllerButton_BUTTON_B,false);assert(!bindingOpen);
     player._pISpells=GetSpellBitmask(focused);
-    HandleCtrSpellBinding(ControllerButton_BUTTON_Y,false);
+    HandleCtrSpellBinding(ControllerButton_BUTTON_A,false);
     HandleCtrSpellBinding(ControllerButton_BUTTON_RIGHTSHOULDER,false);
     assert(player._pSplTHotKey[3]==SpellType::Charges);
     player._pAblSpells=GetSpellBitmask(focused);
-    HandleCtrSpellBinding(ControllerButton_BUTTON_Y,false);
+    HandleCtrSpellBinding(ControllerButton_BUTTON_A,false);
     HandleCtrSpellBinding(ControllerButton_BUTTON_RIGHTSHOULDER,false);
     assert(player._pSplTHotKey[3]==SpellType::Skill);
     inspecting=true;
-    assert(!HandleCtrSpellBinding(ControllerButton_BUTTON_Y,false));
+    assert(!HandleCtrSpellBinding(ControllerButton_BUTTON_A,false));
     SpellbookFlag=false;bindingOpen=true;
-    assert(!HandleCtrSpellBinding(ControllerButton_BUTTON_Y,false)&&!bindingOpen);
+    assert(!HandleCtrSpellBinding(ControllerButton_BUTTON_A,false)&&!bindingOpen);
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:

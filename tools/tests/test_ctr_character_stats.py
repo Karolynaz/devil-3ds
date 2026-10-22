@@ -80,6 +80,7 @@ void UnsafeDrawBorder2px(const Surface&,Rectangle,int){}
 constexpr int PAL16_BEIGE=10,PAL16_GRAY=20;
 std::array<bool,4> CharPanelButton{};
 std::array<Rectangle,4> CtrStatButtons{};
+constexpr int CtrPanelTitleY=22;
 enum GameFontTables {GameFont12};
 struct Options {UiFlags flags;int spacing=1;};
 struct Draw {std::string text;Rectangle rect;UiFlags flags;};

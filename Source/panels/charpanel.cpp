@@ -283,9 +283,9 @@ void DrawChr3DS(const Surface &out)
 		DrawString(out, text, rect, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
 	};
 	// Keep the player name at the same native size as the panel labels.
-	DrawString(out, InspectPlayer->_pName, { { 12, 18 }, { 235, 18 } },
+	DrawString(out, InspectPlayer->_pName, { { 12, CtrPanelTitleY }, { 235, 14 } },
 	    { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
-	DrawString(out, InspectPlayer->getClassName(), { { 251, 18 }, { 137, 18 } },
+	DrawString(out, InspectPlayer->getClassName(), { { 251, CtrPanelTitleY }, { 137, 14 } },
 	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight });
 	DrawHorizontalLine(out, { 12, 36 }, 376, PAL16_BEIGE + 8);
 	label(_("Level"), { { 12, 42 }, { 74, 16 } });

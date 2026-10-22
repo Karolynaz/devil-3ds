@@ -438,20 +438,20 @@ void SetHeroMenuMode(bool hellfire)
 	InitItemGFX();
 }
 
-bool CreatingDiabloHero()
-{
-	return !HaveHellfire() || IsControllerButtonPressed(ControllerButton_BUTTON_LEFTSHOULDER);
-}
+bool CreateOriginalHeroRequested = false;
+void SelheroListSelect(size_t value);
 
-// Reserve L for the mode modifier on New Hero. Forwarding it to the
-// generic menu handler would page away before A can select that mode.
-bool ConsumeHeroModeModifierEvent(SDL_Event &event)
+bool ConsumeHeroCreationEvent(SDL_Event &event)
 {
 	if (!HeroListActive || selhero_isSavegame || !HaveHellfire())
 		return false;
 	for (const ControllerButtonEvent button : ToControllerButtonEvents(event)) {
-		if (button.button == ControllerButton_BUTTON_LEFTSHOULDER)
-			return true;
+		if (button.button != ControllerButton_BUTTON_Y) continue;
+		if (!button.up) {
+			CreateOriginalHeroRequested = true;
+			SelheroListSelect(selhero_SaveCount);
+		}
+		return true;
 	}
 	return false;
 }
@@ -463,10 +463,10 @@ void UpdateHeroListPresentation()
 	if (selhero_isSavegame) {
 		hint = selhero_heroInfo.hellfire ? _("Hellfire · Press (Y) to delete") : _("Press (Y) to delete");
 	} else {
-		hint = HaveHellfire() ? _("Hold (L) to create non-hellfire Diablo character") : std::string_view {};
+		hint = HaveHellfire() ? _("Press (Y) to create non-Hellfire character") : std::string_view {};
 		SELHERO_DIALOG_HERO_IMG->m_rect = MakeSdlRect(0, 0, 640, 240);
 		SELHERO_DIALOG_HERO_IMG->setAllowUpscale(true);
-		if (CreatingDiabloHero() && DiabloNewHeroArt && DiabloNewHeroArt->numSprites() > 3)
+		if (!HaveHellfire() && DiabloNewHeroArt && DiabloNewHeroArt->numSprites() > 3)
 			SELHERO_DIALOG_HERO_IMG->setSprite((*DiabloNewHeroArt)[3]);
 		else
 			SELHERO_DIALOG_HERO_IMG->setSprite(UiGetHeroDialogSprite(GetNumPlayerClasses()));
@@ -626,7 +626,8 @@ void SelheroListSelect(size_t value)
 	const bool fromHeroList = HeroListActive;
 	HeroListActive = false;
 	if (value == selhero_SaveCount && fromHeroList) {
-		SetHeroMenuMode(!CreatingDiabloHero());
+		SetHeroMenuMode(HaveHellfire() && !CreateOriginalHeroRequested);
+		CreateOriginalHeroRequested = false;
 		// Enumeration above combined two independent save namespaces. Refresh
 		// occupancy for the selected mode before choosing a free slot.
 		gfnHeroInfo([](_uiheroinfo *) { return true; });
@@ -1247,7 +1248,7 @@ static void UiSelHeroDialog(
 			else RenderHeroPreview();
 #endif
 #ifdef __3DS__
-			UiPollAndRender(ConsumeHeroModeModifierEvent);
+			UiPollAndRender(ConsumeHeroCreationEvent);
 #else
 			UiPollAndRender();
 #endif

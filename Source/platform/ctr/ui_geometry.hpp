@@ -51,8 +51,9 @@ inline int CtrSpellBindingHit(Point point)
 	return -1;
 }
 
-constexpr int CtrSpellRowsY = 46;
-constexpr int CtrSpellRowHeight = 40;
+constexpr int CtrPanelTitleY = 22;
+constexpr int CtrSpellRowsY = 64;
+constexpr int CtrSpellRowHeight = 36;
 constexpr int CtrSpellRowsPerPage = 4;
 constexpr int CtrSpellTabsY = 214;
 constexpr int CtrSpellTabFirstX = 16;

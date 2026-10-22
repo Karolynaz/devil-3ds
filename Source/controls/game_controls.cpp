@@ -1,6 +1,13 @@
 #include "controls/game_controls.h"
 
 #include <cstdint>
+#ifdef __3DS__
+#include <algorithm>
+#include "platform/ctr/belt_gesture.hpp"
+#include "platform/ctr/ui_geometry.hpp"
+#include "msg.h"
+#include "utils/sdl_compat.h"
+#endif
 
 #ifdef USE_SDL3
 #include <SDL3/SDL_events.h>
@@ -681,15 +688,15 @@ void PressControllerButton(ControllerButton button)
 		case ControllerButton_BUTTON_X:
 			ControllerActionHeld = GameActionType_CAST_SPELL;
 			LastPlayerAction = PlayerActionType::None;
-			PerformSpellAction();
+			CastCtrSpellShortcut(0);
 			return;
 
 		case ControllerButton_BUTTON_Y:
 		case ControllerButton_BUTTON_LEFTSHOULDER:
 		case ControllerButton_BUTTON_RIGHTSHOULDER: {
 			const int slot = CtrSpellBindingSlot(button, false);
-			if (slot >= 0 && IsValidSpeedSpell(slot))
-				QuickCast(slot);
+			if (slot >= 0)
+				CastCtrSpellShortcut(slot);
 			return;
 		}
 
@@ -740,6 +747,100 @@ void PressControllerButton(ControllerButton button)
 } // namespace
 
 #ifdef __3DS__
+namespace {
+CtrBeltGesture HudBeltGesture;
+Item HudBeltOriginal;
+bool HudTouchDown = false;
+
+bool CtrHudTouchAllowed()
+{
+	return MyPlayer != nullptr && !MyPlayerIsDead && PauseMode == 0 && !gmenu_is_active()
+	    && !invflag && !CharFlag && !SpellbookFlag && !QuestLogIsOpen
+	    && !IsPlayerInStore() && !IsStashOpen && !qtextflag && !ChatFlag
+	    && !DropGoldFlag && !SpellSelectFlag && MyPlayer->HoldItem.isEmpty();
+}
+Point CtrHudTouchPoint() { return { MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 }; }
+int CtrHudBeltHit(Point p) {
+	for (int slot = 0; slot < MaxBeltItems; ++slot)
+		if (CtrBottomBeltSlot(slot).contains(p)) return slot;
+	return -1;
+}
+bool CtrHudBeltUnchanged() {
+	if (HudBeltGesture.slot < 0) return false;
+	const Item &item = MyPlayer->SpdList[HudBeltGesture.slot];
+	return !item.isEmpty() && item._iSeed == HudBeltOriginal._iSeed
+	    && item.IDidx == HudBeltOriginal.IDidx && item._iCreateInfo == HudBeltOriginal._iCreateInfo
+	    && item._iMiscId == HudBeltOriginal._iMiscId && item._iSpell == HudBeltOriginal._iSpell;
+}
+}
+
+void Update3DSHudTouch()
+{
+	if (!HudTouchDown || HudBeltGesture.slot < 0) return;
+	if (!CtrHudTouchAllowed() || (!HudBeltGesture.used && !CtrHudBeltUnchanged())) {
+		HudBeltGesture.Cancel();
+		return;
+	}
+	if (HudBeltGesture.Update(CtrHudTouchPoint(), SDL_GetTicks())) {
+		ControlMode = ControlTypes::Gamepad;
+		const Item &item = MyPlayer->SpdList[HudBeltGesture.slot];
+		if (item.isScroll()) UpdateSpellTarget(item._iSpell);
+		UseBeltSlot(HudBeltGesture.slot);
+		RedrawEverything();
+	}
+}
+
+int CtrHudDraggedBeltSlot()
+{
+	return HudTouchDown && HudBeltGesture.dragging && !HudBeltGesture.used ? HudBeltGesture.slot : -1;
+}
+
+bool Handle3DSHudTouch(Uint32 eventType, Uint8 button)
+{
+	if (eventType == SDL_EVENT_MOUSE_BUTTON_DOWN && button == SDL_BUTTON_LEFT) {
+		if (MousePosition.y < 240 || !CtrHudTouchAllowed()) return false;
+		HudTouchDown = true;
+		HudBeltGesture.Cancel();
+		const Point p = CtrHudTouchPoint();
+		const int belt = CtrHudBeltHit(p);
+		if (belt >= 0 && !MyPlayer->SpdList[belt].isEmpty()) {
+			HudBeltGesture.Begin(belt, p, SDL_GetTicks());
+			HudBeltOriginal = MyPlayer->SpdList[belt];
+		} else {
+			for (int slot = 0; slot < CtrSpellShortcutCount; ++slot)
+				if (CtrHudSpellSlot(slot).contains(p)) {
+					CastCtrSpellShortcut(slot);
+					break;
+				}
+		}
+		return true;
+	}
+	if (!HudTouchDown) return false;
+	if (eventType == SDL_EVENT_MOUSE_MOTION) {
+		Update3DSHudTouch();
+		RedrawEverything();
+		return true;
+	}
+	if (eventType != SDL_EVENT_MOUSE_BUTTON_UP || button != SDL_BUTTON_LEFT) return false;
+	Update3DSHudTouch();
+	if (CtrHudTouchAllowed() && CtrHudBeltUnchanged() && HudBeltGesture.dragging && !HudBeltGesture.used) {
+		const int target = CtrHudBeltHit(CtrHudTouchPoint());
+		const int source = HudBeltGesture.slot;
+		if (target >= 0 && target != source) {
+			std::swap(MyPlayer->SpdList[source], MyPlayer->SpdList[target]);
+			MyPlayer->CalcScrolls();
+			if (MyPlayer->SpdList[source].isEmpty()) NetSendCmdParam1(false, CMD_DELBELTITEMS, source);
+			else NetSendCmdChBeltItem(false, source);
+			if (MyPlayer->SpdList[target].isEmpty()) NetSendCmdParam1(false, CMD_DELBELTITEMS, target);
+			else NetSendCmdChBeltItem(false, target);
+		}
+	}
+	HudTouchDown = false;
+	HudBeltGesture.Cancel();
+	RedrawEverything();
+	return true;
+}
+
 void Update3DSStashItemAction()
 {
 	if (!StashItemButton.active || StashItemButton.finished)

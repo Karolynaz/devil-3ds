@@ -14,6 +14,9 @@
 #endif
 
 #include "controls/control_mode.hpp"
+#ifdef __3DS__
+#include "controls/controller.h"
+#endif
 #include "controls/plrctrls.h"
 #include "diablo.h"
 #include "effects.h"
@@ -56,11 +59,27 @@ void play_movie(const char *pszMovie, bool userCanClose)
 	if (SVidPlayBegin(pszMovie, loop_movie ? 0x100C0808 : 0x10280808)) {
 		SDL_Event event;
 		uint16_t modState;
+#ifdef __3DS__
+		// The menu confirmation may still be held when this movie starts.
+		bool skipArmed = false;
+#endif
 		while (movie_playing) {
+#ifdef __3DS__
+			if (!skipArmed && SDL_GetMouseState(nullptr, nullptr) == 0
+			    && !IsControllerButtonPressed(ControllerButton_BUTTON_A)
+			    && !IsControllerButtonPressed(ControllerButton_BUTTON_B)
+			    && !IsControllerButtonPressed(ControllerButton_BUTTON_START)
+			    && !IsControllerButtonPressed(ControllerButton_BUTTON_BACK))
+				skipArmed = true;
+#endif
 			while (movie_playing && FetchMessage(&event, &modState)) {
-				if (userCanClose) {
+				if (userCanClose
+#ifdef __3DS__
+				    && skipArmed
+#endif
+				) {
 					for (const ControllerButtonEvent ctrlEvent : ToControllerButtonEvents(event)) {
-						if (!SkipsMovie(ctrlEvent))
+						if (ctrlEvent.up || !SkipsMovie(ctrlEvent))
 							continue;
 						movie_playing = false;
 						break;
@@ -69,7 +88,11 @@ void play_movie(const char *pszMovie, bool userCanClose)
 				switch (event.type) {
 				case SDL_EVENT_KEY_DOWN:
 				case SDL_EVENT_MOUSE_BUTTON_UP:
-					if (userCanClose || (event.type == SDL_EVENT_KEY_DOWN && SDLC_EventKey(event) == SDLK_ESCAPE))
+					if ((userCanClose || (event.type == SDL_EVENT_KEY_DOWN && SDLC_EventKey(event) == SDLK_ESCAPE))
+#ifdef __3DS__
+					    && skipArmed && event.type != SDL_EVENT_MOUSE_BUTTON_UP
+#endif
+					)
 						movie_playing = false;
 					break;
 #ifdef USE_SDL3

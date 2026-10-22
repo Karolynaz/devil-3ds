@@ -2,6 +2,7 @@
 
 #ifdef __3DS__
 #include "platform/ctr/ui.hpp"
+#include "objects.h"
 #include "control/control_chat.hpp"
 #include "panels/spell_book.hpp"
 #endif
@@ -301,12 +302,12 @@ bool HasRangedSpell()
 	    && !GetSpellData(spl).isAllowedInTown();
 }
 
-bool CanTargetMonster(const Monster &monster)
+bool CanTargetMonster(const Monster &monster, bool respectFacing = true)
 {
 #ifdef __3DS__
 	// Only acquire enemies in the forward 90-degree cone. Held attacks retain
 	// their existing target through InvalidateTargets instead of reacquiring.
-	if (GetRotaryDistance(monster.position.future) > 1)
+	if (respectFacing && GetRotaryDistance(monster.position.future) > 1)
 		return false;
 #endif
 	if ((monster.flags & MFLAG_HIDDEN) != 0)
@@ -2504,6 +2505,7 @@ void plrctrls_every_frame()
 #ifdef __3DS__
 	Update3DSStashItemAction();
 	Update3DSButtonAHold();
+	Update3DSHudTouch();
 #endif
 	ProcessLeftStickOrDPadGameUI();
 	HandleRightStickMotion();
@@ -2623,9 +2625,8 @@ void PerformPrimaryActionRelease()
 	}
 }
 
-bool SpellHasActorTarget()
+bool SpellHasActorTarget(SpellID spl)
 {
-	const SpellID spl = MyPlayer->_pRSpell;
 	if (spl == SpellID::TownPortal || spl == SpellID::Teleport)
 		return false;
 
@@ -2636,9 +2637,61 @@ bool SpellHasActorTarget()
 	return PlayerUnderCursor != nullptr || pcursmonst != -1;
 }
 
+#ifdef __3DS__
+// Spell shortcuts select independently of the current interaction/item focus.
+bool SelectCtrSpellTarget(SpellID spell)
+{
+	const Point origin = MyPlayer->position.future;
+	if (spell == SpellID::TrapDisarm) {
+		PlayerUnderCursor = nullptr;
+		pcursmonst = -1;
+		ObjectUnderCursor = nullptr;
+		int nearest = 7;
+		for (int i = 0; i < ActiveObjectCount; ++i) {
+			Object &object = Objects[ActiveObjects[i]];
+			const int distance = origin.WalkingDistance(object.position);
+			if (!object._oTrapFlag || !object.canInteractWith() || object.IsDisabled()
+			    || !IsTileLit(object.position) || distance >= nearest)
+				continue;
+			nearest = distance;
+			ObjectUnderCursor = &object;
+			cursPosition = object.position;
+		}
+		return true;
+	}
+	if (!IsValidSpell(spell) || !GetSpellData(spell).isTargeted()
+	    || GetSpellData(spell).isAllowedInTown()
+	    || spell == SpellID::Teleport || spell == SpellID::Resurrect || spell == SpellID::HealOther)
+		return false;
+	PlayerUnderCursor = nullptr;
+	pcursmonst = -1;
+	ObjectUnderCursor = nullptr;
+	int nearest = 13;
+	int rotations = 9;
+	for (size_t i = 0; i < ActiveMonsterCount; ++i) {
+		const int index = ActiveMonsters[i];
+		const Monster &monster = Monsters[index];
+		if (!CanTargetMonster(monster, false) || CanTalkToMonst(monster)
+		    || !LineClearMissile(origin, monster.position.future))
+			continue;
+		const int distance = origin.WalkingDistance(monster.position.future);
+		const int rotation = GetRotaryDistance(monster.position.future);
+		if (distance > nearest || (distance == nearest && rotation >= rotations)) continue;
+		nearest = distance;
+		rotations = rotation;
+		pcursmonst = index;
+		cursPosition = monster.position.future;
+	}
+	return pcursmonst != -1;
+}
+#endif
+
 void UpdateSpellTarget(SpellID spell)
 {
-	if (SpellHasActorTarget())
+#ifdef __3DS__
+	if (SelectCtrSpellTarget(spell)) return;
+#endif
+	if (SpellHasActorTarget(spell))
 		return;
 
 	PlayerUnderCursor = nullptr;
@@ -2721,6 +2774,9 @@ void PerformSpellAction()
 
 	const Player &myPlayer = *MyPlayer;
 	const SpellID spl = myPlayer._pRSpell;
+#ifdef __3DS__
+	UpdateSpellTarget(spl);
+#endif
 	if ((PlayerUnderCursor == nullptr && (spl == SpellID::Resurrect || spl == SpellID::HealOther))
 	    || (ObjectUnderCursor == nullptr && spl == SpellID::TrapDisarm)) {
 		myPlayer.Say(HeroSpeech::ICantCastThatHere);
@@ -2849,13 +2905,34 @@ void QuickCast(size_t slot)
 	const SpellID spell = myPlayer._pSplHotKey[slot];
 	const SpellType spellType = myPlayer._pSplTHotKey[slot];
 
-	if (ControlMode != ControlTypes::KeyboardAndMouse) {
-		UpdateSpellTarget(spell);
+#ifdef __3DS__
+	if (pcurs > CURSOR_HAND) NewCursor(CURSOR_HAND);
+	UpdateSpellTarget(spell);
+	if (spell == SpellID::TrapDisarm && ObjectUnderCursor == nullptr) {
+		myPlayer.Say(HeroSpeech::ICantCastThatHere);
+		return;
 	}
-
+#else
+	if (ControlMode != ControlTypes::KeyboardAndMouse)
+		UpdateSpellTarget(spell);
+#endif
 	CheckPlrSpell(false, spell, spellType);
 	LastPlayerAction = prevMouseButtonAction;
 }
+
+#ifdef __3DS__
+void CastCtrSpellShortcut(size_t slot)
+{
+	if (MyPlayer == nullptr || MyPlayerIsDead || PauseMode != 0 || gmenu_is_active()
+	    || invflag || CharFlag || SpellbookFlag || QuestLogIsOpen || IsPlayerInStore()
+	    || qtextflag || IsStashOpen || !MyPlayer->HoldItem.isEmpty() || slot >= 4)
+		return;
+	// Touch generates SDL mouse events, but casting must use controller targeting.
+	ControlMode = ControlTypes::Gamepad;
+	if (slot == 0) PerformSpellAction();
+	else if (IsValidSpeedSpell(slot)) QuickCast(slot);
+}
+#endif
 
 void UseBeltSlot(size_t slotIndex)
 {

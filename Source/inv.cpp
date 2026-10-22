@@ -1574,7 +1574,7 @@ void DrawCtrInvBelt(const Surface &out)
 	const Player &player = *InspectPlayer;
 	for (int slot = 0; slot < MaxBeltItems; ++slot) {
 		const Item &item = player.SpdList[slot];
-		if (item.isEmpty())
+		if (item.isEmpty() || slot == CtrHudDraggedBeltSlot())
 			continue;
 
 		FillRect(*icon, 0, 0, IconSourceSize, IconSourceSize, 0);
@@ -1592,6 +1592,13 @@ void DrawCtrInvBelt(const Surface &out)
 			}
 		}
 	}
+	const int dragged = CtrHudDraggedBeltSlot();
+	if (dragged >= 0) {
+		const Point p { std::clamp(MousePosition.x * 320 / gnScreenWidth - 11, 0, 298),
+			std::clamp(MousePosition.y - 240 - 11, 0, 218) };
+		DrawCtrScaledItem(out, player.SpdList[dragged], { p, { 22, 22 } }, false);
+	}
+
 }
 #endif
 

@@ -243,6 +243,8 @@ bool ShouldShowCursor()
 #ifdef __3DS__
 	if (IsPlayerInStore() || qtextflag)
 		return false;
+	if (!invflag && !CharFlag && !SpellbookFlag && !QuestLogIsOpen && !IsStashOpen && !IsVisualStoreOpen && !gmenu_is_active())
+		return false;
 #endif
 	if (ControlMode == ControlTypes::KeyboardAndMouse)
 		return true;

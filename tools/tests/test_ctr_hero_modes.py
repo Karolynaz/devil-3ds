@@ -30,7 +30,10 @@ struct SDL_Event {int button;bool up;};
 struct ControllerButtonEvent {int button;bool up;};
 std::vector<ControllerButtonEvent> ToControllerButtonEvents(SDL_Event &event) {return {{event.button,event.up}};}
 bool HaveHellfire(){return available;}
-constexpr int ControllerButton_BUTTON_LEFTSHOULDER=7;
+constexpr int ControllerButton_BUTTON_Y=7;
+bool CreateOriginalHeroRequested=false;
+int selections=0;
+void SelheroListSelect(size_t value);
 bool IsControllerButtonPressed(int key){assert(key==7);return held;}
 struct _uiheroinfo{uint32_t saveNumber;bool hellfire;};
 _uiheroinfo selhero_heros[2*MAX_CHARACTERS];size_t selhero_SaveCount=0;
@@ -59,27 +62,27 @@ void play_movie(const char*path,bool closable){assert(readers==0&&gbIsHellfire&&
 '''
 code+='\n'.join(function(f,s) for f,s in [
  ('Source/game_mode.cpp','void SetCtrHeroGameMode(bool hellfire)'),
- ('Source/DiabloUI/hero/selhero.cpp','bool CreatingDiabloHero()'),
- ('Source/DiabloUI/hero/selhero.cpp','bool ConsumeHeroModeModifierEvent('),
+ ('Source/DiabloUI/hero/selhero.cpp','bool ConsumeHeroCreationEvent('),
  ('Source/DiabloUI/hero/selhero.cpp','bool SelHeroGetHeroInfo(_uiheroinfo *pInfo)'),
  ('Source/pfile.cpp','void pfile_show_pending_hellfire_intro(uint32_t saveNum)')])
 code+=r'''
+void SelheroListSelect(size_t value) {assert(value==selhero_SaveCount);assert(CreateOriginalHeroRequested);selections++;}
 int main(){
- // L down and up never reach the paging handler while New Hero is focused.
+ // Y creates the original hero only on press; release is consumed without selecting again.
  SDL_Event modifier{7,false},release{7,true},select{1,false};
- assert(ConsumeHeroModeModifierEvent(modifier));
- assert(ConsumeHeroModeModifierEvent(release));
- assert(!ConsumeHeroModeModifierEvent(select));
- held=true;assert(CreatingDiabloHero());held=false;assert(!CreatingDiabloHero());
- selhero_isSavegame=true;assert(!ConsumeHeroModeModifierEvent(modifier));selhero_isSavegame=false;
- HeroListActive=false;assert(!ConsumeHeroModeModifierEvent(modifier));HeroListActive=true;
- available=false;assert(!ConsumeHeroModeModifierEvent(modifier));available=true;
+ assert(ConsumeHeroCreationEvent(modifier));
+ assert(ConsumeHeroCreationEvent(release));
+ assert(!ConsumeHeroCreationEvent(select));
+ assert(selections==1);
+ selhero_isSavegame=true;assert(!ConsumeHeroCreationEvent(modifier));selhero_isSavegame=false;
+ HeroListActive=false;assert(!ConsumeHeroCreationEvent(modifier));HeroListActive=true;
+ available=false;assert(!ConsumeHeroCreationEvent(modifier));available=true;
 
  SetCtrHeroGameMode(false);assert(options.Mods.reloads==0&&giNumberOfLevels==17&&!gbIsHellfireSaveGame);
  SetCtrHeroGameMode(true);assert(options.Mods.reloads==1&&giNumberOfLevels==25&&gbIsHellfireSaveGame);
  SetCtrHeroGameMode(true);assert(options.Mods.reloads==1);
  SetCtrHeroGameMode(false);assert(options.Mods.reloads==2&&giNumberOfLevels==17&&!gbIsHellfireSaveGame);
- for(bool files:{false,true})for(bool l:{false,true}){available=files;held=l;assert(CreatingDiabloHero()==(!files||l));}
+
  _uiheroinfo base{0,false},expansion{0,true};
  SelHeroGetHeroInfo(&base);SelHeroGetHeroInfo(&expansion);
  assert(selhero_heros[0].saveNumber==selhero_heros[1].saveNumber&&selhero_heros[0].hellfire!=selhero_heros[1].hellfire);
@@ -102,4 +105,4 @@ with tempfile.TemporaryDirectory() as directory:
  p=Path(directory);(p/'modes.cpp').write_text(code)
  subprocess.run(['c++','-std=c++17','-fsanitize=address,undefined',str(p/'modes.cpp'),'-o',str(p/'modes')],check=True)
  subprocess.run([str(p/'modes')],check=True)
-print('PASS: L selection, mode/save namespace pairing, duplicate slots, list capacity and per-character intro exactly once (ASan/UBSan)')
+print('PASS: Y selection, mode/save namespace pairing, duplicate slots, list capacity and per-character intro exactly once (ASan/UBSan)')

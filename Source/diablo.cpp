@@ -822,14 +822,26 @@ void GameEventHandler(const SDL_Event &event, uint16_t modState)
 		if (ControlMode == ControlTypes::KeyboardAndMouse && invflag)
 			InvalidateInventorySlot();
 		MousePosition = { SDLC_EventMotionIntX(event), SDLC_EventMotionIntY(event) };
+
+#ifdef __3DS__
+		if (Handle3DSHudTouch(event.type, 0)) return;
+#endif
 		gmenu_on_mouse_move();
 		return;
 	case SDL_EVENT_MOUSE_BUTTON_DOWN:
 		MousePosition = { SDLC_EventButtonIntX(event), SDLC_EventButtonIntY(event) };
+
+#ifdef __3DS__
+		if (Handle3DSHudTouch(event.type, event.button.button)) return;
+#endif
 		HandleMouseButtonDown(event.button.button, modState);
 		return;
 	case SDL_EVENT_MOUSE_BUTTON_UP:
 		MousePosition = { SDLC_EventButtonIntX(event), SDLC_EventButtonIntY(event) };
+
+#ifdef __3DS__
+		if (Handle3DSHudTouch(event.type, event.button.button)) return;
+#endif
 		HandleMouseButtonUp(event.button.button, modState);
 		return;
 #if SDL_VERSION_ATLEAST(2, 0, 0)
