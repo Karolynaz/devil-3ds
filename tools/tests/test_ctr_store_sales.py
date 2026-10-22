@@ -22,7 +22,7 @@ enum class VisualStoreVendor {Smith,Witch,Healer,Boy};
 enum class HeroSpeech {ICantDoThat,IHaveNoRoom};enum class SfxID {ItemGold};
 struct Point{};struct Size{int width,height;};
 struct Item{int _iSeed=1,IDidx=1,_iCreateInfo=1,_ivalue=400,_iIvalue=800,_iMagical=0;bool _iIdentified=false;bool empty=false;Size size{1,1};bool isEmpty()const{return empty;}void clear(){empty=true;}};
-int room=0,received=0,sounds=0,redraw=0,spoken=0,removed=0;
+int room=0,received=0,sounds=0,redraw=0,spoken=0,removed=0,VisualStoreButtonPressed=-1;
 struct Player{Item InvList[4],HoldItem;int _pNumInv=2,_pGold=100;void SaySpecific(HeroSpeech){spoken++;}void RemoveInvItem(int index){room+=InvList[index].size.width*InvList[index].size.height*MaxGold;for(int i=index;i+1<_pNumInv;i++)InvList[i]=InvList[i+1];--_pNumInv;removed++;}}player;
 Player *MyPlayer=&player;
 bool IsVisualStoreOpen=true;struct{VisualStoreVendor vendor=VisualStoreVendor::Smith;}VisualStore;
@@ -36,7 +36,8 @@ int AddGoldToInventory(Player&,int amount){check(amount<=room);room-=amount;rece
 '''+price+fn('bool SameSaleItem(')+fn('void SellItemToVisualStore(')+fn('void CheckVisualStorePaste(')+fn('bool Is3DSVisualStoreSalePending(')+fn('void Confirm3DSVisualStoreSale(')+r'''
 void reset(){player=Player{};room=received=sounds=spoken=removed=0;PendingSale.active=false;VisualStore.vendor=VisualStoreVendor::Smith;IsVisualStoreOpen=true;}
 int main(){
- reset();SellItemToVisualStore(0);check(Is3DSVisualStoreSalePending()&&received==0&&removed==0);Confirm3DSVisualStoreSale(false);check(received==0&&removed==0);
+ reset();VisualStoreButtonPressed=2;Confirm3DSVisualStoreSale(false);check(VisualStoreButtonPressed==-1);
+ SellItemToVisualStore(0);check(Is3DSVisualStoreSalePending()&&received==0&&removed==0);Confirm3DSVisualStoreSale(false);check(received==0&&removed==0);
  SellItemToVisualStore(0);Confirm3DSVisualStoreSale(true);check(received==100&&player._pGold==200&&removed==1);Confirm3DSVisualStoreSale(true);check(received==100&&removed==1);
  reset();player.InvList[0]._ivalue=24000;SellItemToVisualStore(0);Confirm3DSVisualStoreSale(true);check(received==0&&removed==0&&spoken==1);
  reset();SellItemToVisualStore(0);player.InvList[0]._iSeed++;Confirm3DSVisualStoreSale(true);check(received==0&&removed==0);

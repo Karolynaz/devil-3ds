@@ -817,6 +817,8 @@ bool Is3DSVisualStoreSalePending() { return IsVisualStoreOpen && PendingSale.act
 
 void Confirm3DSVisualStoreSale(bool accept)
 {
+	// A wake/cancel must not release a vendor button pressed before sleep.
+	if (!accept) VisualStoreButtonPressed = -1;
 	if (!PendingSale.active) return;
 	PendingSale.active = false;
 	RedrawEverything();
