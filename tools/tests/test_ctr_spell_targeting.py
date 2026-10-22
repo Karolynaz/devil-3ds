@@ -42,7 +42,22 @@ void PerformSpellAction(){primary++;}
 bool IsValidSpeedSpell(size_t slot){return slot!=2;}
 void QuickCast(size_t slot){quick++;last=slot;}
 '''
-code=pre+fn('bool SelectCtrSpellTarget(')+fn('void CastCtrSpellShortcut(')+r'''
+missiles=(ROOT/'Source/missiles.cpp').read_text()
+a=missiles.index('void AddTrapDisarm(');b=missiles.index('{',a);c=b+1;depth=1
+while depth:depth+=(missiles[c]=='{')-(missiles[c]=='}');c+=1
+trap=missiles[a:c]
+pre+=r'''
+#define __3DS__ 1
+Player Players[2];
+struct Missile{int _misource=0;bool _miDelFlag=false;};
+struct AddMissileParameter{Point dst;};
+constexpr int MyPlayerId=0,CMD_DISARMXY=1,CURSOR_HAND=0;
+int disarms=0;Point disarmed;
+Object*FindObjectAtPosition(Point p){for(auto&o:Objects)if(o.position==p)return &o;return nullptr;}
+void NetSendCmdLoc(int,bool,int,Point p){disarms++;disarmed=p;}
+void NewCursor(int cursor){check(cursor==CURSOR_HAND);}
+'''
+code=pre+fn('bool SelectCtrSpellTarget(')+fn('void CastCtrSpellShortcut(')+trap+r'''
 int main(){
  ActiveMonsterCount=4;for(int i=0;i<4;i++)ActiveMonsters[i]=i;
  Monsters[0].position.future={14,10};Monsters[1].position.future={9,10};Monsters[2].position.future={12,10};Monsters[3].position.future={11,10};Monsters[3].blocked=true;
@@ -60,6 +75,11 @@ int main(){
  check(primary==1&&quick==2&&last==3);
  CastCtrSpellShortcut(4);check(primary==1&&quick==2);
  invflag=true;CastCtrSpellShortcut(0);check(primary==1);invflag=false;menu=true;CastCtrSpellShortcut(1);check(quick==2);
+ MyPlayer=&Players[0];Objects[1]._oTrapFlag=true;ObjectUnderCursor=nullptr;cursPosition={50,50};
+ Missile missile;AddMissileParameter parameter{{12,10}};AddTrapDisarm(missile,parameter);
+ check(missile._miDelFlag&&disarms==1&&disarmed==Point(12,10));
+ Objects[1]._oTrapFlag=false;AddTrapDisarm(missile,parameter);check(disarms==1);
+ missile._misource=1;Objects[1]._oTrapFlag=true;AddTrapDisarm(missile,parameter);check(disarms==1);
 }
 '''
 with tempfile.TemporaryDirectory() as d:

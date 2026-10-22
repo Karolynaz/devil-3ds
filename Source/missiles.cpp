@@ -2638,12 +2638,20 @@ void AddStaffRecharge(Missile &missile, AddMissileParameter & /*parameter*/)
 	}
 }
 
-void AddTrapDisarm(Missile &missile, AddMissileParameter & /*parameter*/)
+void AddTrapDisarm(Missile &missile, AddMissileParameter &parameter)
 {
 	Player &player = Players[missile._misource];
 
 	missile._miDelFlag = true;
 	if (&player == MyPlayer) {
+#ifdef __3DS__
+		// The cursor focus can change while the cast command is in flight.
+		// Use the target carried by the spell instead of global hover state.
+		Object *target = FindObjectAtPosition(parameter.dst);
+		if (target != nullptr && target->_oTrapFlag && target->canInteractWith() && !target->IsDisabled())
+			NetSendCmdLoc(MyPlayerId, true, CMD_DISARMXY, parameter.dst);
+		NewCursor(CURSOR_HAND);
+#else
 		NewCursor(CURSOR_DISARM);
 		if (ControlMode != ControlTypes::KeyboardAndMouse) {
 			if (ObjectUnderCursor != nullptr)
@@ -2651,6 +2659,7 @@ void AddTrapDisarm(Missile &missile, AddMissileParameter & /*parameter*/)
 			else
 				NewCursor(CURSOR_HAND);
 		}
+#endif
 	}
 }
 
