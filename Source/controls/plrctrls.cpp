@@ -1,5 +1,11 @@
 #include "controls/plrctrls.h"
 
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#include "control/control_chat.hpp"
+#include "panels/spell_book.hpp"
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -19,6 +25,7 @@
 
 #include "automap.h"
 #include "control/control.hpp"
+#include "controls/controller.h"
 #include "controls/controller_motion.h"
 #ifndef USE_SDL1
 #include "controls/devices/game_controller.h"
@@ -186,6 +193,11 @@ void FindItemOrObject()
 		}
 
 		const int newRotations = GetRotaryDistance(targetPosition);
+#ifdef __3DS__
+		// Controller focus follows the facing direction, not nearby objects behind us.
+		if (newRotations > 1)
+			continue;
+#endif
 		if (rotations < newRotations) {
 			continue;
 		}
@@ -213,6 +225,11 @@ void FindItemOrObject()
 		}
 
 		const int newRotations = GetRotaryDistance(targetPosition);
+#ifdef __3DS__
+		// Controller focus follows the facing direction, not nearby objects behind us.
+		if (newRotations > 1)
+			continue;
+#endif
 		if (rotations < newRotations) {
 			continue;
 		}
@@ -228,17 +245,48 @@ void FindItemOrObject()
 		ObjectUnderCursor = object;
 		cursPosition = targetPosition;
 	}
+
+	if (ObjectUnderCursor != nullptr && ObjectUnderCursor->canInteractWith()) {
+		if (pcursmonst != -1) {
+			const Monster &monst = Monsters[pcursmonst];
+			const int monstDist = MyPlayer->position.future.WalkingDistance(monst.position.tile);
+			const int monstRot = GetRotaryDistance(monst.position.tile);
+			if (ObjectUnderCursor->_oDoorFlag || monstDist > 1 || monstRot > 1) {
+				pcursmonst = -1;
+			}
+		}
+	}
 }
 
 void CheckTownersNearby()
 {
+#ifdef __3DS__
+	int distance = 0;
+	int rotations = 0;
+#endif
 	for (size_t i = 0; i < GetNumTowners(); i++) {
-		const int distance = GetDistance(Towners[i].position, 2);
-		if (distance == 0)
+		const Towner &towner = Towners[i];
+		const int newDistance = GetDistance(towner.position, 2);
+		if (newDistance == 0)
 			continue;
-		if (!IsTownerPresent(Towners[i]._ttype))
+		if (!IsTownerPresent(towner._ttype))
 			continue;
+#ifdef __3DS__
+		const int newRotations = GetRotaryDistance(towner.position);
+		// Controller focus follows the facing direction, like ground items and objects.
+		if (newRotations > 1)
+			continue;
+		if (pcursmonst != -1 && distance < newDistance)
+			continue;
+		if (pcursmonst != -1 && distance == newDistance && rotations <= newRotations)
+			continue;
+
+		distance = newDistance;
+		rotations = newRotations;
 		pcursmonst = static_cast<int>(i);
+#else
+		pcursmonst = static_cast<int>(i);
+#endif
 	}
 }
 
@@ -255,6 +303,12 @@ bool HasRangedSpell()
 
 bool CanTargetMonster(const Monster &monster)
 {
+#ifdef __3DS__
+	// Only acquire enemies in the forward 90-degree cone. Held attacks retain
+	// their existing target through InvalidateTargets instead of reacquiring.
+	if (GetRotaryDistance(monster.position.future) > 1)
+		return false;
+#endif
 	if ((monster.flags & MFLAG_HIDDEN) != 0)
 		return false;
 	if (monster.isPlayerMinion())
@@ -537,6 +591,23 @@ void Interact()
 		return;
 	}
 
+	if (ObjectUnderCursor != nullptr && ObjectUnderCursor->canInteractWith()) {
+		bool prioritizeMonster = false;
+		if (pcursmonst != -1) {
+			const Monster &monst = Monsters[pcursmonst];
+			const int monstDist = myPlayer.position.future.WalkingDistance(monst.position.tile);
+			const int monstRot = GetRotaryDistance(monst.position.tile);
+			if (!ObjectUnderCursor->_oDoorFlag && monstDist <= 1 && monstRot <= 1) {
+				prioritizeMonster = true;
+			}
+		}
+		if (!prioritizeMonster) {
+			NetSendCmdLoc(MyPlayerId, true, CMD_OPOBJXY, cursPosition);
+			LastPlayerAction = PlayerActionType::OperateObject;
+			return;
+		}
+	}
+
 	if (pcursmonst != -1) {
 		if (!myPlayer.UsesRangedWeapon() || CanTalkToMonst(Monsters[pcursmonst])) {
 			NetSendCmdParam1(true, CMD_ATTACKID, pcursmonst);
@@ -576,9 +647,7 @@ void AttrIncBtnSnap(AxisDirection dir)
 	for (int i = 0; i < 4; i++) {
 		button = CharPanelButtonRect[i];
 #ifdef __3DS__
-		Point center = button.Center();
-		Point scaledCenter = { (center.x * 218) / 320, (center.y * 240) / 352 };
-		if (std::abs(scaledCenter.x - MousePosition.x) < 20 && std::abs(scaledCenter.y - MousePosition.y) < 15) {
+		if (CtrStatButtons[i].contains(CtrScreenToTop(MousePosition))) {
 			slot = i;
 			break;
 		}
@@ -602,8 +671,7 @@ void AttrIncBtnSnap(AxisDirection dir)
 	// move cursor to our new location
 	button = CharPanelButtonRect[slot];
 #ifdef __3DS__
-	Point center = button.Center();
-	SetCursorPos({ (center.x * 218) / 320, (center.y * 240) / 352 });
+	SetCursorPos(CtrTopToScreen(CtrStatButtons[slot].Center()));
 #else
 	button.position = GetPanelPosition(UiPanels::Character, button.position);
 	SetCursorPos(button.Center());
@@ -647,8 +715,7 @@ Point InvGetEquipSlotCoord(const inv_body_loc invSlot)
 	}
 
 #ifdef __3DS__
-	result.x = 422 + (result.x * 218) / 320;
-	result.y = (result.y * 240) / 352;
+	result = CtrInventoryToScreen(result);
 #endif
 
 	return result;
@@ -691,8 +758,7 @@ Point GetSlotCoord(int slot)
 	}
 
 #ifdef __3DS__
-	Point p = InvRect[slot].Center();
-	return { 422 + (p.x * 218) / 320, (p.y * 240) / 352 };
+	return CtrInventoryToScreen(InvRect[slot].Center());
 #else
 	return GetPanelPosition(UiPanels::Inventory, InvRect[slot].Center());
 #endif
@@ -794,8 +860,13 @@ void ResetInvCursorPosition()
 		}
 
 		mousePos = GetSlotCoord(slot);
+#ifdef __3DS__
+		mousePos.x += ((itemSize.width - 1) * CtrItemSlotPitch * gnScreenWidth) / (2 * CtrTopSize.width);
+		mousePos.y += ((itemSize.height - 1) * CtrItemSlotPitch) / 2;
+#else
 		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height) / 2;
+#endif
 	} else if (Slot >= SLOTXY_BELT_FIRST && Slot <= SLOTXY_BELT_LAST) {
 		mousePos = GetSlotCoord(Slot);
 	} else {
@@ -845,6 +916,10 @@ int FindClosestInventorySlot(
 		checkCandidateSlot(i);
 	}
 
+#ifdef __3DS__
+	for (int i = SLOTXY_BELT_FIRST; i <= SLOTXY_BELT_LAST; ++i)
+		checkCandidateSlot(i);
+#endif
 	return bestSlot;
 }
 
@@ -899,8 +974,13 @@ void LiftInventoryItem()
 		Point mousePos = GetSlotCoord(jumpSlot);
 		Slot = jumpSlot;
 		const Size newCursorSizeInCells = MyPlayer->HoldItem.isEmpty() ? GetItemSizeOnSlot(jumpSlot) : GetInventorySize(MyPlayer->HoldItem);
+#ifdef __3DS__
+		mousePos.x += ((newCursorSizeInCells.width - 1) * CtrItemSlotPitch * gnScreenWidth) / (2 * CtrTopSize.width);
+		mousePos.y += ((newCursorSizeInCells.height - 1) * CtrItemSlotPitch) / 2;
+#else
 		mousePos.x += ((newCursorSizeInCells.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((newCursorSizeInCells.height - 1) * InventorySlotSizeInPixels.height) / 2;
+#endif
 		SetCursorPos(mousePos);
 	}
 }
@@ -932,8 +1012,13 @@ void LiftStashItem()
 	ActiveStashSlot = jumpSlot;
 	// Center the Cursor based on the item we just put down or we're holding.
 	cursorSizeInCells = MyPlayer->HoldItem.isEmpty() ? GetItemSizeOnSlot(jumpSlot) : GetInventorySize(MyPlayer->HoldItem);
+#ifdef __3DS__
+	mousePos.x += (cursorSizeInCells.width * CtrItemSlotPitch * gnScreenWidth) / (2 * CtrTopSize.width);
+	mousePos.y += (cursorSizeInCells.height * CtrItemSlotPitch) / 2;
+#else
 	mousePos.x += ((cursorSizeInCells.width) * InventorySlotSizeInPixels.width) / 2;
 	mousePos.y += ((cursorSizeInCells.height) * InventorySlotSizeInPixels.height) / 2;
+#endif
 
 	SetCursorPos(mousePos);
 }
@@ -1445,6 +1530,14 @@ void InventoryMove(AxisDirection dir)
 		}
 	}
 
+#ifdef __3DS__
+	// D-pad grid movement stays in the carried-item grid. Equipment and belt
+	// remain reachable with the smooth cursor.
+	if (invflag && !IsStashOpen && !IsVisualStoreOpen
+	    && initialSlot >= SLOTXY_INV_FIRST && initialSlot <= SLOTXY_INV_LAST
+	    && (Slot < SLOTXY_INV_FIRST || Slot > SLOTXY_INV_LAST))
+		Slot = initialSlot;
+#endif
 	// no movement was made
 	if (Slot == initialSlot)
 		return;
@@ -1473,8 +1566,13 @@ void InventoryMove(AxisDirection dir)
 		// At this point itemSize is either the size of the cell/item the hand cursor is over, or the size of the item we're currently holding.
 		// mousePos is the center of the top left cell of the item under the hand cursor, or the top left cell of the region that could fit the item we're holding.
 		// either way we need to offset the mouse position to account for items (we're holding or hovering over) with a dimension larger than a single cell.
+#ifdef __3DS__
+		mousePos.x += ((itemSize.width - 1) * CtrItemSlotPitch * gnScreenWidth) / (2 * CtrTopSize.width);
+		mousePos.y += ((itemSize.height - 1) * CtrItemSlotPitch) / 2;
+#else
 		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height) / 2;
+#endif
 	}
 
 	if (mousePos == MousePosition) {
@@ -1674,12 +1772,18 @@ void HotSpellMove(AxisDirection dir)
 	if (dir.x == AxisDirectionX_NONE && dir.y == AxisDirectionY_NONE)
 		return;
 
+#ifdef __3DS__
+	Move3dsSpellListSelection(dir);
+#else
 	auto spellListItems = GetSpellListItems();
+	const auto spellCenter = [](const SpellListItem &spellListItem) {
+		return spellListItem.location + Displacement { SPLICONLENGTH / 2, -SPLICONLENGTH / 2 };
+	};
 
 	Point position = MousePosition;
 	int shortestDistance = std::numeric_limits<int>::max();
 	for (auto &spellListItem : spellListItems) {
-		const Point center = spellListItem.location + Displacement { SPLICONLENGTH / 2, -SPLICONLENGTH / 2 };
+		const Point center = spellCenter(spellListItem);
 		const int distance = MousePosition.ManhattanDistance(center);
 		if (distance < shortestDistance) {
 			position = center;
@@ -1698,7 +1802,7 @@ void HotSpellMove(AxisDirection dir)
 			if (spellListItem.isSelected)
 				continue;
 
-			const Point center = spellListItem.location + Displacement { SPLICONLENGTH / 2, -SPLICONLENGTH / 2 };
+			const Point center = spellCenter(spellListItem);
 			if (dir.x == AxisDirectionX_LEFT && center.x >= MousePosition.x)
 				continue;
 			if (dir.x == AxisDirectionX_RIGHT && center.x <= MousePosition.x)
@@ -1722,13 +1826,32 @@ void HotSpellMove(AxisDirection dir)
 	if (position != MousePosition) {
 		SetCursorPos(position);
 	}
+#endif
 }
 
 void SpellBookMove(AxisDirection dir)
 {
 	static AxisDirectionRepeater repeater;
 	dir = repeater.Get(dir);
-
+#ifdef __3DS__
+	if (CtrSpellBindingActive()) {
+		MoveCtrSpellBinding(dir);
+		return;
+	}
+	SpellbookTab = std::clamp(SpellbookTab, 0, CtrSpellbookPageCount() - 1);
+	if (dir.x == AxisDirectionX_LEFT && SpellbookTab > 0)
+		--SpellbookTab;
+	else if (dir.x == AxisDirectionX_RIGHT && SpellbookTab + 1 < CtrSpellbookPageCount())
+		++SpellbookTab;
+	if (dir.y != AxisDirectionY_NONE || dir.x != AxisDirectionX_NONE) {
+		const Point p = CtrScreenToTop(MousePosition);
+		const int last = std::max(0, CtrSpellbookRowCount() - 1);
+		int row = std::clamp((p.y - CtrSpellRowsY) / CtrSpellRowHeight, 0, last);
+		if (dir.y != AxisDirectionY_NONE)
+			row = std::clamp(row + (dir.y == AxisDirectionY_UP ? -1 : 1), 0, last);
+		SetCursorPos(CtrTopToScreen({ 30, CtrSpellRowsY + row * CtrSpellRowHeight + 12 }));
+	}
+#else
 	if (dir.x == AxisDirectionX_LEFT) {
 		if (SpellbookTab > 0)
 			SpellbookTab--;
@@ -1736,6 +1859,7 @@ void SpellBookMove(AxisDirection dir)
 		if ((gbIsHellfire && SpellbookTab < 4) || (!gbIsHellfire && SpellbookTab < 3))
 			SpellbookTab++;
 	}
+#endif
 }
 
 /**
@@ -1829,7 +1953,11 @@ HandleLeftStickOrDPadFn GetLeftStickOrDPadGameUIHandler()
 	if (invflag) {
 		return &CheckInventoryMove;
 	}
+#ifdef __3DS__
+	if (CharFlag) {
+#else
 	if (CharFlag && MyPlayer->_pStatPts > 0) {
+#endif
 		return &AttrIncBtnSnap;
 	}
 	if (QuestLogIsOpen) {
@@ -1846,6 +1974,12 @@ HandleLeftStickOrDPadFn GetLeftStickOrDPadGameUIHandler()
 
 void ProcessLeftStickOrDPadGameUI()
 {
+#ifdef __3DS__
+	// On 3DS, D-pad is reserved for opening/showing panels (Char, Map, Quests, Spellbook)
+	// and must not control the cursor or navigate panels.
+	if (Is3DSInventoryPanelOpen())
+		return;
+#endif
 	HandleLeftStickOrDPadFn handler = GetLeftStickOrDPadGameUIHandler();
 	if (handler != nullptr)
 		handler(GetLeftStickOrDpadDirection(false));
@@ -2058,6 +2192,13 @@ void LogGamepadChange(GamepadLayout newGamepad)
 
 } // namespace
 
+#ifdef __3DS__
+bool Is3DSInventoryPanelOpen()
+{
+	return invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || IsStashOpen || IsVisualStoreOpen;
+}
+#endif
+
 void FocusOnVisualStore()
 {
 	InvalidateInventorySlot();        // Clear inventory focus
@@ -2178,6 +2319,10 @@ void ProcessGameAction(const GameAction &action)
 		}
 		break;
 	case GameActionType_TOGGLE_INVENTORY:
+#ifdef __3DS__
+		CloseCharPanel();
+		QuestLogIsOpen = false;
+#endif
 		if (invflag) {
 			BlurInventory();
 		} else {
@@ -2190,6 +2335,10 @@ void ProcessGameAction(const GameAction &action)
 		}
 		break;
 	case GameActionType_TOGGLE_SPELL_BOOK:
+#ifdef __3DS__
+		CloseCharPanel();
+		QuestLogIsOpen = false;
+#endif
 		if (BlurInventory()) {
 			CloseInventory();
 			SpellSelectFlag = false;
@@ -2202,6 +2351,29 @@ void ProcessGameAction(const GameAction &action)
 void HandleRightStickMotion()
 {
 	static RightStickAccumulator acc;
+#ifdef __3DS__
+	// Every 3DS has a Circle Pad; use it as a pointer while an in-game panel is open.
+	// Feed the existing accumulator without losing sub-pixel motion at high FPS.
+	struct RestoreStick {
+		float x = rightStickX;
+		float y = rightStickY;
+		~RestoreStick() { rightStickX = x; rightStickY = y; }
+	} restoreStick;
+	if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag) {
+		rightStickX = std::clamp(rightStickX + leftStickX, -1.0F, 1.0F);
+		rightStickY = std::clamp(rightStickY + leftStickY, -1.0F, 1.0F);
+		// Keep diagonal motion at the same speed as horizontal and vertical motion.
+		const float magnitudeSquared = rightStickX * rightStickX + rightStickY * rightStickY;
+		if (magnitudeSquared > 1.0F) {
+			const float scale = 1.0F / std::sqrt(magnitudeSquared);
+			rightStickX *= scale;
+			rightStickY *= scale;
+		}
+	}
+	// SDL maps 640 logical columns to 400 physical pixels above and 320 below.
+	// Equalize physical cursor travel for the same horizontal/vertical stick input.
+	rightStickX *= static_cast<float>(gnScreenWidth) / (MousePosition.y < 240 ? 400.0F : 320.0F);
+#endif
 	// deadzone is handled in ScaleJoystickAxes() already
 	if (rightStickX == 0 && rightStickY == 0) {
 		acc.Clear();
@@ -2212,7 +2384,13 @@ void HandleRightStickMotion()
 		InvalidateInventorySlot();
 		int x = MousePosition.x;
 		int y = MousePosition.y;
-		acc.Pool(&x, &y, 2);
+		acc.Pool(&x, &y,
+#ifdef __3DS__
+		    8
+#else
+		    2
+#endif
+		);
 		x = std::min(std::max(x, 0), gnScreenWidth - 1);
 		y = std::min(std::max(y, 0), gnScreenHeight - 1);
 
@@ -2243,6 +2421,10 @@ void InvalidateInventorySlot()
  */
 void FocusOnInventory()
 {
+#ifdef __3DS__
+	CloseCharPanel();
+	QuestLogIsOpen = false;
+#endif
 	Slot = SLOTXY_INV_FIRST;
 	ResetInvCursorPosition();
 }
@@ -2297,16 +2479,32 @@ void plrctrls_after_check_curs_move()
 	if (DoomFlag) {
 		return;
 	}
+#ifdef __3DS__
+	if (CharFlag || QuestLogIsOpen || SpellbookFlag)
+		return;
+#endif
 	if (!invflag) {
 		InfoString = StringOrView {};
 		FindActor();
 		FindItemOrObject();
+#ifdef __3DS__
+		// One highlighted target drives both the next action and its description.
+		// A nearby item/object must not coexist with a hidden combat target.
+		if (pcursitem != -1 || ObjectUnderCursor != nullptr) {
+			pcursmonst = -1;
+			PlayerUnderCursor = nullptr;
+		}
+#endif
 		FindTrigger();
 	}
 }
 
 void plrctrls_every_frame()
 {
+#ifdef __3DS__
+	Update3DSStashItemAction();
+	Update3DSButtonAHold();
+#endif
 	ProcessLeftStickOrDPadGameUI();
 	HandleRightStickMotion();
 	ProcessAutomapMovementGamepad();
@@ -2314,6 +2512,9 @@ void plrctrls_every_frame()
 
 void plrctrls_after_game_logic()
 {
+#ifdef __3DS__
+	if (CtrNativeChatActive) return;
+#endif
 	Movement(*MyPlayer);
 }
 
@@ -2338,6 +2539,44 @@ void UseBeltItem(BeltItemType type)
 
 void PerformPrimaryAction()
 {
+#ifdef __3DS__
+	if (SpellSelectFlag) {
+		SetSpell();
+		return;
+	}
+	if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag) {
+		// Use the same hit testing as touch, including the belt on the other screen.
+		// Keep the pointer in place while picking up/swapping an item.
+		if (MousePosition.y >= CtrTopSize.height) {
+			CheckInvScrn(false, false);
+			CheckMainPanelButton();
+			CheckMainPanelButtonUp();
+		} else if (IsStashOpen && GetLeftPanel().contains(MousePosition)) {
+			if (pcursstashitem != StashStruct::EmptyCell || !MyPlayer->HoldItem.isEmpty())
+				CheckStashItem(MousePosition);
+			else {
+				CheckStashButtonPress(MousePosition);
+				CheckStashButtonRelease(MousePosition);
+			}
+		} else if (invflag) {
+			if (pcurs > CURSOR_HAND && pcurs < CURSOR_FIRSTITEM) {
+				if (pcurs != CURSOR_HOURGLASS && TryIconCurs())
+					NewCursor(CURSOR_HAND);
+			} else {
+				CheckInvItem();
+			}
+		} else if (CharFlag) {
+			CheckChrBtns();
+			if (CharPanelButtonActive)
+				ReleaseChrBtns(false);
+		} else if (QuestLogIsOpen) {
+			QuestlogESC();
+		} else if (SpellbookFlag) {
+			CheckSBook();
+		}
+		return;
+	}
+#endif
 	if (SpellSelectFlag) {
 		SetSpell();
 		return;
@@ -2507,9 +2746,11 @@ void CtrlUseInvItem()
 	Player &myPlayer = *MyPlayer;
 	const Item &item = GetInventoryItem(myPlayer, pcursinvitem);
 	if (item.isScroll()) {
+#ifndef __3DS__
 		if (TargetsMonster(item._iSpell)) {
 			return;
 		}
+#endif
 		if (GetSpellData(item._iSpell).isTargeted()) {
 			UpdateSpellTarget(item._iSpell);
 		}
@@ -2534,9 +2775,11 @@ void CtrlUseStashItem()
 
 	const Item &item = Stash.stashList[pcursstashitem];
 	if (item.isScroll()) {
+#ifndef __3DS__
 		if (TargetsMonster(item._iSpell)) {
 			return;
 		}
+#endif
 		if (GetSpellData(item._iSpell).isTargeted()) {
 			UpdateSpellTarget(item._iSpell);
 		}

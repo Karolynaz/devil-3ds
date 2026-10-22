@@ -139,7 +139,8 @@ void LoadCutsceneBackground(interface_mode uMsg)
 	const char *celPath;
 	const char *palPath;
 
-	switch (PickCutscene(uMsg)) {
+	const Cutscenes cutscene = PickCutscene(uMsg);
+	switch (cutscene) {
 	case CutStart:
 		ArtCutsceneWidescreen = LoadOptionalClx("gendata\\cutstartw.clx");
 		celPath = "gendata\\cutstart";

@@ -16,6 +16,9 @@
 #endif
 
 #include <asio/connect.hpp>
+#ifdef __3DS__
+#include "platform/ctr/network_progress.hpp"
+#endif
 
 #include "options.h"
 #include "utils/language.h"
@@ -33,8 +36,13 @@ int tcp_client::create(std::string_view addrstr)
 
 int tcp_client::join(std::string_view addrstr)
 {
+	passwordRequired = false;
 	constexpr int MsSleep = 10;
+#ifdef __3DS__
+	constexpr int NoSleep = 1500;
+#else
 	constexpr int NoSleep = 250;
+#endif
 
 	const char *defaultPort = "6112";
 	std::string_view host;
@@ -69,13 +77,43 @@ int tcp_client::join(std::string_view addrstr)
 	}
 
 	asio::error_code errorCode;
-	const asio::ip::basic_resolver_results<asio::ip::tcp> range = resolver.resolve(host, port, errorCode);
+	const asio::ip::basic_resolver_results<asio::ip::tcp> range = resolver.resolve(host, port,
+#ifdef __3DS__
+	    asio::ip::tcp::resolver::numeric_host | asio::ip::tcp::resolver::numeric_service,
+#endif
+	    errorCode);
 	if (errorCode) {
 		SDL_SetError("%s", errorCode.message().c_str());
 		return -1;
 	}
 
+#ifdef __3DS__
+	// Avoid the system's long blocking connect timeout. Keep drawing while
+	// ASIO completes or the explicit deadline expires.
+	bool connected = false;
+	asio::async_connect(sock, range, [&](const asio::error_code &error, const asio::ip::tcp::endpoint &) {
+		errorCode = error;
+		connected = true;
+	});
+	const uint32_t started = SDL_GetTicks();
+	while (!connected && SDL_GetTicks() - started < 15000) {
+		ioc.restart();
+		ioc.poll();
+		CtrPumpNetworkProgress();
+		SDL_Delay(5);
+	}
+	if (!connected) {
+		asio::error_code ignored;
+		sock.cancel(ignored);
+		sock.close(ignored);
+		// Drain cancellation before stack-owned callback references expire.
+		ioc.restart();
+		while (!connected) { ioc.poll_one(); SDL_Delay(1); }
+		errorCode = asio::error::timed_out;
+	}
+#else
 	asio::connect(sock, range, errorCode);
+#endif
 	if (errorCode) {
 		SDL_SetError("%s", errorCode.message().c_str());
 		return -1;
@@ -94,30 +132,33 @@ int tcp_client::join(std::string_view addrstr)
 		        PLR_BROADCAST, PLR_MASTER, cookie_self, game_init_info);
 		if (!pkt.has_value()) {
 			const std::string_view message = pkt.error().what();
-			SDL_SetError("make_packet: %.*s", static_cast<int>(message.size()), message.data());
+			SDL_SetError("make_packet: %s", std::string(message).c_str());
 			return -1;
 		}
 		std::expected<void, PacketError> sendResult = send(**pkt);
 		if (!sendResult.has_value()) {
 			const std::string_view message = sendResult.error().what();
-			SDL_SetError("send: %.*s", static_cast<int>(message.size()), message.data());
+			SDL_SetError("send: %s", std::string(message).c_str());
 			return -1;
 		}
 		for (auto i = 0; i < NoSleep; ++i) {
 			std::expected<void, PacketError> pollResult = poll();
 			if (!pollResult.has_value()) {
 				const std::string_view message = pollResult.error().what();
-				SDL_SetError("%.*s", static_cast<int>(message.size()), message.data());
+				SDL_SetError("%s", std::string(message).c_str());
 				return -1;
 			}
 			if (plr_self != PLR_BROADCAST)
 				break; // join successful
+#ifdef __3DS__
+			CtrPumpNetworkProgress();
+#endif
 			SDL_Delay(MsSleep);
 		}
 	}
 	if (plr_self == PLR_BROADCAST) {
 		const std::string_view message = _("Unable to connect");
-		SDL_SetError("%.*s", static_cast<int>(message.size()), message.data());
+		SDL_SetError("%s", std::string(message).c_str());
 		return -1;
 	}
 
@@ -131,7 +172,10 @@ bool tcp_client::IsGameHost()
 
 std::expected<void, PacketError> tcp_client::poll()
 {
-	while (ioc.poll_one() > 0) {
+	// A completed async_connect can exhaust the context before receive/write
+	// handlers are queued. Restart it before driving the new handshake work.
+	ioc.restart();
+	for (unsigned budget = 0; budget < 64 && ioc.poll_one() > 0; ++budget) {
 		if (IsGameHost()) {
 			std::expected<void, PacketError> serverResult = local_server->CheckIoHandlerError();
 			if (!serverResult.has_value())
@@ -214,7 +258,7 @@ void tcp_client::HandleTcpErrorCode()
 
 	auto code = static_cast<PacketError::ErrorCode>(pktData[0]);
 	if (code == PacketError::ErrorCode::DecryptionFailed)
-		RaiseIoHandlerError(_("Server failed to decrypt your packet. Check if you typed the password correctly."));
+		RaiseIoHandlerError(PacketError(code, _("Server failed to decrypt your packet. Check if you typed the password correctly.")));
 	else
 		RaiseIoHandlerError(std::format("Unknown error code received from server: {:#04x}", pktData[0]));
 }
@@ -255,6 +299,8 @@ std::string tcp_client::make_default_gamename()
 
 void tcp_client::RaiseIoHandlerError(const PacketError &error)
 {
+	if (error.code() == PacketError::ErrorCode::DecryptionFailed)
+		passwordRequired = true;
 	ioHandlerResult.emplace(error);
 }
 

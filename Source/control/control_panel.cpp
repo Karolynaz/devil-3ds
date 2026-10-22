@@ -1,4 +1,10 @@
 #include "control_panel.hpp"
+
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#include "platform/ctr/world_surface.hpp"
+#endif
+
 #include "control.hpp"
 #include "control_chat.hpp"
 #include "control_flasks.hpp"
@@ -51,6 +57,8 @@ Rectangle RightPanel;
 std::optional<OwnedSurface> BottomBuffer;
 #ifdef __3DS__
 std::optional<OwnedSurface> SidePanelBuffer;
+std::optional<OwnedSurface> TopPanelBuffer;
+Rectangle TopPanel;
 #endif
 OptionalOwnedClxSpriteList GoldBoxBuffer;
 
@@ -60,10 +68,18 @@ const Rectangle &GetMainPanel()
 }
 const Rectangle &GetLeftPanel()
 {
+#ifdef __3DS__
+	if (CharFlag || QuestLogIsOpen)
+		return TopPanel;
+#endif
 	return LeftPanel;
 }
 const Rectangle &GetRightPanel()
 {
+#ifdef __3DS__
+	if (!IsStashOpen && !IsVisualStoreOpen)
+		return TopPanel;
+#endif
 	return RightPanel;
 }
 bool IsLeftPanelOpen()
@@ -169,6 +185,10 @@ int CapStatPointsToAdd(int remainingStatPoints, const Player &player, CharacterA
 	return std::min(remainingStatPoints, pointsToReachCap);
 }
 
+#ifdef __3DS__
+bool IsLevelUpButtonVisible();
+#endif
+
 int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 {
 	const int durabilityThresholdGold = 5;
@@ -176,7 +196,11 @@ int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 
 	if (pItem.isEmpty())
 		return x;
+#ifdef __3DS__
+	if (pItem._iDurability > durabilityThresholdRed)
+#else
 	if (pItem._iDurability > durabilityThresholdGold)
+#endif
 		return x;
 	if (c == 0) {
 		switch (pItem._itype) {
@@ -211,6 +235,31 @@ int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 	}
 
 	// Draw icon
+#ifdef __3DS__
+	// Keep durability warnings on the left of the top screen, away from the
+	// selected spell on the right. Move them up when the level-up prompt shows.
+	// Scale only this tiny icon area to compensate for the 640->400 top view.
+	const int width = (*pDurIcons)[c].width();
+	const int top = IsLevelUpButtonVisible() ? 164 : 200;
+	const int left = (x * gnScreenWidth + 200) / 400;
+	const int right = ((x + width) * gnScreenWidth + 200) / 400;
+	static std::optional<OwnedSurface> iconSurface;
+	if (!iconSurface || iconSurface->surface->w != width || iconSurface->surface->h != height)
+		iconSurface.emplace(width, height);
+	iconSurface->ScaleBlitFrom(out, MakeSdlRect(left, top, right - left, height),
+	    MakeSdlRect(0, 0, width, height));
+	if (partition > 0) {
+		const Surface gold = iconSurface->subregionY(height - partition, partition);
+		ClxDraw(gold, { 0, partition }, (*pDurIcons)[c + 8]);
+	}
+	if (partition != height) {
+		const Surface red = iconSurface->subregionY(0, height - partition);
+		ClxDraw(red, { 0, height }, (*pDurIcons)[c]);
+	}
+	out.ScaleBlitFrom(*iconSurface, MakeSdlRect(0, 0, width, height),
+	    MakeSdlRect(left, top, right - left, height));
+	return x + width + 8;
+#else
 	const int y = -17 + GetMainPanel().position.y;
 	if (partition > 0) {
 		const Surface stenciledBuffer = out.subregionY(y - partition, partition);
@@ -222,6 +271,7 @@ int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 	}
 
 	return x - (*pDurIcons)[c].height() - 8; // Add in spacing for the next durability icon
+#endif
 }
 
 bool IsLevelUpButtonVisible()
@@ -250,17 +300,18 @@ void CalculatePanelAreas()
 
 #ifdef __3DS__
 	gnViewportHeight = 240;
+	TopPanel = { { 0, 0 }, { gnScreenWidth, 240 } };
 	MainPanel = {
 		{ (gnScreenWidth - MainPanelSize.width) / 2, gnScreenHeight - MainPanelSize.height },
 		MainPanelSize
 	};
 	LeftPanel = {
 		{ 0, 0 },
-		{ 218, 240 }
+		{ gnScreenWidth / 2, 240 }
 	};
 	RightPanel = {
-		{ 422, 0 },
-		{ 218, 240 }
+		{ gnScreenWidth / 2, 0 },
+		{ gnScreenWidth - gnScreenWidth / 2, 240 }
 	};
 #else
 	MainPanel = {
@@ -318,8 +369,7 @@ void FocusOnCharInfo()
 		return;
 
 #ifdef __3DS__
-	Point center = CharPanelButtonRect[stat].Center();
-	SetCursorPos({ (center.x * 218) / 320, (center.y * 240) / 352 });
+	SetCursorPos(CtrTopToScreen(CtrStatButtons[stat].Center()));
 #else
 	SetCursorPos(CharPanelButtonRect[stat].Center());
 #endif
@@ -327,6 +377,11 @@ void FocusOnCharInfo()
 
 void OpenCharPanel()
 {
+#ifdef __3DS__
+	invflag = false;
+	SpellbookFlag = false;
+	CloseGoldDrop();
+#endif
 	QuestLogIsOpen = false;
 	CloseGoldWithdraw();
 	CloseStash();
@@ -396,6 +451,7 @@ std::expected<void, std::string> InitMainPanel()
 		pLifeBuff.emplace(88, 88);
 #ifdef __3DS__
 		SidePanelBuffer.emplace(SidePanelSize.width, SidePanelSize.height);
+		TopPanelBuffer.emplace(CtrTopSize.width, CtrTopSize.height);
 #endif
 
 		RETURN_IF_ERROR(LoadPartyPanel());
@@ -511,64 +567,15 @@ void CheckMainPanelButton()
 {
 #ifdef __3DS__
 	if (MousePosition.y >= 240) {
-		// 1. Left column buttons: Char, Quests, Automap, Menu
-		if (MousePosition.x <= 95) {
-			if (MousePosition.y < 385)
-				SetMainPanelButtonDown(PanelButtonCharinfo);
-			else if (MousePosition.y < 415)
-				SetMainPanelButtonDown(PanelButtonQlog);
-			else if (MousePosition.y < 448)
-				SetMainPanelButtonDown(PanelButtonAutomap);
-			else
-				SetMainPanelButtonDown(PanelButtonMainmenu);
+		const Point local { MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (!CtrBottomBeltSlot(slot).contains(local))
+				continue;
+			if (!SpellSelectFlag && !invflag && !CharFlag && !QuestLogIsOpen && !SpellbookFlag && MyPlayer->HoldItem.isEmpty())
+				UseBeltSlot(slot);
 			return;
 		}
-
-		// 2. Right column buttons: Inv, Spells, Spell Select / Speedbook
-		if (MousePosition.x >= 550) {
-			if (MousePosition.y < 385) {
-				SetMainPanelButtonDown(PanelButtonInventory);
-			} else if (MousePosition.y < 415) {
-				SetMainPanelButtonDown(PanelButtonSpellbook);
-			} else {
-				if (!SpellSelectFlag) {
-					if ((SDL_GetModState() & SDL_KMOD_SHIFT) != 0) {
-						Player &myPlayer = *MyPlayer;
-						myPlayer._pRSpell = SpellID::Invalid;
-						myPlayer._pRSplType = SpellType::Invalid;
-						RedrawEverything();
-						return;
-					}
-					DoSpeedBook();
-					gamemenu_off();
-				}
-			}
-			return;
-		}
-
-		// 3. Life globe: drink healing potion
-		if (MousePosition.x > 95 && MousePosition.x < 195 && MousePosition.y >= 300) {
-			UseBeltItem(BeltItemType::Healing);
-			return;
-		}
-
-		// 4. Mana globe: drink mana potion
-		if (MousePosition.x > 445 && MousePosition.x < 550 && MousePosition.y >= 300) {
-			UseBeltItem(BeltItemType::Mana);
-			return;
-		}
-
-		// 5. Belt slots 1-8: drink/use slot item
-		if (MousePosition.x >= 195 && MousePosition.x <= 445 && MousePosition.y >= 300 && MousePosition.y <= 415) {
-			if (MyPlayer != nullptr && !MyPlayer->HoldItem.isEmpty()) {
-				// Placing held item handled by CheckInvScrn
-				return;
-			}
-			int slot = (MousePosition.x - 205) / 29;
-			slot = std::clamp(slot, 0, 7);
-			UseBeltSlot(slot);
-			return;
-		}
+		return;
 	}
 #endif
 
@@ -604,10 +611,8 @@ void CheckMainPanelButton()
 void CheckMainPanelButtonDead()
 {
 #ifdef __3DS__
-	if (MousePosition.x <= 95 && MousePosition.y >= 240) {
-		SetMainPanelButtonDown(PanelButtonMainmenu);
+	if (MousePosition.y >= 240)
 		return;
-	}
 #endif
 
 	Rectangle menuButton = MainPanelButtonRect[PanelButtonMainmenu];
@@ -638,6 +643,11 @@ void DoAutoMap()
 
 void CycleAutomapType()
 {
+#ifdef __3DS__
+	SetAutomapType(*GetOptions().Gameplay.showSmallMap ? AutomapType::Minimap : AutomapType::Opaque);
+	DoAutoMap();
+	return;
+#endif
 	if (!AutomapActive) {
 		StartAutomap();
 		return;
@@ -707,6 +717,10 @@ void CheckMainPanelButtonUp()
 			gamemenuOff = false;
 			break;
 		case PanelButtonInventory:
+#ifdef __3DS__
+			CloseCharPanel();
+			QuestLogIsOpen = false;
+#endif
 			SpellbookFlag = false;
 			invflag = !invflag;
 			CloseGoldWithdraw();
@@ -715,6 +729,10 @@ void CheckMainPanelButtonUp()
 			CloseGoldDrop();
 			break;
 		case PanelButtonSpellbook:
+#ifdef __3DS__
+			CloseCharPanel();
+			QuestLogIsOpen = false;
+#endif
 			CloseInventory();
 			CloseGoldDrop();
 			SpellbookFlag = !SpellbookFlag;
@@ -741,6 +759,7 @@ void FreeControlPan()
 	BottomBuffer = std::nullopt;
 #ifdef __3DS__
 	SidePanelBuffer = std::nullopt;
+	TopPanelBuffer = std::nullopt;
 #endif
 	pManaBuff = std::nullopt;
 	pLifeBuff = std::nullopt;
@@ -766,8 +785,11 @@ void CheckLevelButton()
 	}
 
 	Rectangle button = LevelButtonRect;
-
+#ifdef __3DS__
+	button = { { 12, 207 }, LevelButtonRect.size };
+#else
 	SetPanelObjectPosition(UiPanels::Main, button);
+#endif
 
 	if (!LevelButtonDown && button.contains(MousePosition))
 		LevelButtonDown = true;
@@ -776,8 +798,11 @@ void CheckLevelButton()
 void CheckLevelButtonUp()
 {
 	Rectangle button = LevelButtonRect;
-
+#ifdef __3DS__
+	button = { { 12, 207 }, LevelButtonRect.size };
+#else
 	SetPanelObjectPosition(UiPanels::Main, button);
+#endif
 
 	if (button.contains(MousePosition)) {
 		OpenCharPanel();
@@ -789,9 +814,15 @@ void DrawLevelButton(const Surface &out)
 {
 	if (IsLevelUpButtonVisible()) {
 		const int nCel = LevelButtonDown ? 2 : 1;
+#ifdef __3DS__
+		DrawString(out, _("(SELECT): Assign points"), { { 61, 208 }, { 330, 24 } },
+		    { .flags = UiFlags::FontSizeDialog | UiFlags::ColorDialogWhite | UiFlags::KerningFitSpacing });
+		RenderClxSprite(out, (*pChrButtons)[nCel], { 12, 207 });
+#else
 		DrawString(out, _("Level Up"), { GetMainPanel().position + Displacement { 0, LevelButtonRect.position.y - 23 }, { 120, 0 } },
 		    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter | UiFlags::KerningFitSpacing });
 		RenderClxSprite(out, (*pChrButtons)[nCel], GetMainPanel().position + Displacement { LevelButtonRect.position.x, LevelButtonRect.position.y });
+#endif
 	}
 }
 
@@ -806,10 +837,7 @@ void CheckChrBtns()
 		return;
 
 #ifdef __3DS__
-	Point mousePos = MousePosition;
-	if (mousePos.y < 240 && mousePos.x < 218) {
-		mousePos = { (mousePos.x * 320) / 218, (mousePos.y * 352) / 240 };
-	}
+	Point mousePos = CtrScreenToTop(MousePosition);
 #else
 	Point mousePos = MousePosition;
 #endif
@@ -818,8 +846,12 @@ void CheckChrBtns()
 		if (myPlayer.GetBaseAttributeValue(attribute) >= myPlayer.GetMaximumAttributeValue(attribute))
 			continue;
 		auto buttonId = static_cast<size_t>(attribute);
+#ifdef __3DS__
+		Rectangle button = CtrStatButtons[buttonId];
+#else
 		Rectangle button = CharPanelButtonRect[buttonId];
 		SetPanelObjectPosition(UiPanels::Character, button);
+#endif
 		if (button.contains(mousePos)) {
 			CharPanelButton[buttonId] = true;
 			CharPanelButtonActive = true;
@@ -837,10 +869,7 @@ void ReleaseChrBtns(bool addAllStatPoints)
 	CharPanelButtonActive = false;
 
 #ifdef __3DS__
-	Point mousePos = MousePosition;
-	if (mousePos.y < 240 && mousePos.x < 218) {
-		mousePos = { (mousePos.x * 320) / 218, (mousePos.y * 352) / 240 };
-	}
+	Point mousePos = CtrScreenToTop(MousePosition);
 #else
 	Point mousePos = MousePosition;
 #endif
@@ -851,8 +880,12 @@ void ReleaseChrBtns(bool addAllStatPoints)
 			continue;
 
 		CharPanelButton[buttonId] = false;
+#ifdef __3DS__
+		Rectangle button = CtrStatButtons[buttonId];
+#else
 		Rectangle button = CharPanelButtonRect[buttonId];
 		SetPanelObjectPosition(UiPanels::Character, button);
+#endif
 		if (button.contains(mousePos)) {
 			Player &myPlayer = *MyPlayer;
 			int statPointsToAdd = 1;
@@ -882,6 +915,14 @@ void ReleaseChrBtns(bool addAllStatPoints)
 
 void DrawDurIcon(const Surface &out)
 {
+#ifdef __3DS__
+	int x = 8;
+	Player &myPlayer = *MyPlayer;
+	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HEAD], x, 3);
+	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_CHEST], x, 2);
+	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HAND_LEFT], x, 0);
+	DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HAND_RIGHT], x, 0);
+#else
 	const bool hasRoomBetweenPanels = RightPanel.position.x - (LeftPanel.position.x + LeftPanel.size.width) >= 16 + (32 + 8 + 32 + 8 + 32 + 8 + 32) + 16;
 	const bool hasRoomUnderPanels = MainPanel.position.y - (RightPanel.position.y + RightPanel.size.height) >= 16 + 32 + 16;
 
@@ -901,12 +942,41 @@ void DrawDurIcon(const Surface &out)
 	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_CHEST], x, 2);
 	x = DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HAND_LEFT], x, 0);
 	DrawDurIcon4Item(out, myPlayer.InvBody[INVLOC_HAND_RIGHT], x, 0);
+#endif
 }
+
+#ifdef __3DS__
+namespace {
+/** @brief Applies the pause table to a world area. */
+void RedBackWorld(const Surface &world, const uint8_t *tbl)
+{
+	for (int y = 0; y < world.h(); y++) {
+		uint8_t *dst = world.at(0, y);
+		for (int x = 0; x < world.w(); x++, dst++) {
+			if (leveltype != DTYPE_HELL || *dst >= 32)
+				*dst = tbl[*dst];
+		}
+	}
+}
+} // namespace
+#endif
 
 void RedBack(const Surface &out)
 {
 	uint8_t *dst = out.begin();
 	uint8_t *tbl = GetPauseTRN();
+#ifdef __3DS__
+	// The world is in its own buffer. The UI layer shows it through the key
+	// pixels, so those stay as they are and the world gets the table itself.
+	RedBackWorld(CtrWorldSurface(), tbl);
+	for (int h = gnViewportHeight; h != 0; h--, dst += out.pitch() - gnScreenWidth) {
+		for (int w = gnScreenWidth; w != 0; w--) {
+			if (*dst != CtrWorldKeyIndex && (leveltype != DTYPE_HELL || *dst >= 32))
+				*dst = tbl[*dst];
+			dst++;
+		}
+	}
+#else
 	for (int h = gnViewportHeight; h != 0; h--, dst += out.pitch() - gnScreenWidth) {
 		for (int w = gnScreenWidth; w != 0; w--) {
 			if (leveltype != DTYPE_HELL || *dst >= 32)
@@ -914,10 +984,21 @@ void RedBack(const Surface &out)
 			dst++;
 		}
 	}
+#endif
 }
 
 void DrawDeathText(const Surface &out)
 {
+#ifdef __3DS__
+	const Rectangle line1Rect { { 0, (gnViewportHeight / 2) - 40 }, { gnScreenWidth, 32 } };
+	const Rectangle line2Rect { { 0, (gnViewportHeight / 2) + 8 }, { gnScreenWidth, 24 } };
+	DrawString(out, _("You have died"), line1Rect,
+	    { .flags = UiFlags::FontSize30 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
+	      .spacing = 2 });
+	DrawString(out, _("Press (A) to Return To Main Menu"), line2Rect,
+	    { .flags = UiFlags::FontSize24 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
+	      .spacing = 2 });
+#else
 	const TextRenderOptions largeTextOptions {
 		.flags = UiFlags::FontSize42 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
 		.spacing = 2
@@ -960,6 +1041,7 @@ void DrawDeathText(const Surface &out)
 		text = FormatRuntime(_("Press {} to restart in town."), buttonText);
 	}
 	DrawString(out, text, linePosition, smallTextOptions);
+#endif
 }
 
 void SetPanelObjectPosition(UiPanels panel, Rectangle &button)

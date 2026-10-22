@@ -23,6 +23,10 @@
 #include "movie.h"
 #include "options.h"
 #include "pfile.h"
+#ifdef __3DS__
+#include "items.h"
+#include "multi.h"
+#endif
 #include "storm/storm_net.hpp"
 #include "utils/language.h"
 
@@ -143,6 +147,14 @@ bool mainmenu_select_hero_dialog(GameData *gameData)
 		return false;
 	}
 
+#ifdef __3DS__
+	pSaveNumberFromOptions = gbIsMultiplayer
+	    ? (gbIsHellfire ? &GetOptions().Hellfire.lastMultiplayerHero : &GetOptions().Diablo.lastMultiplayerHero)
+	    : (gbIsHellfire ? &GetOptions().Hellfire.lastSinglePlayerHero : &GetOptions().Diablo.lastSinglePlayerHero);
+	if (!gbIsMultiplayer) pfile_show_pending_hellfire_intro(gSaveNumber);
+	InitGameInfo();
+	if (gameData != &sgGameInitInfo) *gameData = sgGameInitInfo;
+#endif
 	if (pSaveNumberFromOptions != nullptr)
 		pSaveNumberFromOptions->SetValue(gSaveNumber);
 
@@ -164,6 +176,15 @@ void mainmenu_loop()
 	done = false;
 
 	do {
+#ifdef __3DS__
+		if (gbIsHellfire) {
+			SetCtrHeroGameMode(false);
+			FreeItemGFX();
+			UnloadUiGFX();
+			UiInitialize();
+			InitItemGFX();
+		}
+#endif
 		_mainmenu_selections menu = MAINMENU_NONE;
 		if (demo::IsRunning())
 			menu = MAINMENU_SINGLE_PLAYER;

@@ -27,6 +27,12 @@
 namespace devilution {
 namespace net {
 
+#ifdef __3DS__
+using ZeroTierSocketAddress = ctr_lwip_sockaddr_in6;
+#else
+using ZeroTierSocketAddress = sockaddr_in6;
+#endif
+
 namespace {
 
 bool GetMAC(const protocol_zt::endpoint &peer, uint64_t &mac)
@@ -37,9 +43,12 @@ bool GetMAC(const protocol_zt::endpoint &peer, uint64_t &mac)
 	IP6_ADDR_PART(&address, 2, peer.addr[8], peer.addr[9], peer.addr[10], peer.addr[11]);
 	IP6_ADDR_PART(&address, 3, peer.addr[12], peer.addr[13], peer.addr[14], peer.addr[15]);
 
-	const u8_t *hwaddr;
-	if (nd6_get_next_hop_addr_or_queue(netif_default, nullptr, &address, &hwaddr) != ERR_OK)
+	const u8_t *hwaddr = nullptr;
+	LOCK_TCPIP_CORE();
+	if (netif_default == nullptr || nd6_get_next_hop_addr_or_queue(netif_default, nullptr, &address, &hwaddr) != ERR_OK || hwaddr == nullptr) {
+		UNLOCK_TCPIP_CORE();
 		return false;
+	}
 
 	mac = hwaddr[0];
 	mac = (mac << 8) | hwaddr[1];
@@ -47,6 +56,7 @@ bool GetMAC(const protocol_zt::endpoint &peer, uint64_t &mac)
 	mac = (mac << 8) | hwaddr[3];
 	mac = (mac << 8) | hwaddr[4];
 	mac = (mac << 8) | hwaddr[5];
+	UNLOCK_TCPIP_CORE();
 	return true;
 }
 
@@ -57,7 +67,7 @@ protocol_zt::protocol_zt()
 	zerotier_network_start();
 }
 
-void protocol_zt::set_nonblock(int fd)
+bool protocol_zt::set_nonblock(int fd)
 {
 #ifndef __ANDROID__
 	// This assert guards against O_NONBLOCK silently resolving to the host's real value
@@ -76,8 +86,7 @@ void protocol_zt::set_nonblock(int fd)
 	static_assert(O_NONBLOCK == 1, "O_NONBLOCK == 1 not satisfied");
 #endif
 	auto mode = lwip_fcntl(fd, F_GETFL, 0);
-	mode |= O_NONBLOCK;
-	lwip_fcntl(fd, F_SETFL, mode);
+	return mode >= 0 && lwip_fcntl(fd, F_SETFL, mode | O_NONBLOCK) == 0;
 }
 
 void protocol_zt::set_nodelay(int fd)
@@ -97,7 +106,7 @@ std::expected<bool, PacketError> protocol_zt::network_online()
 	if (!zerotier_network_ready())
 		return false;
 
-	struct sockaddr_in6 in6 {
+	ZeroTierSocketAddress in6 {
 	};
 	in6.sin6_port = htons(default_port);
 	in6.sin6_family = AF_INET6;
@@ -105,31 +114,49 @@ std::expected<bool, PacketError> protocol_zt::network_online()
 
 	if (fd_udp == -1) {
 		fd_udp = lwip_socket(AF_INET6, SOCK_DGRAM, 0);
+		if (fd_udp < 0)
+			return std::unexpected(ProtocolError("lwip_socket UDP: {}", strerror(errno)));
 		set_reuseaddr(fd_udp);
 		auto ret = lwip_bind(fd_udp, (struct sockaddr *)&in6, sizeof(in6));
 		if (ret < 0) {
 			std::string_view format = "Error binding to ZeroTier UDP socket: {}";
 			PacketError error = ProtocolError(format, strerror(errno));
+			close_all();
 			return std::unexpected(std::move(error));
 		}
-		set_nonblock(fd_udp);
+		if (!set_nonblock(fd_udp)) {
+			PacketError error = ProtocolError("ZeroTier UDP nonblocking mode: {}", strerror(errno));
+			close_all();
+			return std::unexpected(std::move(error));
+		}
 	}
 	if (fd_tcp == -1) {
 		fd_tcp = lwip_socket(AF_INET6, SOCK_STREAM, 0);
+		if (fd_tcp < 0) {
+			PacketError error = ProtocolError("lwip_socket TCP: {}", strerror(errno));
+			close_all();
+			return std::unexpected(std::move(error));
+		}
 		set_reuseaddr(fd_tcp);
 		auto r1 = lwip_bind(fd_tcp, (struct sockaddr *)&in6, sizeof(in6));
 		if (r1 < 0) {
 			std::string_view format = "Error binding to ZeroTier TCP socket: {}";
 			PacketError error = ProtocolError(format, strerror(errno));
+			close_all();
 			return std::unexpected(std::move(error));
 		}
 		auto r2 = lwip_listen(fd_tcp, 10);
 		if (r2 < 0) {
 			std::string_view format = "Error listening on ZeroTier TCP socket: {}";
 			PacketError error = ProtocolError(format, strerror(errno));
+			close_all();
 			return std::unexpected(std::move(error));
 		}
-		set_nonblock(fd_tcp);
+		if (!set_nonblock(fd_tcp)) {
+			PacketError error = ProtocolError("ZeroTier TCP nonblocking mode: {}", strerror(errno));
+			close_all();
+			return std::unexpected(std::move(error));
+		}
 		set_nodelay(fd_tcp);
 	}
 	return true;
@@ -146,19 +173,21 @@ std::expected<void, PacketError> protocol_zt::send(const endpoint &peer, const b
 	std::expected<buffer_t, PacketError> frame = frame_queue::MakeFrame(data);
 	if (!frame.has_value())
 		return std::unexpected(frame.error());
-	peer_list[peer].send_queue.push_back(*frame);
+	peer_list[peer].send_queue.push_back(std::move(*frame));
 	return {};
 }
 
 bool protocol_zt::send_oob(const endpoint &peer, const buffer_t &data) const
 {
-	struct sockaddr_in6 in6 {
+	if (fd_udp < 0)
+		return false;
+	ZeroTierSocketAddress in6 {
 	};
 	in6.sin6_port = htons(default_port);
 	in6.sin6_family = AF_INET6;
 	std::copy(peer.addr.begin(), peer.addr.end(), in6.sin6_addr.s6_addr);
-	lwip_sendto(fd_udp, data.data(), data.size(), 0, (const struct sockaddr *)&in6, sizeof(in6));
-	return true;
+	const auto sent = lwip_sendto(fd_udp, data.data(), data.size(), 0, (const struct sockaddr *)&in6, sizeof(in6));
+	return sent >= 0 && static_cast<size_t>(sent) == data.size();
 }
 
 bool protocol_zt::send_oob_mc(const buffer_t &data) const
@@ -171,24 +200,62 @@ bool protocol_zt::send_oob_mc(const buffer_t &data) const
 std::expected<bool, PacketError> protocol_zt::send_queued_peer(const endpoint &peer)
 {
 	peer_state &state = peer_list[peer];
+	if (state.send_queue.empty())
+		return true;
 	if (state.fd == -1) {
 		state.fd = lwip_socket(AF_INET6, SOCK_STREAM, 0);
+		if (state.fd < 0)
+			return std::unexpected(ProtocolError("ZeroTier peer socket: {}", strerror(errno)));
 		set_nodelay(state.fd);
-		set_nonblock(state.fd);
-		struct sockaddr_in6 in6 {
+		if (!set_nonblock(state.fd))
+			return std::unexpected(ProtocolError("ZeroTier peer nonblocking mode: {}", strerror(errno)));
+		ZeroTierSocketAddress in6 {
 		};
 		in6.sin6_port = htons(default_port);
 		in6.sin6_family = AF_INET6;
 		std::copy(peer.addr.begin(), peer.addr.end(), in6.sin6_addr.s6_addr);
-		lwip_connect(state.fd, (const struct sockaddr *)&in6, sizeof(in6));
+		const auto result = lwip_connect(state.fd, (const struct sockaddr *)&in6, sizeof(in6));
+		if (result < 0 && errno != EINPROGRESS && errno != EALREADY && errno != EWOULDBLOCK)
+			return std::unexpected(ProtocolError("ZeroTier peer connection: {}", strerror(errno)));
+		state.connecting = result < 0;
+		state.connectStarted = SDL_GetTicks();
+#ifdef __3DS__
+		CtrZeroTierLogStage("virtual TCP connect started", result);
+#endif
+	}
+	if (state.connecting) {
+		int error = 0;
+		socklen_t size = sizeof(error);
+		if (lwip_getsockopt(state.fd, SOL_SOCKET, SO_ERROR, &error, &size) < 0)
+			return std::unexpected(ProtocolError("ZeroTier connection status: {}", strerror(errno)));
+		if (error != 0 && error != EINPROGRESS && error != EALREADY)
+			return std::unexpected(ProtocolError("ZeroTier peer connection: {}", strerror(error)));
+		ZeroTierSocketAddress address {};
+		size = sizeof(address);
+		if (lwip_getpeername(state.fd, reinterpret_cast<struct sockaddr *>(&address), &size) < 0) {
+			if (errno != ENOTCONN && errno != EINPROGRESS)
+				return std::unexpected(ProtocolError("ZeroTier peer connection: {}", strerror(errno)));
+			// A pending nonblocking connect must not be received from or
+			// mistaken for a dropped peer. Bound it so retries cannot hang.
+#ifdef __3DS__
+			return SDL_GetTicks() - state.connectStarted < 60000;
+#else
+			return SDL_GetTicks() - state.connectStarted < 30000;
+#endif
+		}
+		state.connecting = false;
+#ifdef __3DS__
+		CtrZeroTierLogStage("virtual TCP connected");
+#endif
 	}
 	while (!state.send_queue.empty()) {
 		auto len = state.send_queue.front().size();
 		auto r = lwip_send(state.fd, state.send_queue.front().data(), len, 0);
 		if (r < 0) {
-			// handle error
-			return false;
+			return errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR;
 		}
+		if (r == 0)
+			return false;
 		if (decltype(len)(r) < len) {
 			// partial send
 			auto it = state.send_queue.front().begin();
@@ -208,11 +275,13 @@ std::expected<bool, PacketError> protocol_zt::send_queued_peer(const endpoint &p
 
 bool protocol_zt::recv_peer(const endpoint &peer)
 {
-	unsigned char buf[PKTBUF_LEN];
+	unsigned char *const buf = receiveBuffer.get();
 	peer_state &state = peer_list[peer];
 	while (true) {
-		auto len = lwip_recv(state.fd, buf, sizeof(buf), 0);
-		if (len >= 0) {
+		auto len = lwip_recv(state.fd, buf, PKTBUF_LEN, 0);
+		if (len == 0)
+			return false; // TCP EOF: stop polling this disconnected peer.
+		if (len > 0) {
 			state.recv_queue.Write(buffer_t(buf, buf + len));
 		} else {
 			return errno == EAGAIN || errno == EWOULDBLOCK;
@@ -222,14 +291,18 @@ bool protocol_zt::recv_peer(const endpoint &peer)
 
 bool protocol_zt::send_queued_all()
 {
-	for (const auto &[endpoint, _] : peer_list) {
+	for (auto &[endpoint, state] : peer_list) {
 		std::expected<bool, PacketError> result = send_queued_peer(endpoint);
 		if (!result.has_value()) {
 			LogError("send_queued_peer: {}", result.error().what());
-			continue;
 		}
-		if (!*result) {
-			// handle error?
+		if (!result.has_value() || !*result) {
+			if (state.fd != -1)
+				lwip_close(state.fd);
+			state.fd = -1;
+			state.connecting = false;
+			state.send_queue.clear();
+			disconnect_queue.push_back(endpoint);
 		}
 	}
 	return true;
@@ -237,9 +310,12 @@ bool protocol_zt::send_queued_all()
 
 bool protocol_zt::recv_from_peers()
 {
-	for (const auto &[endpoint, state] : peer_list) {
-		if (state.fd != -1) {
+	for (auto &[endpoint, state] : peer_list) {
+		if (state.fd != -1 && !state.connecting) {
 			if (!recv_peer(endpoint)) {
+				lwip_close(state.fd);
+				state.fd = -1;
+				state.send_queue.clear();
 				disconnect_queue.push_back(endpoint);
 			}
 		}
@@ -249,11 +325,11 @@ bool protocol_zt::recv_from_peers()
 
 bool protocol_zt::recv_from_udp()
 {
-	unsigned char buf[PKTBUF_LEN];
-	struct sockaddr_in6 in6 {
+	unsigned char *const buf = receiveBuffer.get();
+	ZeroTierSocketAddress in6 {
 	};
 	socklen_t addrlen = sizeof(in6);
-	auto len = lwip_recvfrom(fd_udp, buf, sizeof(buf), 0, (struct sockaddr *)&in6, &addrlen);
+	auto len = lwip_recvfrom(fd_udp, buf, PKTBUF_LEN, 0, (struct sockaddr *)&in6, &addrlen);
 	if (len < 0)
 		return false;
 	buffer_t data(buf, buf + len);
@@ -265,7 +341,7 @@ bool protocol_zt::recv_from_udp()
 
 bool protocol_zt::accept_all()
 {
-	struct sockaddr_in6 in6 {
+	ZeroTierSocketAddress in6 {
 	};
 	socklen_t addrlen = sizeof(in6);
 	while (true) {
@@ -280,15 +356,30 @@ bool protocol_zt::accept_all()
 			SDL_SetError("protocol_zt::accept_all: WARNING: overwriting connection");
 			lwip_close(state.fd);
 		}
-		set_nonblock(newfd);
+		if (!set_nonblock(newfd)) {
+			lwip_close(newfd);
+			state.fd = -1;
+			disconnect_queue.push_back(ep);
+			continue;
+		}
 		set_nodelay(newfd);
 		state.fd = newfd;
+		state.connecting = false;
+#ifdef __3DS__
+		CtrZeroTierLogStage("virtual TCP accepted");
+#endif
 	}
 	return true;
 }
 
 bool protocol_zt::recv(endpoint &peer, buffer_t &data)
 {
+	// The lobby asks for public games before the asynchronous network is
+	// ready. Socket creation belongs to network_online(), so skip reception
+	// until both listening sockets have been initialized.
+	if (fd_tcp == -1 || fd_udp == -1)
+		return false;
+
 	accept_all();
 	send_queued_all();
 	recv_from_peers();
@@ -296,7 +387,7 @@ bool protocol_zt::recv(endpoint &peer, buffer_t &data)
 
 	if (!oob_recv_queue.empty()) {
 		peer = oob_recv_queue.front().first;
-		data = oob_recv_queue.front().second;
+		data = std::move(oob_recv_queue.front().second);
 		oob_recv_queue.pop_front();
 		return true;
 	}
@@ -315,7 +406,7 @@ bool protocol_zt::recv(endpoint &peer, buffer_t &data)
 			continue;
 		}
 		peer = p.first;
-		data = *packet;
+		data = std::move(*packet);
 		return true;
 	}
 	return false;
@@ -386,7 +477,7 @@ uint64_t protocol_zt::current_ms()
 bool protocol_zt::is_peer_connected(endpoint &peer)
 {
 	const auto it = peer_list.find(peer);
-	return it != peer_list.end() && it->second.fd != -1;
+	return it != peer_list.end() && it->second.fd != -1 && !it->second.connecting;
 }
 
 std::optional<bool> protocol_zt::is_peer_relayed(const endpoint &peer) const
@@ -407,14 +498,7 @@ std::optional<int> protocol_zt::get_latency_to(const endpoint &peer) const
 
 std::string protocol_zt::make_default_gamename()
 {
-	std::string ret;
-	std::string allowedChars = "abcdefghkopqrstuvwxyz";
-	std::random_device rd;
-	std::uniform_int_distribution<size_t> dist(0, allowedChars.size() - 1);
-	for (size_t i = 0; i < 5; ++i) {
-		ret += allowedChars.at(dist(rd));
-	}
-	return ret;
+	return "PR" + std::to_string(1000 + packet_out::GenerateCookie() % 9000);
 }
 
 } // namespace net

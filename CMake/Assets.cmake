@@ -5,7 +5,7 @@ if(NOT DEFINED DEVILUTIONX_ASSETS_OUTPUT_DIRECTORY)
   set(DEVILUTIONX_ASSETS_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/assets")
 endif()
 
-set(devilutionx_langs be bg cs da de el es et fi fr he hr hu it ja ko pl pt_BR ro ru uk sv tr zh_CN zh_TW)
+set(devilutionx_langs be bg cs da de el es et fi fr he hr hu it ja ko lt pl pt_BR ro ru uk sv tr zh_CN zh_TW)
 if(USE_GETTEXT_FROM_VCPKG)
   # vcpkg doesn't add its own tools directory to the search path
   list(APPEND Gettext_ROOT ${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/tools/gettext/bin)
@@ -237,6 +237,32 @@ if(NOT USE_SDL1 AND NOT VITA)
     ui_art/menu.png)
 endif()
 
+if(NINTENDO_3DS)
+  list(APPEND devilutionx_assets
+    cacert.pem
+    licenses/jsmn.txt
+    sfx/ctr/banner.wav
+    data/ctr_character_background.pal8
+    data/ctr_quest_background.pal8
+    data/ctr_spells_background.pal8
+    data/ctr_spell_binding.pal8
+    data/ctr_inventory_warrior.pal8
+    data/ctr_inventory_rogue.pal8
+    data/ctr_inventory_sorcerer.pal8
+    data/ctr_inventory_warrior_stash.pal8
+    data/ctr_inventory_rogue_stash.pal8
+    data/ctr_inventory_sorcerer_stash.pal8
+    data/hud/button_x.rgba
+    data/hud/button_y.rgba
+    data/hud/button_l.rgba
+    data/hud/button_r.rgba
+    data/ctr_bottom_ui.pal8
+    data/ctr_health_bar.pal8
+    data/ctr_mana_bar.pal8
+    data/ctr_experience_bar.pal8
+    data/ctr_loading.pal8)
+endif()
+
 if(APPLE)
   foreach(asset_file ${devilutionx_assets})
     set(src "${CMAKE_CURRENT_SOURCE_DIR}/assets/${asset_file}")
@@ -271,9 +297,16 @@ else()
     endforeach()
   endif()
 
+  set(_asset_trim_excluded_directories)
+  if(NINTENDO_3DS)
+    # Built-in mods share RomFS but have independent copy/cleanup targets.
+    list(APPEND _asset_trim_excluded_directories mods)
+  endif()
+
   add_trim_target(devilutionx_trim_assets
     ROOT_FOLDER "${DEVILUTIONX_ASSETS_OUTPUT_DIRECTORY}"
-    CURRENT_FILES ${DEVILUTIONX_MPQ_FILES})
+    CURRENT_FILES ${DEVILUTIONX_MPQ_FILES}
+    EXCLUDE_DIRECTORIES ${_asset_trim_excluded_directories})
   if(devilutionx_lang_targets)
     add_dependencies(devilutionx_trim_assets ${devilutionx_lang_targets})
   endif()

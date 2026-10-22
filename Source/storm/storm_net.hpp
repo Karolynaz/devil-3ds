@@ -82,6 +82,7 @@ bool SNetDropPlayer(uint8_t playerid, leaveinfo_t flags);
 bool SNetGetTurnsInTransit(uint32_t *turns);
 
 bool SNetJoinGame(char *gameName, char *gamePassword, int *playerid);
+bool DvlNet_JoinRequiresPassword();
 
 /*  SNetLeaveGame @ 119
  *
@@ -146,6 +147,7 @@ std::vector<GameInfo> DvlNet_GetGamelist();
 void DvlNet_SetPassword(std::string pw);
 void DvlNet_ClearPassword();
 bool DvlNet_IsPublicGame();
+void DvlNet_SetGamePrivacy(bool isPublic);
 DvlNetLatencies DvlNet_GetLatencies(uint8_t playerId);
 
 } // namespace devilution

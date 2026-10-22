@@ -4,6 +4,11 @@
  * Implementation of the in-game navigation and interaction.
  */
 #include "gmenu.h"
+#ifdef __3DS__
+#include "gamemenu.h"
+#include "diablo_msg.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
+#endif
 
 #include <algorithm>
 #include <cstdint>
@@ -52,14 +57,19 @@ constexpr int SliderValueLeft = SliderValueBoxLeft + SliderValueBorderWidth;
 constexpr int SliderValueWidth = SliderValueBoxWidth - (2 * SliderValueBorderWidth);
 constexpr int SliderValueHeight = 29;
 constexpr int SliderValuePaddingTop = 10;
-constexpr int SliderMarkerWidth = 27;
+constexpr int SliderMarkerSpriteWidth = 27;
+#ifdef __3DS__
+constexpr int SliderMarkerWidth = (SliderMarkerSpriteWidth * 8 + 4) / 5;
+#else
+constexpr int SliderMarkerWidth = SliderMarkerSpriteWidth;
+#endif
 
 constexpr int SliderFillMin = SliderMarkerWidth / 2;
 constexpr int SliderFillMax = SliderValueWidth - (SliderMarkerWidth / 2) - 1;
 
 #ifdef __3DS__
-constexpr int GMenuTop = 66;
 constexpr int GMenuItemHeight = 30;
+constexpr int GMenuTopScreenHeight = 240;
 #else
 constexpr int GMenuTop = 117;
 constexpr int GMenuItemHeight = 45;
@@ -75,6 +85,75 @@ int LogoAnim_tick;
 uint8_t LogoAnim_frame;
 void (*gmenu_current_option)();
 int sgCurrentMenuIdx;
+
+#ifdef __3DS__
+constexpr int GMenuMaxVisibleRows = 5;
+int sgFirstVisibleMenuItem = 0;
+
+int GmenuVisibleRows()
+{
+	return std::min(sgCurrentMenuIdx, GMenuMaxVisibleRows);
+}
+
+int GmenuFirstVisibleRow(int first, int selected, int count)
+{
+	if (selected < first) first = selected;
+	if (selected >= first + GMenuMaxVisibleRows) first = selected - GMenuMaxVisibleRows + 1;
+	return std::clamp(first, 0, std::max(0, count - GMenuMaxVisibleRows));
+}
+
+void GmenuScrollToCurrent()
+{
+	if (sgpCurrItem != nullptr)
+		sgFirstVisibleMenuItem = GmenuFirstVisibleRow(sgFirstVisibleMenuItem, static_cast<int>(sgpCurrItem - sgpCurrentMenu), sgCurrentMenuIdx);
+}
+
+int GMenuTop()
+{
+	return GetUIRectangle().position.y + std::max(0, ((gamemenu_gameplay_active() ? 172 : GMenuTopScreenHeight) - GmenuVisibleRows() * GMenuItemHeight) / 2);
+}
+
+void DrawGMenuSliderMarker(const Surface &out, ClxSprite sprite, Point position)
+{
+	static OwnedSurface scratch(64, 64);
+	if (scratch.w() < sprite.width() || scratch.h() < sprite.height())
+		scratch = OwnedSurface(std::max(64, int(sprite.width())), std::max(64, int(sprite.height())));
+	SDL_FillSurfaceRect(scratch.surface, nullptr, 1);
+	RenderClxSprite(scratch, sprite, { 0, 0 });
+	const int nativeX = CtrInverseColumn(out.region.x + position.x, 400);
+	const int firstX = CtrNativeColumn(nativeX, 400);
+	const int endX = CtrNativeColumn(nativeX + sprite.width(), 400);
+	for (int y = 0; y < sprite.height(); ++y) {
+		for (int x = firstX; x < endX; ++x) {
+			const int sourceX = CtrInverseColumn(x, 400) - nativeX;
+			const uint8_t color = scratch[{ sourceX, y }];
+			const Point destination { x - out.region.x, position.y + y };
+			if (color != 1 && out.InBounds(destination)) out.SetPixel(destination, color);
+		}
+	}
+}
+
+void DrawGMenuSpinner(const Surface &out, ClxSprite sprite, Point position)
+{
+	// The upper 3DS screen squeezes 640 logical columns into 400 physical pixels.
+	// A 48x30 logical icon therefore appears square beside the 30px text.
+	static OwnedSurface scratch(48, 48);
+	SDL_FillSurfaceRect(scratch.surface, nullptr, 0);
+	RenderClxSprite(scratch, sprite, { 0, 0 });
+	for (int y = 0; y < 30; ++y) {
+		for (int x = 0; x < 48; ++x) {
+			const uint8_t color = scratch[{ x, y * 48 / 30 }];
+			if (color != 0)
+				out.SetPixel(position + Displacement { x, y }, color);
+		}
+	}
+}
+#endif
+
+std::string_view GmenuItemText(const TMenuItem *pItem)
+{
+	return pItem->localizeText ? _(pItem->pszStr) : std::string_view(pItem->pszStr);
+}
 
 void GmenuUpDown(bool isDown)
 {
@@ -98,6 +177,9 @@ void GmenuUpDown(bool isDown)
 			if (sgpCurrItem->enabled()) {
 				if (i != 0)
 					PlaySFX(SfxID::MenuMove);
+#ifdef __3DS__
+				GmenuScrollToCurrent();
+#endif
 				return;
 			}
 		}
@@ -123,15 +205,67 @@ void GmenuLeftRight(bool isRight)
 	sgpCurrItem->fnMenu(false);
 }
 
+#ifdef __3DS__
+int GmenuGetTextWidth(TMenuItem *pItem, GameFontTables font, int spacing)
+{
+	const std::string_view text = GmenuItemText(pItem);
+	int width = 0;
+	size_t lineStart = 0;
+	while (lineStart <= text.size()) {
+		const size_t lineEnd = text.find('\n', lineStart);
+		const std::string_view line = text.substr(lineStart, lineEnd == std::string_view::npos ? text.size() - lineStart : lineEnd - lineStart);
+		width = std::max(width, GetLineWidth(line, font, spacing, nullptr, CtrTextScale::TopScreen));
+		if (lineEnd == std::string_view::npos)
+			break;
+		lineStart = lineEnd + 1;
+	}
+	return width;
+}
+
+int GmenuGetSpacing(TMenuItem *pItem)
+{
+	const int availableWidth = gnScreenWidth - 2 * 56 - 48;
+	if (pItem->userData != nullptr) {
+		for (int spacing = 1; spacing >= 0; spacing--) {
+			if (GmenuGetTextWidth(pItem, GameFont12, spacing) <= availableWidth)
+				return spacing;
+		}
+		return 0;
+	}
+	for (const GameFontTables font : { GameFont30, GameFont24 }) {
+		if (GmenuGetTextWidth(pItem, font, 2) <= availableWidth)
+			return 2;
+	}
+	for (int spacing = 2; spacing >= 0; spacing--) {
+		if (GmenuGetTextWidth(pItem, GameFont12, spacing) <= availableWidth)
+			return spacing;
+	}
+	return 0;
+}
+
+GameFontTables GmenuGetFont(TMenuItem *pItem)
+{
+	if (pItem->userData != nullptr)
+		return GameFont12;
+	// Reserve two 48-column spinners, their gaps, and an outer margin.
+	const int availableWidth = gnScreenWidth - 2 * 56 - 48;
+	for (const GameFontTables font : { GameFont30, GameFont24 }) {
+		if (GmenuGetTextWidth(pItem, font, 2) <= availableWidth)
+			return font;
+	}
+	return GameFont12;
+}
+#endif
+
 int GmenuGetLineWidth(TMenuItem *pItem)
 {
 	if (pItem->isSlider())
 		return SliderItemWidth;
 
 #ifdef __3DS__
-	return GetLineWidth(_(pItem->pszStr), GameFont30, 2);
+	return GmenuGetTextWidth(pItem, GmenuGetFont(pItem), GmenuGetSpacing(pItem));
 #else
-	return GetLineWidth(_(pItem->pszStr), GameFont46, 2);
+	return GetLineWidth(GmenuItemText(pItem), GameFont46, 2);
 #endif
 }
 
@@ -147,7 +281,8 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 		const uint16_t pos = SliderFillMin + (step * (SliderFillMax - SliderFillMin) / steps);
 		SDL_Rect rect = MakeSdlRect(SliderValueLeft + uiPositionX, y + 2, pos, 20);
 		SDL_FillSurfaceRect(out.surface, &rect, 205);
-		ClxDraw(out, { SliderValueLeft + pos - (SliderMarkerWidth / 2) + uiPositionX, y + 2 + 20 - 1 }, (*option_cel)[0]);
+		const ClxSprite marker = (*option_cel)[0];
+		DrawGMenuSliderMarker(out, marker, { SliderValueLeft + pos - SliderMarkerWidth / 2 + uiPositionX, y + 22 - marker.height() });
 #else
 		ClxDraw(out, { SliderValueBoxLeft + uiPositionX, y + 40 }, (*optbar_cel)[0]);
 		const uint16_t step = pItem->dwFlags & 0xFFF;
@@ -162,17 +297,25 @@ void GmenuDrawMenuItem(const Surface &out, TMenuItem *pItem, int y)
 	const int x = (gnScreenWidth - w) / 2;
 	const UiFlags style = pItem->enabled() ? UiFlags::ColorGold : UiFlags::ColorBlack;
 #ifdef __3DS__
-	DrawString(out, _(pItem->pszStr), Point { x, y },
-	    { .flags = style | UiFlags::FontSize30, .spacing = 2 });
+	const GameFontTables font = GmenuGetFont(pItem);
+	const UiFlags fontFlags = font == GameFont30 ? UiFlags::FontSize30
+	    : font == GameFont24 ? UiFlags::FontSize24 : UiFlags::FontSize12;
+	if (pItem->userData != nullptr) {
+		DrawString(out, GmenuItemText(pItem), { { 0, y }, { gnScreenWidth, GMenuItemHeight } },
+		    { .flags = style | fontFlags | UiFlags::AlignCenter, .spacing = GmenuGetSpacing(pItem), .lineHeight = 12 });
+	} else {
+		DrawString(out, GmenuItemText(pItem), Point { x, y },
+		    { .flags = style | fontFlags, .spacing = GmenuGetSpacing(pItem) });
+	}
 	if (pItem == sgpCurrItem) {
-		if (pSPentSpn2Cels) {
-			const ClxSprite sprite = (*pSPentSpn2Cels)[PentSpn2Spin()];
-			ClxDraw(out, { x - 18, y + 18 }, sprite);
-			ClxDraw(out, { x + 6 + w, y + 18 }, sprite);
+		if (PentSpin_cel) {
+			const ClxSprite sprite = (*PentSpin_cel)[PentSpn2Spin()];
+			DrawGMenuSpinner(out, sprite, { x - 56, y });
+			DrawGMenuSpinner(out, sprite, { x + w + 8, y });
 		}
 	}
 #else
-	DrawString(out, _(pItem->pszStr), Point { x, y },
+	DrawString(out, GmenuItemText(pItem), Point { x, y },
 	    { .flags = style | UiFlags::FontSize46, .spacing = 2 });
 	if (pItem == sgpCurrItem) {
 		const ClxSprite sprite = (*PentSpin_cel)[PentSpn2Spin()];
@@ -212,12 +355,16 @@ int GmenuGetSliderFill()
 } // namespace
 
 TMenuItem *sgpCurrentMenu;
+TMenuItem *sgpActivatedMenuItem;
 
 void gmenu_draw_pause(const Surface &out)
 {
 	if (leveltype != DTYPE_TOWN)
 		RedBack(out);
 	if (sgpCurrentMenu == nullptr) {
+#ifdef __3DS__
+		DrawDiabloMsgBackground(out, { { 0, 0 }, { out.w(), GMenuTopScreenHeight } });
+#endif
 		DrawString(out, _("Pause"), { { 0, 0 }, { gnScreenWidth, GetMainPanel().position.y } },
 		    { .flags = UiFlags::FontSize46 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter, .spacing = 2 });
 	}
@@ -243,11 +390,13 @@ void gmenu_init_menu()
 	if (HeadlessMode)
 		return;
 
+#ifndef __3DS__
 	sgpLogo = LoadOptionalCel("data\\hf_logo3", 430);
 	if (!sgpLogo.has_value())
 		sgpLogo = LoadCel("data\\diabsmal", 296);
+#endif
 	PentSpin_cel = LoadCel("data\\pentspin", 48);
-	option_cel = LoadCel("data\\option", SliderMarkerWidth);
+	option_cel = LoadCel("data\\option", SliderMarkerSpriteWidth);
 	optbar_cel = LoadCel("data\\optbar", SliderValueBoxWidth);
 #ifdef __3DS__
 	if (!pSPentSpn2Cels)
@@ -265,6 +414,9 @@ void gmenu_set_items(TMenuItem *pItem, void (*gmFunc)())
 	PauseMode = 0;
 	isDraggingSlider = false;
 	sgpCurrentMenu = pItem;
+#ifdef __3DS__
+	sgFirstVisibleMenuItem = 0;
+#endif
 	gmenu_current_option = gmFunc;
 	if (gmenu_current_option != nullptr) {
 		gmenu_current_option();
@@ -289,6 +441,7 @@ void gmenu_draw(const Surface &out)
 		GameMenuMove();
 		if (gmenu_current_option != nullptr)
 			gmenu_current_option();
+#ifndef __3DS__
 		if (sgpLogo->numSprites() > 1) {
 			const uint32_t ticks = SDL_GetTicks();
 			if ((int)(ticks - LogoAnim_tick) > 25) {
@@ -297,19 +450,53 @@ void gmenu_draw(const Surface &out)
 				LogoAnim_tick = ticks;
 			}
 		}
+#endif
+#ifdef __3DS__
+		int y = GMenuTop();
+		DrawDiabloMsgBackground(out, { { 0, 0 }, { out.w(), GMenuTopScreenHeight } });
+#else
 		const int uiPositionY = GetUIRectangle().position.y;
 		const ClxSprite sprite = (*sgpLogo)[LogoAnim_frame];
-#ifdef __3DS__
-		const int logoY = std::min(static_cast<int>(sprite.height()), 56) + uiPositionY;
-		ClxDraw(out, { (gnScreenWidth - sprite.width()) / 2, logoY }, sprite);
-		int y = GMenuTop + uiPositionY;
-#else
 		ClxDraw(out, { (gnScreenWidth - sprite.width()) / 2, 102 + uiPositionY }, sprite);
 		int y = 110 + uiPositionY;
 #endif
+#ifdef __3DS__
+		const char *address = gamemenu_network_address();
+		// Keep the connection address below the menu when there is room. Long
+		// menus (including the full single-player Mods page) use this space.
+		if (!gamemenu_gameplay_active() && address[0] != '\0' && y + GmenuVisibleRows() * GMenuItemHeight <= 220) {
+			const int width = GetLineWidth(address, GameFont12, 1, nullptr, CtrTextScale::TopScreen);
+			DrawString(out, address, Point { (gnScreenWidth - width) / 2, 220 },
+			    { .flags = UiFlags::FontSize12 | UiFlags::ColorWhite, .spacing = 1 });
+		}
+#endif
+#ifdef __3DS__
+		if (sgCurrentMenuIdx > GMenuMaxVisibleRows) {
+			const int height = GmenuVisibleRows() * GMenuItemHeight;
+			const int thumbHeight = std::max(12, height * GmenuVisibleRows() / sgCurrentMenuIdx);
+			const int thumbY = y + (height - thumbHeight) * sgFirstVisibleMenuItem / (sgCurrentMenuIdx - GmenuVisibleRows());
+			FillRect(out, 620, y, 6, height, 0);
+			FillRect(out, 620, thumbY, 6, thumbHeight, 205);
+		}
+		if (gamemenu_gameplay_active() && sgpCurrItem != nullptr) {
+			const std::string_view description = sgpCurrItem->userData != nullptr
+			    ? static_cast<OptionEntryBase *>(sgpCurrItem->userData)->GetDescription()
+			    : _("Restores the default values for these gameplay settings.");
+			const auto wrapped = WordWrapString(description, gnScreenWidth - 48, GameFont12, 1, CtrTextScale::TopScreen);
+			DrawString(out, wrapped, { { 24, 177 }, { gnScreenWidth - 48, 60 } },
+			    { .flags = UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, .spacing = 1, .lineHeight = 16 });
+		}
+		TMenuItem *i = sgpCurrentMenu + sgFirstVisibleMenuItem;
+		TMenuItem *end = i + GmenuVisibleRows();
+#else
 		TMenuItem *i = sgpCurrentMenu;
+#endif
 		if (sgpCurrentMenu->fnMenu != nullptr) {
+#ifdef __3DS__
+			while (i < end) {
+#else
 			while (i->fnMenu != nullptr) {
+#endif
 				GmenuDrawMenuItem(out, i, y);
 				i++;
 				y += GMenuItemHeight;
@@ -327,11 +514,16 @@ bool gmenu_presskeys(SDL_Keycode vkey)
 	case SDLK_RETURN:
 		if (sgpCurrItem->enabled()) {
 			PlaySFX(SfxID::MenuMove);
+			sgpActivatedMenuItem = sgpCurrItem;
 			sgpCurrItem->fnMenu(true);
+			sgpActivatedMenuItem = nullptr;
 		}
 		break;
 	case SDLK_ESCAPE:
 		PlaySFX(SfxID::MenuMove);
+#ifdef __3DS__
+		if (gamemenu_back()) break;
+#endif
 		gmenu_set_items(nullptr, nullptr);
 		break;
 	case SDLK_SPACE:
@@ -379,15 +571,25 @@ bool gmenu_left_mouse(bool isDown)
 	if (sgpCurrentMenu == nullptr) {
 		return false;
 	}
-	const Point uiPosition = GetUIRectangle().position;
 	if (MousePosition.y >= GetMainPanel().position.y) {
 		return false;
 	}
-	if (MousePosition.y - (GMenuTop + uiPosition.y) < 0) {
+#ifdef __3DS__
+	const int menuTop = GMenuTop();
+#else
+	const int menuTop = GMenuTop + GetUIRectangle().position.y;
+#endif
+	if (MousePosition.y < menuTop) {
 		return true;
 	}
-	const int i = (MousePosition.y - (GMenuTop + uiPosition.y)) / GMenuItemHeight;
+	const int visibleRow = (MousePosition.y - menuTop) / GMenuItemHeight;
+#ifdef __3DS__
+	const int i = visibleRow + sgFirstVisibleMenuItem;
+	if (visibleRow >= GmenuVisibleRows()) {
+#else
+	const int i = visibleRow;
 	if (i >= sgCurrentMenuIdx) {
+#endif
 		return true;
 	}
 	TMenuItem *pItem = &sgpCurrentMenu[i];
@@ -408,7 +610,9 @@ bool gmenu_left_mouse(bool isDown)
 		isDraggingSlider = GmenuMouseIsOverSlider();
 		gmenu_on_mouse_move();
 	} else {
+		sgpActivatedMenuItem = sgpCurrItem;
 		sgpCurrItem->fnMenu(true);
+		sgpActivatedMenuItem = nullptr;
 	}
 	return true;
 }

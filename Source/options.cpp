@@ -43,6 +43,10 @@
 #include "utils/language.h"
 #include "utils/log.hpp"
 #include "utils/logged_fstream.hpp"
+#ifdef __3DS__
+#include "platform/ctr/display.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
+#endif
 #include "utils/paths.h"
 #include "utils/sdl_ptrs.h"
 #include "utils/str_cat.hpp"
@@ -122,6 +126,12 @@ std::optional<Ini> ini;
 constexpr OptionEntryFlags OnlyIfSupportsWindowed = OptionEntryFlags::Invisible;
 #else
 constexpr OptionEntryFlags OnlyIfSupportsWindowed = OptionEntryFlags::None;
+#endif
+
+#ifdef __3DS__
+constexpr OptionEntryFlags CtrGraphicsFlag = OptionEntryFlags::Invisible;
+#else
+constexpr OptionEntryFlags CtrGraphicsFlag = OptionEntryFlags::None;
 #endif
 
 constexpr size_t NumResamplers =
@@ -228,6 +238,24 @@ void LoadOptions()
 			pEntry->LoadFromIni(pCategory->GetKey());
 		}
 	}
+
+#ifdef __3DS__
+	// The custom bottom HUD always includes experience, including old INI files.
+	options.Gameplay.experienceBar.SetValue(true);
+	if (ini->get("Game", "Show Vital Values").empty())
+		options.Gameplay.showVitalValues.SetValue(*options.Gameplay.showHealthValues || *options.Gameplay.showManaValues);
+	if (ini->get("Game", "Auto Collect Consumables").empty()) {
+		auto &g = options.Gameplay;
+		g.autoConsumables.SetValue(*g.autoElixirPickup || *g.autoOilPickup
+		    || *g.numHealPotionPickup > 0 || *g.numFullHealPotionPickup > 0
+		    || *g.numManaPotionPickup > 0 || *g.numFullManaPotionPickup > 0
+		    || *g.numRejuPotionPickup > 0 || *g.numFullRejuPotionPickup > 0);
+	}
+	ApplyCtrGameplayOptions();
+	// Choose the expansion per hero, before Lua mounts any expansion archives.
+	options.Mods.SetHellfireEnabled(false);
+	options.GameMode.gameMode.SetValue(StartUpGameMode::Diablo);
+#endif
 
 	ini->getUtf8Buf("Hellfire", "SItem", options.Hellfire.szItem, sizeof(options.Hellfire.szItem));
 	ini->getUtf8Buf("Network", "Bind Address", "0.0.0.0", options.Network.szBindAddress, sizeof(options.Network.szBindAddress));
@@ -516,7 +544,7 @@ AudioOptions::AudioOptions()
     , musicVolume("Music Volume", OptionEntryFlags::Invisible, "Music Volume", "Music Volume.", VOLUME_MAX)
     , walkingSound("Walking Sound", OptionEntryFlags::None, N_("Walking Sound"), N_("Player emits sound when walking."), true)
     , autoEquipSound("Auto Equip Sound", OptionEntryFlags::None, N_("Auto Equip Sound"), N_("Automatically equipping items on pickup emits the equipment sound."), false)
-    , itemPickupSound("Item Pickup Sound", OptionEntryFlags::None, N_("Item Pickup Sound"), N_("Picking up items emits the items pickup sound."), false)
+    , itemPickupSound("Item Pickup Sound", OptionEntryFlags::None, N_("Item Pickup Sound"), N_("Picking up items emits the items pickup sound."), true)
     , sampleRate("Sample Rate", OptionEntryFlags::CantChangeInGame, N_("Sample Rate"), N_("Output sample rate (Hz)."), DEFAULT_AUDIO_SAMPLE_RATE, { 22050, 44100, 48000 })
     , channels("Channels", OptionEntryFlags::CantChangeInGame, N_("Channels"), N_("Number of output channels."), DEFAULT_AUDIO_CHANNELS, { 1, 2 })
     , bufferSize("Buffer Size", OptionEntryFlags::CantChangeInGame, N_("Buffer Size"), N_("Buffer size (number of frames per channel)."), DEFAULT_AUDIO_BUFFER_SIZE, { 1024, 2048, 5120 })
@@ -546,12 +574,17 @@ std::vector<OptionEntryBase *> AudioOptions::GetEntries()
 }
 
 OptionEntryResolution::OptionEntryResolution()
-    : OptionEntryListBase("", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI, N_("Resolution"), N_("Affect the game's internal resolution and determine your view area. Note: This can differ from screen resolution, when Upscaling, Integer Scaling or Fit to Screen is used."))
+    : OptionEntryListBase("", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | CtrGraphicsFlag, N_("Resolution"), N_("Affect the game's internal resolution and determine your view area. Note: This can differ from screen resolution, when Upscaling, Integer Scaling or Fit to Screen is used."))
 {
 }
 void OptionEntryResolution::LoadFromIni(std::string_view category)
 {
+#ifdef __3DS__
+	// Migrate old 800x480 settings to the fixed dual-screen canvas.
+	size_ = CtrCanvasSize;
+#else
 	size_ = { ini->getInt(category, "Width", DEFAULT_WIDTH), ini->getInt(category, "Height", DEFAULT_HEIGHT) };
+#endif
 }
 void OptionEntryResolution::SaveToIni(std::string_view category) const
 {
@@ -740,7 +773,7 @@ SDL_AudioDeviceID OptionEntryAudioDevice::id() const
 
 GraphicsOptions::GraphicsOptions()
     : OptionCategoryBase("Graphics", N_("Graphics"), N_("Graphics Settings"))
-    , fullscreen("Fullscreen", OnlyIfSupportsWindowed | OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI, N_("Fullscreen"), N_("Display the game in windowed or fullscreen mode."),
+    , fullscreen("Fullscreen", OnlyIfSupportsWindowed | OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | CtrGraphicsFlag, N_("Fullscreen"), N_("Display the game in windowed or fullscreen mode."),
 #ifdef __EMSCRIPTEN__
           false // Default to windowed mode for browser
 #else
@@ -748,7 +781,7 @@ GraphicsOptions::GraphicsOptions()
 #endif
           )
 #if !defined(USE_SDL1) || defined(__3DS__)
-    , fitToScreen("Fit to Screen", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI, N_("Fit to Screen"), N_("Automatically adjust the game window to your current desktop screen aspect ratio and resolution."),
+    , fitToScreen("Fit to Screen", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | CtrGraphicsFlag, N_("Fit to Screen"), N_("Automatically adjust the game window to your current desktop screen aspect ratio and resolution."),
 #if defined(__DJGPP__) || defined(__EMSCRIPTEN__)
           false
 #else
@@ -757,23 +790,23 @@ GraphicsOptions::GraphicsOptions()
           )
 #endif
 #ifndef USE_SDL1
-    , upscale("Upscale", OptionEntryFlags::Invisible | OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI, N_("Upscale"), N_("Enables image scaling from the game resolution to your monitor resolution. Prevents changing the monitor resolution and allows window resizing."),
+    , upscale("Upscale", OptionEntryFlags::Invisible | OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | CtrGraphicsFlag, N_("Upscale"), N_("Enables image scaling from the game resolution to your monitor resolution. Prevents changing the monitor resolution and allows window resizing."),
 #if defined(NXDK) || defined(__DJGPP__)
           false
 #else
           true
 #endif
           )
-    , scaleQuality("Scaling Quality", OptionEntryFlags::None, N_("Scaling Quality"), N_("Enables optional filters to the output image when upscaling."), ScalingQuality::AnisotropicFiltering,
+    , scaleQuality("Scaling Quality", OptionEntryFlags::None | CtrGraphicsFlag, N_("Scaling Quality"), N_("Enables optional filters to the output image when upscaling."), ScalingQuality::AnisotropicFiltering,
           {
               { ScalingQuality::NearestPixel, N_("Nearest Pixel") },
               { ScalingQuality::BilinearFiltering, N_("Bilinear") },
               { ScalingQuality::AnisotropicFiltering, N_("Anisotropic") },
           })
-    , integerScaling("Integer Scaling", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI, N_("Integer Scaling"), N_("Scales the image using whole number pixel ratio."), false)
+    , integerScaling("Integer Scaling", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | CtrGraphicsFlag, N_("Integer Scaling"), N_("Scales the image using whole number pixel ratio."), false)
 #endif
     , frameRateControl("Frame Rate Control",
-          OptionEntryFlags::RecreateUI
+          OptionEntryFlags::RecreateUI | CtrGraphicsFlag
 #if defined(NXDK) || defined(__ANDROID__)
               | OptionEntryFlags::Invisible
 #endif
@@ -793,17 +826,17 @@ GraphicsOptions::GraphicsOptions()
 #endif
               { FrameRateControl::CPUSleep, N_("Limit FPS") },
           })
-    , brightness("Brightness Correction", OptionEntryFlags::Invisible, "Brightness Correction", "Brightness correction level.", 0)
-    , zoom("Zoom", OptionEntryFlags::None, N_("Zoom"), N_("Zoom on when enabled."), false)
-    , perPixelLighting("Per-pixel Lighting", OptionEntryFlags::None, N_("Per-pixel Lighting"), N_("Subtile lighting for smoother light gradients."), DEFAULT_PER_PIXEL_LIGHTING)
-    , colorCycling("Color Cycling", OptionEntryFlags::None, N_("Color Cycling"), N_("Color cycling effect used for water, lava, and acid animation."), true)
-    , alternateNestArt("Alternate nest art", OptionEntryFlags::OnlyHellfire | OptionEntryFlags::CantChangeInGame, N_("Alternate nest art"), N_("The game will use an alternative palette for Hellfire’s nest tileset."), false)
+    , brightness("Brightness Correction", OptionEntryFlags::Invisible | CtrGraphicsFlag, "Brightness Correction", "Brightness correction level.", 0)
+    , zoom("Zoom", OptionEntryFlags::None | CtrGraphicsFlag, N_("Zoom"), N_("Zoom on when enabled."), false)
+    , perPixelLighting("Per-pixel Lighting", OptionEntryFlags::None | CtrGraphicsFlag, N_("Per-pixel Lighting"), N_("Subtile lighting for smoother light gradients."), DEFAULT_PER_PIXEL_LIGHTING)
+    , colorCycling("Color Cycling", OptionEntryFlags::None | CtrGraphicsFlag, N_("Color Cycling"), N_("Color cycling effect used for water, lava, and acid animation."), true)
+    , alternateNestArt("Alternate nest art", OptionEntryFlags::OnlyHellfire | OptionEntryFlags::CantChangeInGame | CtrGraphicsFlag, N_("Alternate nest art"), N_("The game will use an alternative palette for Hellfire’s nest tileset."), false)
 #if SDL_VERSION_ATLEAST(2, 0, 0)
-    , hardwareCursor("Hardware Cursor", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | (HardwareCursorSupported() ? OptionEntryFlags::None : OptionEntryFlags::Invisible), N_("Hardware Cursor"), N_("Use a hardware cursor"), HardwareCursorDefault())
-    , hardwareCursorForItems("Hardware Cursor For Items", OptionEntryFlags::CantChangeInGame | (HardwareCursorSupported() ? OptionEntryFlags::None : OptionEntryFlags::Invisible), N_("Hardware Cursor For Items"), N_("Use a hardware cursor for items."), false)
-    , hardwareCursorMaxSize("Hardware Cursor Maximum Size", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | (HardwareCursorSupported() ? OptionEntryFlags::None : OptionEntryFlags::Invisible), N_("Hardware Cursor Maximum Size"), N_("Maximum width / height for the hardware cursor. Larger cursors fall back to software."), 128, { 0, 64, 128, 256, 512 })
+    , hardwareCursor("Hardware Cursor", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | CtrGraphicsFlag | (HardwareCursorSupported() ? OptionEntryFlags::None : OptionEntryFlags::Invisible), N_("Hardware Cursor"), N_("Use a hardware cursor"), HardwareCursorDefault())
+    , hardwareCursorForItems("Hardware Cursor For Items", OptionEntryFlags::CantChangeInGame | CtrGraphicsFlag | (HardwareCursorSupported() ? OptionEntryFlags::None : OptionEntryFlags::Invisible), N_("Hardware Cursor For Items"), N_("Use a hardware cursor for items."), false)
+    , hardwareCursorMaxSize("Hardware Cursor Maximum Size", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI | CtrGraphicsFlag | (HardwareCursorSupported() ? OptionEntryFlags::None : OptionEntryFlags::Invisible), N_("Hardware Cursor Maximum Size"), N_("Maximum width / height for the hardware cursor. Larger cursors fall back to software."), 128, { 0, 64, 128, 256, 512 })
 #endif
-    , showFPS("Show FPS", OptionEntryFlags::None, N_("Show FPS"), N_("Displays the FPS in the upper left corner of the screen."), false)
+    , showFPS("Show FPS", OptionEntryFlags::None | CtrGraphicsFlag, N_("Show FPS"), N_("Displays the FPS in the upper left corner of the screen."), false)
 {
 }
 std::vector<OptionEntryBase *> GraphicsOptions::GetEntries()
@@ -840,21 +873,33 @@ std::vector<OptionEntryBase *> GraphicsOptions::GetEntries()
 
 GameplayOptions::GameplayOptions()
     : OptionCategoryBase("Game", N_("Gameplay"), N_("Gameplay Settings"))
+#ifdef __3DS__
+    , showVitalValues("Show Vital Values", OptionEntryFlags::None, N_("Show health and mana"), N_("Shows current and maximum health and mana as numbers."), false)
+    , autoConsumables("Auto Collect Consumables", OptionEntryFlags::None, N_("Auto Collect Consumables"), N_("Collects potions (up to 8 of each type), elixirs and Hellfire oils. Does not use them."), false)
+    , autoEquip("Auto Equip Items", OptionEntryFlags::None, N_("Auto Equip Items"), N_("Equips picked up or purchased items only in empty equipment slots. Never replaces worn equipment."), true)
+#endif
     , tickRate("Speed", OptionEntryFlags::Invisible, "Speed", "Gameplay ticks per second.", 20)
     , runInTown("Run in Town", OptionEntryFlags::CantChangeInMultiPlayer, N_("Run in Town"), N_("Enable jogging/fast walking in town for Diablo and Hellfire. This option was introduced in the expansion."), false)
     , grabInput("Grab Input", OptionEntryFlags::None, N_("Grab Input"), N_("When enabled mouse is locked to the game window."), false)
     , pauseOnFocusLoss("Pause Game When Window Loses Focus", OptionEntryFlags::None, N_("Pause Game When Window Loses Focus"), N_("When enabled, the game will pause when focus is lost."), true)
     , theoQuest("Theo Quest", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Theo Quest"), N_("Enable Little Girl quest."), false)
     , cowQuest("Cow Quest", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Cow Quest"), N_("Enable Jersey's quest. Lester the farmer is replaced by the Complete Nut."), false)
-    , friendlyFire("Friendly Fire", OptionEntryFlags::CantChangeInMultiPlayer, N_("Friendly Fire"), N_("Allow arrow/spell damage between players in multiplayer even when the friendly mode is on."), true)
+    , friendlyFire("Friendly Fire", OptionEntryFlags::CantChangeInMultiPlayer, N_("Friendly Fire"), N_("Allow arrow/spell damage between players in multiplayer even when the friendly mode is on."), false)
     , multiplayerFullQuests("MultiplayerFullQuests", OptionEntryFlags::CantChangeInMultiPlayer, N_("Full quests in Multiplayer"), N_("Enables the full/uncut singleplayer version of quests."), false)
     , testBard("Test Bard", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Test Bard"), N_("Force the Bard character type to appear in the hero selection menu."), false)
     , testBarbarian("Test Barbarian", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::OnlyHellfire, N_("Test Barbarian"), N_("Force the Barbarian character type to appear in the hero selection menu."), false)
-    , experienceBar("Experience Bar", OptionEntryFlags::None, N_("Experience Bar"), N_("Experience Bar is added to the UI at the bottom of the screen."), false)
+    , experienceBar("Experience Bar", CtrGraphicsFlag, N_("Experience Bar"), N_("Experience Bar is added to the UI at the bottom of the screen."), true)
+    , showSmallMap("Show small map", OptionEntryFlags::Invisible, N_("Show small map"), N_("Draws the map in the upper-right corner."),
+#ifdef __3DS__
+          true
+#else
+          false
+#endif
+      )
     , showHealthValues("Show health values", OptionEntryFlags::None, N_("Show health values"), N_("Displays current / max health value on health globe."), false)
     , showManaValues("Show mana values", OptionEntryFlags::None, N_("Show mana values"), N_("Displays current / max mana value on mana globe."), false)
     , showMultiplayerPartyInfo("Show Multiplayer Party Information", OptionEntryFlags::CantChangeInMultiPlayer, N_("Show Party Information"), N_("Displays the health and mana of all connected multiplayer party members."), false)
-    , enemyHealthBar("Enemy Health Bar", OptionEntryFlags::None, N_("Enemy Health Bar"), N_("Enemy Health Bar is displayed at the top of the screen."), false)
+    , enemyHealthBar("Enemy Health Bar", OptionEntryFlags::None, N_("Enemy Health Bar"), N_("Enemy Health Bar is displayed at the top of the screen."), true)
     , floatingInfoBox("Floating Item Info Box", OptionEntryFlags::None, N_("Floating Item Info Box"), N_("Displays item info in a floating box when hovering over an item."), false)
     , autoGoldPickup("Auto Gold Pickup", OptionEntryFlags::None, N_("Auto Gold Pickup"), N_("Gold is automatically collected when in close proximity to the player."), false)
     , autoElixirPickup("Auto Elixir Pickup", OptionEntryFlags::None, N_("Auto Elixir Pickup"), N_("Elixirs are automatically collected when in close proximity to the player."), false)
@@ -866,8 +911,8 @@ GameplayOptions::GameplayOptions()
     , autoEquipShields("Auto Equip Shields", OptionEntryFlags::None, N_("Auto Equip Shields"), N_("Shields will be automatically equipped on pickup or purchase if enabled."), false)
     , autoEquipJewelry("Auto Equip Jewelry", OptionEntryFlags::None, N_("Auto Equip Jewelry"), N_("Jewelry will be automatically equipped on pickup or purchase if enabled."), false)
     , randomizeQuests("Randomize Quests", OptionEntryFlags::CantChangeInGame, N_("Randomize Quests"), N_("Randomly selecting available quests for new games."), true)
-    , showMonsterType("Show Monster Type", OptionEntryFlags::None, N_("Show Monster Type"), N_("Hovering over a monster will display the type of monster in the description box in the UI."), false)
-    , showItemLabels("Show Item Labels", OptionEntryFlags::None, N_("Show Item Labels"), N_("Show labels for items on the ground when enabled."), false)
+    , showMonsterType("Show Monster Type", OptionEntryFlags::None, N_("Show Monster Type"), N_("Hovering over a monster will display the type of monster in the description box in the UI."), true)
+    , showItemLabels("Show Item Labels", OptionEntryFlags::None, N_("Show Item Labels"), N_("Show labels for items on the ground when enabled."), true)
     , autoRefillBelt("Auto Refill Belt", OptionEntryFlags::None, N_("Auto Refill Belt"), N_("Refill belt from inventory when belt item is consumed."), false)
     , disableCripplingShrines("Disable Crippling Shrines", OptionEntryFlags::None, N_("Disable Crippling Shrines"), N_("When enabled Cauldrons, Fascinating Shrines, Goat Shrines, Ornate Shrines, Sacred Shrines and Murphy's Shrines are not able to be clicked on and labeled as disabled."), false)
     , quickCast("Quick Cast", OptionEntryFlags::None, N_("Quick Cast"), N_("Spell hotkeys instantly cast the spell, rather than switching the readied spell."), false)
@@ -877,7 +922,12 @@ GameplayOptions::GameplayOptions()
     , numFullManaPotionPickup("Full Mana Potion Pickup", OptionEntryFlags::None, N_("Full Mana Potion Pickup"), N_("Number of Full Mana potions to pick up automatically."), 0, { 0, 1, 2, 4, 8, 16 })
     , numRejuPotionPickup("Rejuvenation Potion Pickup", OptionEntryFlags::None, N_("Rejuvenation Potion Pickup"), N_("Number of Rejuvenation potions to pick up automatically."), 0, { 0, 1, 2, 4, 8, 16 })
     , numFullRejuPotionPickup("Full Rejuvenation Potion Pickup", OptionEntryFlags::None, N_("Full Rejuvenation Potion Pickup"), N_("Number of Full Rejuvenation potions to pick up automatically."), 0, { 0, 1, 2, 4, 8, 16 })
-    , storeUi("Store UI", OptionEntryFlags::None, N_("Store UI"), N_("User interface for stores"), StoreUi::Text,
+    , storeUi("Store UI", OptionEntryFlags::None, N_("Store UI"), N_("User interface for stores"),
+#ifdef __3DS__
+          StoreUi::ListWithItemGraphics,
+#else
+          StoreUi::Text,
+#endif
           {
               { StoreUi::Text, N_("Text-only list") },
               { StoreUi::ListWithItemGraphics, N_("List with item graphics") },
@@ -890,6 +940,11 @@ GameplayOptions::GameplayOptions()
 std::vector<OptionEntryBase *> GameplayOptions::GetEntries()
 {
 	return {
+#ifdef __3DS__
+		&showVitalValues,
+		&autoConsumables,
+		&autoEquip,
+#endif
 		&tickRate,
 		&friendlyFire,
 		&multiplayerFullQuests,
@@ -903,6 +958,7 @@ std::vector<OptionEntryBase *> GameplayOptions::GetEntries()
 		&experienceBar,
 		&floatingInfoBox,
 		&storeUi,
+		&showSmallMap,
 		&showHealthValues,
 		&showManaValues,
 		&showMultiplayerPartyInfo,
@@ -931,6 +987,68 @@ std::vector<OptionEntryBase *> GameplayOptions::GetEntries()
 		&skipLoadingScreenThresholdMs,
 	};
 }
+
+#ifdef __3DS__
+void ApplyCtrGameplayOptions()
+{
+	auto &g = GetOptions().Gameplay;
+	g.showHealthValues.SetValue(*g.showVitalValues);
+	g.showManaValues.SetValue(*g.showVitalValues);
+	for (auto *option : { &g.autoEquipWeapons, &g.autoEquipArmor, &g.autoEquipHelms, &g.autoEquipShields, &g.autoEquipJewelry })
+		option->SetValue(*g.autoEquip);
+	g.autoElixirPickup.SetValue(*g.autoConsumables);
+	g.autoOilPickup.SetValue(*g.autoConsumables);
+	for (auto *option : { &g.numHealPotionPickup, &g.numFullHealPotionPickup, &g.numManaPotionPickup, &g.numFullManaPotionPickup, &g.numRejuPotionPickup, &g.numFullRejuPotionPickup })
+		option->SetValue(*g.autoConsumables ? 8 : 0);
+}
+
+const char *CtrGameplayGroupName(int group)
+{
+	static const char *names[] = { N_("Display"), N_("Auto Pickup"), N_("Inventory"), N_("Game Rules"), N_("Multiplayer"), N_("Hellfire"), N_("Extra Mods") };
+	return names[group];
+}
+
+std::vector<OptionEntryBase *> GetCtrGameplayEntries(int group)
+{
+	auto &g = GetOptions().Gameplay;
+	switch (group) {
+	case -1: return { &g.showItemLabels, &g.enemyHealthBar, &g.showVitalValues, &g.autoGoldPickup, &g.autoConsumables, &g.autoRefillBelt, &g.autoEquip, &g.showSmallMap };
+	case 0: return { &g.showItemLabels, &g.enemyHealthBar, &g.showVitalValues, &g.showSmallMap, &g.showMonsterType, &g.floatingInfoBox, &g.storeUi };
+	case 1: return { &g.autoGoldPickup, &g.autoConsumables, &g.autoPickupInTown };
+	case 2: return { &g.autoRefillBelt, &g.autoEquip };
+	case 3: return { &g.runInTown, &g.randomizeQuests, &g.disableCripplingShrines };
+	case 4: return { &g.friendlyFire, &g.multiplayerFullQuests, &g.showMultiplayerPartyInfo };
+	case 5: return { &g.theoQuest, &g.cowQuest, &g.testBard, &g.testBarbarian };
+	case 6: {
+		auto entries = GetOptions().GameMode.GetEntries();
+		for (auto *entry : GetOptions().Mods.GetEntries()) entries.push_back(entry);
+		return entries;
+	}
+	default: return {};
+	}
+}
+
+void ResetCtrGameplayOptions(bool liveOnly)
+{
+	GameplayOptions defaults;
+	auto &g = GetOptions().Gameplay;
+	const auto entries = liveOnly ? GetCtrGameplayEntries() : g.GetEntries();
+	for (auto *entry : entries) {
+		if (entry == &g.tickRate || entry == &g.grabInput || entry == &g.pauseOnFocusLoss || entry == &g.skipLoadingScreenThresholdMs)
+			continue;
+		for (auto *initial : defaults.GetEntries()) {
+			if (entry->key != initial->key) continue;
+			if (entry->GetType() == OptionEntryType::Boolean)
+				static_cast<OptionEntryBoolean *>(entry)->SetValue(**static_cast<OptionEntryBoolean *>(initial));
+			else if (entry->GetType() == OptionEntryType::List)
+				static_cast<OptionEntryListBase *>(entry)->SetActiveListIndex(static_cast<OptionEntryListBase *>(initial)->GetActiveListIndex());
+			break;
+		}
+	}
+	g.experienceBar.SetValue(true);
+	ApplyCtrGameplayOptions();
+}
+#endif
 
 ControllerOptions::ControllerOptions()
     : OptionCategoryBase("Controller", N_("Controller"), N_("Controller Settings"))
@@ -1035,6 +1153,7 @@ void OptionEntryLanguageCode::CheckLanguagesAreInitialized() const
 	languages.emplace_back("fr", "Français");
 	languages.emplace_back("hr", "Hrvatski");
 	languages.emplace_back("it", "Italiano");
+	languages.emplace_back("lt", "Lietuvių");
 	languages.emplace_back("hu", "Magyar");
 	languages.emplace_back("pl", "Polski");
 	languages.emplace_back("pt_BR", "Português do Brasil");
@@ -1668,7 +1787,7 @@ ModOptions::ModEntry::ModEntry(std::string_view name, const ModManifest &manifes
     : name(name)
     , displayName(manifest.name.empty() ? std::string(name) : manifest.name)
     , description(BuildModDescription(manifest))
-    , enabled(this->name, OptionEntryFlags::RecreateUI, this->displayName.c_str(), this->description.c_str(), false)
+    , enabled(this->name, OptionEntryFlags::RecreateUI, this->displayName.c_str(), this->description.c_str(), name == "adria_refills_mana")
 {
 }
 

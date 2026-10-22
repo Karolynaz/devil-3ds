@@ -72,6 +72,15 @@ void SimulateMouseMovement(const SDL_Event &event)
 {
 	const Point position = ScaleToScreenCoordinates(event.tfinger.x, event.tfinger.y);
 
+#ifdef __3DS__
+	if (position.y >= 240) {
+		MousePosition = position;
+		SetPointAndClick(true);
+		InvalidateInventorySlot();
+		return;
+	}
+#endif
+
 	const bool isInMainPanel = GetMainPanel().contains(position);
 	const bool isInLeftPanel = GetLeftPanel().contains(position);
 	const bool isInRightPanel = GetRightPanel().contains(position);
@@ -130,8 +139,15 @@ bool HandleSpeedBookInteraction(const SDL_Event &event)
 
 void HandleBottomPanelInteraction(const SDL_Event &event)
 {
-	if (!gbRunGame || !MyPlayer->HoldItem.isEmpty())
+	if (!gbRunGame)
 		return;
+	if (!MyPlayer->HoldItem.isEmpty()) {
+#ifdef __3DS__
+		if (IsFingerUp(event) && MousePosition.y >= 240)
+			CheckInvScrn();
+#endif
+		return;
+	}
 
 	ResetMainPanelButtons();
 

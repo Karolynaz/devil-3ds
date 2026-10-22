@@ -8,6 +8,9 @@
 #include "engine/size.hpp"
 #include "engine/surface.hpp"
 #include "utils/palette_blending.hpp"
+#ifdef __3DS__
+#include "platform/ctr/world_surface.hpp"
+#endif
 
 namespace devilution {
 namespace {
@@ -15,7 +18,17 @@ namespace {
 void DrawHalfTransparentUnalignedBlendedRectTo(const Surface &out, unsigned sx, unsigned sy, unsigned width, unsigned height, uint8_t color)
 {
 	uint8_t *pix = out.at(static_cast<int>(sx), static_cast<int>(sy));
-	const uint8_t *const lookupTable = paletteTransparencyLookup[color];
+	const uint8_t *lookupTable = paletteTransparencyLookup[color];
+#ifdef __3DS__
+	// On the 3DS UI layer a key pixel (the world) becomes the dim key, so the
+	// presenter shows the darkened world (task 022).
+	uint8_t dimLookup[256];
+	if (CtrIsUiLayer(out)) {
+		std::memcpy(dimLookup, lookupTable, sizeof(dimLookup));
+		dimLookup[CtrWorldKeyIndex] = CtrWorldDimKeyIndex;
+		lookupTable = dimLookup;
+	}
+#endif
 	const unsigned skipX = out.pitch() - width;
 	for (unsigned y = 0; y < height; ++y) {
 		for (unsigned x = 0; x < width; ++x, ++pix) {
@@ -25,7 +38,7 @@ void DrawHalfTransparentUnalignedBlendedRectTo(const Surface &out, unsigned sx, 
 	}
 }
 
-#if DEVILUTIONX_PALETTE_TRANSPARENCY_BLACK_16_LUT
+#if DEVILUTIONX_PALETTE_TRANSPARENCY_BLACK_16_LUT && !defined(__3DS__)
 // Expects everything to be 4-byte aligned.
 void DrawHalfTransparentAligned32BlendedRectTo(const Surface &out, unsigned sx, unsigned sy, unsigned width, unsigned height)
 {
@@ -72,6 +85,12 @@ void DrawHalfTransparentBlendedRectTo(const Surface &out, unsigned sx, unsigned 
 
 	// Now everything is divisible by 4. Draw the aligned part.
 	DrawHalfTransparentAligned32BlendedRectTo(out, sx, sy, width, height);
+}
+#elif defined(__3DS__)
+// The 16 bit table cannot make the dim key, so the 3DS always blends with black per pixel.
+void DrawHalfTransparentBlendedRectTo(const Surface &out, unsigned sx, unsigned sy, unsigned width, unsigned height)
+{
+	DrawHalfTransparentUnalignedBlendedRectTo(out, sx, sy, width, height, 0);
 }
 #else
 #define DrawHalfTransparentBlendedRectTo DrawHalfTransparentUnalignedBlendedRectTo
@@ -216,6 +235,12 @@ void SetHalfTransparentPixel(const Surface &out, Point position, uint8_t color)
 {
 	if (out.InBounds(position)) {
 		uint8_t *pix = out.at(position.x, position.y);
+#ifdef __3DS__
+		if (*pix == CtrWorldKeyIndex && CtrIsUiLayer(out)) {
+			*pix = CtrWorldDimKeyIndex;
+			return;
+		}
+#endif
 		const auto &lookupTable = paletteTransparencyLookup[color];
 		*pix = lookupTable[*pix];
 	}

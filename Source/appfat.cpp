@@ -24,6 +24,7 @@
 #include "storm/storm_net.hpp"
 #include "utils/format.hpp"
 #include "utils/language.h"
+#include "utils/paths.h"
 #include "utils/sdl_thread.h"
 #include "utils/str_cat.hpp"
 #include "utils/ui_fwd.h"
@@ -88,19 +89,34 @@ void ErrDlg(const char *title, std::string_view error, std::string_view logFileP
 
 void InsertCDDlg(std::string_view archiveName)
 {
+#ifdef __3DS__
+	DisplayFatalErrorAndExit(_("Data File Error"),
+	    FormatRuntime(_("Copy to this SD card folder:\n{:s}\n\nRequired files:\n{:s}"),
+	        paths::PrefPath(), archiveName));
+#else
 	DisplayFatalErrorAndExit(_("Data File Error"),
 	    FormatRuntime(_("Unable to open main data archive ({:s}).\n"
 	                    "\n"
 	                    "Make sure that it is in the game folder."),
 	        archiveName));
+#endif
 }
 
 void DirErrorDlg(std::string_view error)
 {
+#ifdef __3DS__
+	// Show the SD-card-relative folder users see on their computer.
+	if (error.starts_with("sdmc:"))
+		error.remove_prefix(5);
+	DisplayFatalErrorAndExit(
+	    _("Game Folder Error"),
+	    FormatRuntime(_("Please create {:s}\nand put game data there."), error));
+#else
 	DisplayFatalErrorAndExit(
 	    _("Read-Only Directory Error"),
 	    FormatRuntime(_(/* TRANSLATORS: Error when Program is not allowed to write data */ "Unable to write to location:\n{:s}"),
 	        error));
+#endif
 }
 
 } // namespace devilution

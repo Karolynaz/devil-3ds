@@ -28,6 +28,9 @@ extern SfxID sfxdnum;
 bool effect_is_playing(SfxID nSFX);
 void stream_stop();
 void PlaySFX(SfxID psfx);
+#ifdef __3DS__
+void PlayCtrDeathSound();
+#endif
 void PlaySfxLoc(SfxID psfx, Point position, bool randomizeByCategory = true);
 void sound_stop();
 void sound_update();

@@ -15,6 +15,9 @@ uint16_t GetScreenWidth();
 uint16_t GetScreenHeight();
 uint16_t GetViewportHeight();
 
+/** @brief Width of the game world view. The 3DS top screen is 400 px wide, other platforms use the screen width. */
+uint16_t GetViewportWidth();
+
 /** @brief Returns the UI (Menus, Messages, Help) can use. Currently this is 640x480 like vanilla. */
 const Rectangle &GetUIRectangle();
 

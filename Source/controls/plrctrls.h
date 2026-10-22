@@ -42,6 +42,10 @@ void HandleRightStickMotion();
 // Whether we're in a dialog menu that the game handles natively with keyboard controls.
 bool InGameMenu();
 
+#ifdef __3DS__
+bool Is3DSInventoryPanelOpen();
+#endif
+
 void SetPointAndClick(bool value);
 
 bool IsPointAndClick();
@@ -69,6 +73,8 @@ void FocusOnInventory();
 void FocusOnVisualStore();
 void PerformSpellAction();
 void QuickCast(size_t slot);
+void CtrlUseInvItem();
+void CtrlUseStashItem();
 
 extern int speedspellcount;
 

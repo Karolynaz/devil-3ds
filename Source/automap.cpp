@@ -30,6 +30,12 @@
 #include "lighting.h"
 #endif
 
+#include "storm/storm_net.hpp"
+
+#ifdef __3DS__
+#include "platform/ctr/world_view.hpp"
+#endif
+
 namespace devilution {
 
 namespace {
@@ -1263,13 +1269,22 @@ Displacement GetAutomapScreen()
 		};
 	} else {
 		screen = {
-			gnScreenWidth / 2,
+			GetViewportWidth() / 2,
+#ifdef __3DS__
+			GetViewportHeight() / 2 + CtrCameraVerticalOffset
+#else
 			(gnScreenHeight - GetMainPanel().size.height) / 2
+#endif
 		};
 	}
 	screen += AmOffset(AmWidthOffset::None, AmHeightOffset::HalfTileDown);
 
 	return screen;
+}
+
+int GetAutomapPanelOffsetX()
+{
+	return (static_cast<int>(IsLeftPanelOpen()) - static_cast<int>(IsRightPanelOpen())) * GetViewportWidth() / 4;
 }
 
 void SearchAutomapItem(const Surface &out, const Displacement &myPlayerOffset, int searchRadius, tl::function_ref<bool(Point position)> highlightTile)
@@ -1308,10 +1323,7 @@ void SearchAutomapItem(const Surface &out, const Displacement &myPlayerOffset, i
 			screen += GetAutomapScreen();
 
 			if (mapType != AutomapType::Minimap && CanPanelsCoverView()) {
-				if (IsRightPanelOpen())
-					screen.x -= gnScreenWidth / 4;
-				if (IsLeftPanelOpen())
-					screen.x += gnScreenWidth / 4;
+				screen.x += GetAutomapPanelOffsetX();
 			}
 
 			screen.y -= AmLine(AmLineLength::FullTile);
@@ -1361,10 +1373,7 @@ void DrawAutomapPlr(const Surface &out, const Displacement &myPlayerOffset, cons
 	base += GetAutomapScreen();
 
 	if (CanPanelsCoverView()) {
-		if (IsRightPanelOpen())
-			base.x -= gnScreenWidth / 4;
-		if (IsLeftPanelOpen())
-			base.x += gnScreenWidth / 4;
+		base.x += GetAutomapPanelOffsetX();
 	}
 
 	switch (player._pdir) {
@@ -1442,22 +1451,36 @@ void DrawAutomapText(const Surface &out)
 	}
 
 	if (gbIsMultiplayer) {
-		if (GameName != "0.0.0.0" && !IsLoopback) {
-			std::string description = std::string(_("Game: "));
-			description.append(GameName);
+		if (provider == SELCONN_ZT) {
+			if (!PublicGame) {
+				std::string description = std::string(_("Game ID: "));
+				description.append(GameName);
+				drawStringAndAdvanceLine(description);
+				drawStringAndAdvanceLine(_("Private Game"));
+			} else {
+				std::string description = std::string(_("Game: "));
+				description.append(GameName);
+				drawStringAndAdvanceLine(description);
+				drawStringAndAdvanceLine(_("Public Game"));
+			}
+		} else {
+			if (GameName != "0.0.0.0" && !IsLoopback) {
+				std::string description = std::string(_("Game: "));
+				description.append(GameName);
+				drawStringAndAdvanceLine(description);
+			}
+
+			std::string description;
+			if (IsLoopback) {
+				description = std::string(_("Offline Game"));
+			} else if (PublicGame) {
+				description = std::string(_("Public Game"));
+			} else {
+				description = std::string(_("Password: "));
+				description.append(GamePassword);
+			}
 			drawStringAndAdvanceLine(description);
 		}
-
-		std::string description;
-		if (IsLoopback) {
-			description = std::string(_("Offline Game"));
-		} else if (PublicGame) {
-			description = std::string(_("Public Game"));
-		} else {
-			description = std::string(_("Password: "));
-			description.append(GamePassword);
-		}
-		drawStringAndAdvanceLine(description);
 	}
 
 	if (setlevel) {
@@ -1553,21 +1576,34 @@ int MinimapScale;
 Displacement AutomapOffset;
 Rectangle MinimapRect {};
 
+void UpdateMinimapRect()
+{
+#ifdef __3DS__
+	// Borderless panel, flush with the top-right of the native viewport.
+	MinimapRect = Rectangle { { GetViewportWidth() - 133, 0 }, { 133, 76 } };
+	return;
+#endif
+	// Set the dimensions and screen position of the minimap relative to the screen dimensions
+	const int minimapWidth = GetViewportWidth() / 4;
+	const Size minimapSize { minimapWidth, minimapWidth / 2 };
+	const int minimapPadding = GetViewportWidth() / 128;
+	MinimapRect = Rectangle { { GetViewportWidth() - minimapPadding - minimapSize.width, minimapPadding }, minimapSize };
+}
+
 void InitAutomapOnce()
 {
 	AutomapActive = false;
+#ifdef __3DS__
+	SetAutomapType(*GetOptions().Gameplay.showSmallMap ? AutomapType::Minimap : AutomapType::Opaque);
+#endif
 	AutoMapScale = 50;
 
-	// Set the dimensions and screen position of the minimap relative to the screen dimensions
-	const int minimapWidth = gnScreenWidth / 4;
-	const Size minimapSize { minimapWidth, minimapWidth / 2 };
-	const int minimapPadding = gnScreenWidth / 128;
-	MinimapRect = Rectangle { { gnScreenWidth - minimapPadding - minimapSize.width, minimapPadding }, minimapSize };
+	UpdateMinimapRect();
 
 	// Set minimap scale
 	const int height = 480;
 	const int scale = 25;
-	const int factor = gnScreenHeight / height;
+	const int factor = std::max(1, gnScreenHeight / height);
 
 	if (factor >= 8) {
 		MinimapScale = scale * 8;
@@ -1774,10 +1810,10 @@ void DrawAutomap(const Surface &out)
 
 	const int scale = (GetAutomapType() == AutomapType::Minimap) ? MinimapScale : AutoMapScale;
 	const int d = (scale * 64) / 100;
-	int cells = (2 * (gnScreenWidth / 2 / d)) + 1;
-	if (((gnScreenWidth / 2) % d) != 0)
+	int cells = (2 * (GetViewportWidth() / 2 / d)) + 1;
+	if (((GetViewportWidth() / 2) % d) != 0)
 		cells++;
-	if (((gnScreenWidth / 2) % d) >= (scale * 32) / 100)
+	if (((GetViewportWidth() / 2) % d) >= (scale * 32) / 100)
 		cells++;
 	if ((myPlayerOffset.deltaX + myPlayerOffset.deltaY) != 0)
 		cells++;
@@ -1786,6 +1822,7 @@ void DrawAutomap(const Surface &out)
 		// Background fill
 		DrawHalfTransparentRectTo(out, MinimapRect.position.x, MinimapRect.position.y, MinimapRect.size.width, MinimapRect.size.height);
 
+#ifndef __3DS__
 		const uint8_t frameShadowColor = PAL16_YELLOW + 12;
 
 		// Shadow
@@ -1799,6 +1836,7 @@ void DrawAutomap(const Surface &out)
 		DrawHorizontalLine(out, MinimapRect.position + Displacement { -2, MinimapRect.size.height }, MinimapRect.size.width + 3, MapColorsDim);
 		DrawVerticalLine(out, MinimapRect.position + Displacement { -2, -1 }, MinimapRect.size.height + 1, MapColorsDim);
 		DrawVerticalLine(out, MinimapRect.position + Displacement { MinimapRect.size.width, -1 }, MinimapRect.size.height + 1, MapColorsDim);
+#endif
 
 		if (AutoMapShowItems)
 			SearchAutomapItem(out, myPlayerOffset, 8, [](Point position) {
@@ -1831,12 +1869,7 @@ void DrawAutomap(const Surface &out)
 	screen.y += scale * myPlayerOffset.deltaY / 100 / 2;
 
 	if (CanPanelsCoverView()) {
-		if (IsRightPanelOpen()) {
-			screen.x -= gnScreenWidth / 4;
-		}
-		if (IsLeftPanelOpen()) {
-			screen.x += gnScreenWidth / 4;
-		}
+		screen.x += GetAutomapPanelOffsetX();
 	}
 
 	Point map = { Automap.x - cells, Automap.y - 1 };
@@ -1871,7 +1904,10 @@ void DrawAutomap(const Surface &out)
 		SearchAutomapItem(out, myPlayerOffset, std::max(MAXDUNX, MAXDUNY), ShouldHighlightDebugAutomapTile);
 #endif
 
-	DrawAutomapText(out);
+#ifdef __3DS__
+	if (GetAutomapType() != AutomapType::Minimap)
+#endif
+		DrawAutomapText(out);
 }
 
 void UpdateAutomapExplorer(Point map, MapExplorationType explorer)

@@ -285,7 +285,7 @@ void DrawSTextBack(const Surface &out)
 {
 	const Point uiPosition = GetUIRectangle().position;
 #ifdef __3DS__
-	DrawHalfTransparentRectTo(out, uiPosition.x + 347, 4, 265, 232);
+	DrawHalfTransparentRectTo(out, uiPosition.x + 248, 4, 364, 232);
 #else
 	ClxDraw(out, { uiPosition.x + 320 + 24, 327 + uiPosition.y }, (*pSTextBoxCels)[0]);
 	DrawHalfTransparentRectTo(out, uiPosition.x + 347, uiPosition.y + 28, 265, 297);
@@ -378,13 +378,16 @@ void AddSText(uint8_t x, size_t y, std::string_view text, UiFlags flags, bool se
 
 void AddOptionsBackButton()
 {
+#ifndef __3DS__
 	const int line = BackButtonLine();
 	AddSText(0, line, _("Back"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 	TextLine[line]._syoff = IsSmallFontTall() ? 0 : 6;
+#endif
 }
 
 void AddItemListBackButton(bool selectable = false)
 {
+#ifndef __3DS__
 	const int line = BackButtonLine();
 	const std::string_view text = _("Back");
 	if (!selectable && IsSmallFontTall()) {
@@ -394,6 +397,7 @@ void AddItemListBackButton(bool selectable = false)
 		AddSText(0, line, text, UiFlags::ColorWhite | UiFlags::AlignCenter, selectable);
 		TextLine[line]._syoff = 6;
 	}
+#endif
 }
 
 void PrintStoreItem(const Item &item, int l, UiFlags flags, bool cursIndent = false)
@@ -484,13 +488,17 @@ void StartSmith()
 	AddSText(0, 10, _("Talk to Griswold"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
 	if (*GetOptions().Gameplay.storeUi == StoreUi::VisualGrid) {
 		AddSText(0, 12, _("Trade / Repair"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 14, _("Leave the shop"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	} else {
 		AddSText(0, 12, _("Buy basic items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 14, _("Buy premium items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 16, _("Sell items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 18, _("Repair items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 20, _("Leave the shop"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	}
 	AddSLine(5);
 	CurrentItemIndex = 20;
@@ -513,7 +521,11 @@ void StartSmithBuy()
 	ScrollPos = 0;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Items for Sale"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have these items for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollSmithBuy(ScrollPos);
 	AddItemListBackButton();
@@ -556,7 +568,11 @@ bool StartSmithPremiumBuy()
 	ScrollPos = 0;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Premium Items"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have these premium items for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	AddItemListBackButton();
 
@@ -635,8 +651,14 @@ void StartSmithSell()
 		HasScrollbar = false;
 
 		RenderGold = true;
+#ifdef __3DS__
+		AddSText(20, 1, _("Sell Item"), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+		AddSText(0, 11, _("You have nothing I want."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
 		AddSText(20, 1, _("You have nothing I want."), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -646,7 +668,11 @@ void StartSmithSell()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Sell Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Which item is for sale?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollSmithSell(ScrollPos);
 	AddItemListBackButton();
@@ -714,8 +740,14 @@ void StartSmithRepair()
 		HasScrollbar = false;
 
 		RenderGold = true;
+#ifdef __3DS__
+		AddSText(20, 1, _("Repair Item"), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+		AddSText(0, 11, _("You have nothing to repair."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
 		AddSText(20, 1, _("You have nothing to repair."), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -725,7 +757,11 @@ void StartSmithRepair()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Repair Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Repair which item?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 
 	ScrollSmithSell(ScrollPos);
@@ -742,13 +778,17 @@ void StartWitch()
 	if (*GetOptions().Gameplay.storeUi == StoreUi::VisualGrid) {
 		AddSText(0, 14, _("Buy / Sell"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 16, _("Recharge staves"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 18, _("Leave the shack"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 		AddSLine(4);
 	} else {
 		AddSText(0, 14, _("Buy items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 16, _("Sell items"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
 		AddSText(0, 18, _("Recharge staves"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 20, _("Leave the shack"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 		AddSLine(5);
 	}
 
@@ -784,7 +824,11 @@ void StartWitchBuy()
 	NumTextLines = 20;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Items for Sale"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have these items for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollWitchBuy(ScrollPos);
 	AddItemListBackButton();
@@ -860,9 +904,14 @@ void StartWitchSell()
 		HasScrollbar = false;
 
 		RenderGold = true;
-		AddSText(20, 1, _("You have nothing I want."), UiFlags::ColorWhitegold, false);
-
+#ifdef __3DS__
+		AddSText(20, 1, _("Sell Item"), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+		AddSText(0, 11, _("You have nothing I want."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
+		AddSText(20, 1, _("You have nothing I want."), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -872,7 +921,11 @@ void StartWitchSell()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Sell Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Which item is for sale?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollSmithSell(ScrollPos);
 	AddItemListBackButton();
@@ -934,8 +987,14 @@ void StartWitchRecharge()
 		HasScrollbar = false;
 
 		RenderGold = true;
+#ifdef __3DS__
+		AddSText(20, 1, _("Recharge Item"), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+		AddSText(0, 11, _("You have nothing to recharge."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
 		AddSText(20, 1, _("You have nothing to recharge."), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -945,7 +1004,11 @@ void StartWitchRecharge()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Recharge Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Recharge which item?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 	ScrollSmithSell(ScrollPos);
 	AddItemListBackButton();
@@ -1025,10 +1088,14 @@ void StartBoy()
 		AddSText(0, 14, _("but it will cost 50 gold"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 		AddSText(0, 16, _("just to take a look. "), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 		AddSText(0, 18, _("What have you got?"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 20, _("Say goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	} else {
 		AddSText(0, 12, _("Talk to Wirt"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 		AddSText(0, 18, _("Say goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	}
 }
 
@@ -1038,7 +1105,11 @@ void SStartBoyBuy()
 	HasScrollbar = false;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Item for Sale"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have this item for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 
 	BoyItem._iStatFlag = MyPlayer->CanUseItem(BoyItem);
@@ -1055,7 +1126,9 @@ void SStartBoyBuy()
 		// this one has different text and different layout in LargerSmallFont locales.
 		const int line = BackButtonLine();
 		AddSLine(line - 1);
+#ifndef __3DS__
 		AddSText(0, line, _("Leave"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 		TextLine[line]._syoff = 6;
 	}
 }
@@ -1099,7 +1172,11 @@ void StartHealerBuy()
 	ScrollPos = 0;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Items for Sale"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("I have these items for sale:"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 
 	ScrollHealerBuy(ScrollPos);
@@ -1122,7 +1199,9 @@ void StartStoryteller()
 	AddSText(0, 9, _("Would you like to:"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 12, _("Talk to Cain"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
 	AddSText(0, 14, _("Identify an item"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 	AddSText(0, 18, _("Say goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	AddSLine(5);
 }
 
@@ -1214,8 +1293,14 @@ void StartStorytellerIdentify()
 		HasScrollbar = false;
 
 		RenderGold = true;
+#ifdef __3DS__
+		AddSText(20, 1, _("Identify Item"), UiFlags::ColorWhitegold, false);
+		AddSLine(3);
+		AddSText(0, 11, _("You have nothing to identify."), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
+#else
 		AddSText(20, 1, _("You have nothing to identify."), UiFlags::ColorWhitegold, false);
 		AddSLine(3);
+#endif
 		AddItemListBackButton(/*selectable=*/true);
 		return;
 	}
@@ -1225,7 +1310,11 @@ void StartStorytellerIdentify()
 	NumTextLines = myPlayer._pNumInv;
 
 	RenderGold = true;
+#ifdef __3DS__
+	AddSText(20, 1, _("Identify Item"), UiFlags::ColorWhitegold, false);
+#else
 	AddSText(20, 1, _("Identify which item?"), UiFlags::ColorWhitegold, false);
+#endif
 	AddSLine(3);
 
 	ScrollSmithSell(ScrollPos);
@@ -1297,7 +1386,9 @@ void StartTavern()
 	AddSText(0, 3, _("Rising Sun"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 9, _("Would you like to:"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 12, _("Talk to Ogden"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 	AddSText(0, 18, _("Leave the tavern"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	AddSLine(5);
 	CurrentItemIndex = 20;
 }
@@ -1310,7 +1401,9 @@ void StartBarmaid()
 	AddSText(0, 9, _("Would you like to:"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 12, _("Talk to Gillian"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
 	AddSText(0, 14, _("Access Storage"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 	AddSText(0, 18, _("Say goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	AddSLine(5);
 	CurrentItemIndex = 20;
 }
@@ -1322,7 +1415,9 @@ void StartDrunk()
 	AddSText(0, 2, _("Farnham the Drunk"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 9, _("Would you like to:"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSText(0, 12, _("Talk to Farnham"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
+#ifndef __3DS__
 	AddSText(0, 18, _("Say Goodbye"), UiFlags::ColorWhite | UiFlags::AlignCenter, true);
+#endif
 	AddSLine(5);
 	CurrentItemIndex = 20;
 }
@@ -2125,21 +2220,51 @@ int TakeGold(Player &player, int cost, bool skipMaxPiles)
 	return cost;
 }
 
+#ifdef __3DS__
+static void DrawStorePentagram(const Surface &out, Point position)
+{
+	const ClxSprite sprite = (*pSPentSpn2Cels)[PentSpn2Spin()];
+	const int spriteW = (sprite.width() * 8) / 5;
+	static OwnedSurface spriteScratch(32, 32);
+	if (spriteScratch.w() != sprite.width() || spriteScratch.h() != sprite.height()) {
+		spriteScratch = OwnedSurface(sprite.width(), sprite.height());
+	}
+	SDL_FillRect(spriteScratch.surface, nullptr, 0);
+	RenderClxSprite(spriteScratch, sprite, { 0, 0 });
+	out.ScaleBlitFromSkipColorIndexZero(spriteScratch, MakeSdlRect(0, 0, sprite.width(), sprite.height()),
+	    MakeSdlRect(position.x, position.y - sprite.height(), spriteW, sprite.height()));
+}
+#endif
+
 void DrawSelector(const Surface &out, const Rectangle &rect, std::string_view text, UiFlags flags)
 {
+#ifdef __3DS__
+	const int lineWidth = GetLineWidth(text, GameFont12, 1, nullptr, CtrTextScale::TopScreen);
+	const int spinnerMargin = 22;
+#else
 	const int lineWidth = GetLineWidth(text);
+	const int spinnerMargin = 20;
+#endif
 
-	int x1 = rect.position.x - 20;
+	int x1 = rect.position.x - spinnerMargin;
 	if (HasAnyOf(flags, UiFlags::AlignCenter))
 		x1 += (rect.size.width - lineWidth) / 2;
 
+#ifdef __3DS__
+	DrawStorePentagram(out, { x1, rect.position.y + 13 });
+#else
 	ClxDraw(out, { x1, rect.position.y + 13 }, (*pSPentSpn2Cels)[PentSpn2Spin()]);
+#endif
 
 	int x2 = rect.position.x + rect.size.width + 5;
 	if (HasAnyOf(flags, UiFlags::AlignCenter))
 		x2 = rect.position.x + (rect.size.width - lineWidth) / 2 + lineWidth + 5;
 
+#ifdef __3DS__
+	DrawStorePentagram(out, { x2, rect.position.y + 13 });
+#else
 	ClxDraw(out, { x2, rect.position.y + 13 }, (*pSPentSpn2Cels)[PentSpn2Spin()]);
+#endif
 }
 
 } // namespace
@@ -2242,12 +2367,20 @@ void PrintSString(const Surface &out, int margin, int line, std::string_view tex
 	const Point uiPosition = GetUIRectangle().position;
 	int sx = uiPosition.x + 32 + margin;
 	if (!IsTextFullSize) {
+#ifdef __3DS__
+		sx = uiPosition.x + 252 + margin;
+#else
 		sx += 320;
+#endif
 	}
 
 	const int sy = uiPosition.y + PaddingTop + TextLine[line].y + TextLine[line]._syoff;
 
+#ifdef __3DS__
+	int width = IsTextFullSize ? 575 : 356;
+#else
 	int width = IsTextFullSize ? 575 : 255;
+#endif
 	if (HasScrollbar && line >= 4 && line <= 20) {
 		width -= 9; // Space for the selector
 	}
@@ -2295,6 +2428,11 @@ void PrintSString(const Surface &out, int margin, int line, std::string_view tex
 void DrawSLine(const Surface &out, int sy)
 {
 	const Point uiPosition = GetUIRectangle().position;
+#ifdef __3DS__
+	int sx = IsTextFullSize ? 26 : 248;
+	int width = IsTextFullSize ? 587 : 364;
+	DrawHorizontalLine(out, { uiPosition.x + sx, sy }, width, PAL16_GRAY + 10);
+#else
 	int sx = 26;
 	int width = 587;
 
@@ -2303,9 +2441,6 @@ void DrawSLine(const Surface &out, int sy)
 		width -= SidePanelSize.width;
 	}
 
-#ifdef __3DS__
-	DrawHorizontalLine(out, { uiPosition.x + sx, sy }, width, PAL16_GRAY + 10);
-#else
 	uint8_t *src = out.at(uiPosition.x + sx, uiPosition.y + 25);
 	uint8_t *dst = out.at(uiPosition.x + sx, sy);
 
@@ -2448,6 +2583,9 @@ void StartStore(TalkID s)
 				}
 			}
 
+#ifdef __3DS__
+			lastSelectableLine = NumStoreLines - 1;
+#endif
 			// Insert extra options into empty even-numbered lines before the leave option.
 			size_t optIdx = 0;
 			for (int line = 10; line < lastSelectableLine && optIdx < extraOpts->size(); line += 2) {
@@ -2520,7 +2658,11 @@ void DrawSText(const Surface &out)
 	}
 
 	if (RenderGold) {
+#ifdef __3DS__
+		PrintSString(out, 28, 1, FormatRuntime(_("Gold: {:s}"), FormatInteger(TotalPlayerGold())).c_str(), UiFlags::ColorWhitegold | UiFlags::AlignRight);
+#else
 		PrintSString(out, 28, 1, FormatRuntime(_("Your gold: {:s}"), FormatInteger(TotalPlayerGold())).c_str(), UiFlags::ColorWhitegold | UiFlags::AlignRight);
+#endif
 	}
 
 	if (HasScrollbar)
@@ -2729,6 +2871,9 @@ void StoreEnter()
 		return;
 	}
 
+#ifdef __3DS__
+	if (CurrentTextLine < 0) return;
+#endif
 	PlaySFX(SfxID::MenuSelect);
 
 	if (CurrentTextLine >= 0 && CurrentTextLine < NumStoreLines && CurrentExtraOptionIndices[CurrentTextLine].has_value()) {
@@ -2825,7 +2970,7 @@ void CheckStoreBtn()
 {
 	const Point uiPosition = GetUIRectangle().position;
 #ifdef __3DS__
-	const Rectangle windowRect { { uiPosition.x + 344, 0 }, { 271, 240 } };
+	const Rectangle windowRect { { uiPosition.x + 248, 0 }, { 364, 240 } };
 	const Rectangle windowRectFull { { uiPosition.x + 24, 0 }, { 591, 240 } };
 #else
 	const Rectangle windowRect { { uiPosition.x + 344, uiPosition.y + PaddingTop - 7 }, { 271, 303 } };

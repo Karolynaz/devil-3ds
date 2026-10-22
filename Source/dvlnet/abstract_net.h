@@ -33,6 +33,8 @@ public:
 	virtual ~abstract_net() = default;
 
 	virtual std::string make_default_gamename() = 0;
+	virtual bool join_requires_password() const { return false; }
+	virtual void copy_session_configuration_to(abstract_net &target) const {}
 
 	virtual void process_network_packets()
 	{

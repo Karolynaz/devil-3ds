@@ -4,6 +4,15 @@
  * Implementation of player inventory.
  */
 #include <algorithm>
+
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
+#include "control/control_panel.hpp"
+#include "panels/quest_log.hpp"
+#include "engine/render/primitive_render.hpp"
+#endif
+
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -302,10 +311,7 @@ bool AutoEquip(Player &player, const Item &item, inv_body_loc bodyLocation, bool
 int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 {
 #ifdef __3DS__
-	Point testCursorPos = cursorPosition;
-	if (testCursorPos.y < 240 && testCursorPos.x >= 422) {
-		testCursorPos = { ((testCursorPos.x - 422) * 320) / 218, (testCursorPos.y * 352) / 240 };
-	}
+	Point testCursorPos = invflag ? CtrScreenToInventory(cursorPosition) : Point { -1, -1 };
 	for (int r = SLOTXY_EQUIPPED_FIRST; r <= SLOTXY_EQUIPPED_LAST; r++) {
 		if (InvRect[r].contains(testCursorPos))
 			return r;
@@ -361,11 +367,21 @@ int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 	}
 #endif
 
+#ifdef __3DS__
+	if (cursorPosition.y >= 240) {
+		const Point local { cursorPosition.x * 320 / gnScreenWidth, cursorPosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (CtrBottomBeltSlot(slot).contains(local))
+				return SLOTXY_BELT_FIRST + slot;
+		}
+	}
+#else
 	const Displacement beltOffset = Point { 0, 0 } - GetMainPanel().position;
 	for (int r = SLOTXY_BELT_FIRST; r <= SLOTXY_BELT_LAST; r++) {
 		if (InvRect[r].contains(cursorPosition + beltOffset))
 			return r;
 	}
+#endif
 	return NUM_XY_SLOTS;
 }
 
@@ -659,10 +675,7 @@ inv_body_loc MapSlotToInvBodyLoc(inv_xy_slot slot)
 std::optional<inv_xy_slot> FindSlotUnderCursor(Point cursorPosition)
 {
 #ifdef __3DS__
-	Point testPosition = cursorPosition;
-	if (testPosition.y < 240 && testPosition.x >= 422) {
-		testPosition = { ((testPosition.x - 422) * 320) / 218, (testPosition.y * 352) / 240 };
-	}
+	Point testPosition = invflag ? CtrScreenToInventory(cursorPosition) : Point { -1, -1 };
 	for (std::underlying_type_t<inv_xy_slot> r = SLOTXY_EQUIPPED_FIRST; r != SLOTXY_BELT_FIRST; r++) {
 		// check which body/inventory rectangle the mouse is in, if any
 		if (InvRect[r].contains(testPosition)) {
@@ -679,13 +692,21 @@ std::optional<inv_xy_slot> FindSlotUnderCursor(Point cursorPosition)
 	}
 #endif
 
-	auto testBeltPos = static_cast<Point>(cursorPosition - GetMainPanel().position);
-	for (std::underlying_type_t<inv_xy_slot> r = SLOTXY_BELT_FIRST; r != NUM_XY_SLOTS; r++) {
-		// check which belt rectangle the mouse is in, if any
-		if (InvRect[r].contains(testBeltPos)) {
-			return static_cast<inv_xy_slot>(r);
+#ifdef __3DS__
+	if (cursorPosition.y >= 240) {
+		const Point local { cursorPosition.x * 320 / gnScreenWidth, cursorPosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (CtrBottomBeltSlot(slot).contains(local))
+				return static_cast<inv_xy_slot>(SLOTXY_BELT_FIRST + slot);
 		}
 	}
+#else
+	auto testBeltPos = static_cast<Point>(cursorPosition - GetMainPanel().position);
+	for (std::underlying_type_t<inv_xy_slot> r = SLOTXY_BELT_FIRST; r != NUM_XY_SLOTS; r++) {
+		if (InvRect[r].contains(testBeltPos))
+			return static_cast<inv_xy_slot>(r);
+	}
+#endif
 
 	return {};
 }
@@ -1222,9 +1243,10 @@ void InitInv()
 	pInvCels = LoadCel(StrCat("data\\inv\\", invName).c_str(), static_cast<uint16_t>(SidePanelSize.width));
 }
 
-void DrawInv(const Surface &out)
+void DrawInv(const Surface &out, bool drawBackground)
 {
-	ClxDraw(out, GetPanelPosition(UiPanels::Inventory, { 0, 351 }), (*pInvCels)[0]);
+	if (drawBackground)
+		ClxDraw(out, GetPanelPosition(UiPanels::Inventory, { 0, 351 }), (*pInvCels)[0]);
 
 	const Size slotSize[] = {
 		{ 2, 2 }, // head
@@ -1358,6 +1380,221 @@ void DrawInvBelt(const Surface &out)
 	}
 }
 
+#ifdef __3DS__
+Rectangle CtrInventoryScreenRect(int screenWidth, bool split)
+{
+	const int shift = split ? 97 : 0;
+	const Point left = CtrTopToScreen({ 110 + shift, 16 }, screenWidth);
+	const Point right = CtrTopToScreen({ 286 + shift, 222 }, screenWidth);
+	return { left, { right.x - left.x, right.y - left.y } };
+}
+
+Point CtrInventoryToScreen(Point p, int screenWidth, bool split)
+{
+	for (int slot = 0; slot <= SLOTXY_INV_LAST; ++slot) {
+		const Rectangle &source = InvRect[slot];
+		if (!source.contains(p))
+			continue;
+		const Rectangle target = CtrInventorySlotRect(slot, split);
+		const Point top {
+			target.position.x + (p.x - source.position.x) * target.size.width / source.size.width,
+			target.position.y + (p.y - source.position.y) * target.size.height / source.size.height,
+		};
+		return CtrTopToScreen(top, screenWidth);
+	}
+	return { -1, -1 };
+}
+
+Point CtrScreenToInventory(Point p, int screenWidth, bool split)
+{
+	if (p.x < 0 || p.x >= screenWidth || p.y < 0 || p.y >= CtrTopSize.height)
+		return { -1, -1 };
+	const Point top = CtrScreenToTop(p, screenWidth);
+	for (int slot = 0; slot <= SLOTXY_INV_LAST; ++slot) {
+		const Rectangle target = CtrInventorySlotRect(slot, split);
+		if (!target.contains(top))
+			continue;
+		const Rectangle &source = InvRect[slot];
+		return {
+			source.position.x + (top.x - target.position.x) * source.size.width / target.size.width,
+			source.position.y + (top.y - target.position.y) * source.size.height / target.size.height,
+		};
+	}
+	return { -1, -1 };
+}
+
+namespace {
+
+Rectangle CtrItemArea(Point origin, Size size)
+{
+	return { origin, { size.width * CtrItemSlotPitch - 1, size.height * CtrItemSlotPitch - 1 } };
+}
+
+void CtrTintCell(const Surface &out, Rectangle cell, uint8_t color)
+{
+	DrawHalfTransparentRectTo(out, cell.position.x + 1, cell.position.y + 1,
+	    cell.size.width - 2, cell.size.height - 2,
+	    color);
+}
+
+} // namespace
+
+void DrawCtrScaledItem(const Surface &out, const Item &item, Rectangle target, bool highlighted)
+{
+	const int cursId = item._iCurs + CURSOR_FIRSTITEM;
+	const Size sourceSize = GetInvItemSize(cursId);
+	if (sourceSize.width <= 0 || sourceSize.height <= 0 || target.size.width <= 0 || target.size.height <= 0)
+		return;
+	const bool logicalCanvas = out.w() >= 640;
+	const int screenY = logicalCanvas && MousePosition.y >= 240 ? 240 : 0;
+	const int screenWidth = screenY == 0 ? 400 : 320;
+	if (logicalCanvas) {
+		target.position.x = target.position.x * screenWidth / 640;
+		target.size.width = target.size.width * screenWidth / 640;
+	}
+	const Size fit = CtrFitImage(sourceSize, target.size);
+	target.position.x += (target.size.width - fit.width) / 2;
+	target.position.y += (target.size.height - fit.height) / 2;
+	target.size = fit;
+	static std::optional<OwnedSurface> source;
+	constexpr int ScratchSize = 128;
+	if (!source)
+		source.emplace(ScratchSize, ScratchSize);
+	if (sourceSize.width > ScratchSize || sourceSize.height > ScratchSize)
+		return;
+	FillRect(*source, 0, 0, sourceSize.width, sourceSize.height, 0);
+	const ClxSprite sprite = GetInvItemSprite(cursId);
+	if (highlighted)
+		ClxDrawOutline(*source, GetOutlineColor(item, true), { 0, sourceSize.height - 1 }, sprite);
+	DrawItem(item, *source, { 0, sourceSize.height - 1 }, sprite);
+	for (int y = 0; y < target.size.height; ++y) {
+		const int dstY = target.position.y + y;
+		if (dstY < 0 || dstY >= out.h() || (logicalCanvas && (dstY < screenY || dstY >= screenY + 240)))
+			continue;
+		for (int x = 0; x < target.size.width; ++x) {
+			const int nativeX = target.position.x + x;
+			const uint8_t color = *source->at(x * sourceSize.width / target.size.width, y * sourceSize.height / target.size.height);
+			if (color == 0) continue;
+			if (!logicalCanvas) {
+				if (nativeX >= 0 && nativeX < out.w()) *out.at(nativeX, dstY) = color;
+				continue;
+			}
+			if (nativeX < 0 || nativeX >= screenWidth) continue;
+			const int first = CtrNativeColumn(nativeX, screenWidth);
+			const int last = CtrNativeColumn(nativeX + 1, screenWidth);
+			for (int dstX = first; dstX < last; ++dstX) *out.at(dstX, dstY) = color;
+		}
+	}
+}
+
+std::optional<Rectangle> GetCtrHeldItemPreviewRect()
+{
+	if (!invflag || MyPlayer->HoldItem.isEmpty() || MousePosition.y >= 240)
+		return std::nullopt;
+	const Size size = GetInventorySize(MyPlayer->HoldItem);
+	const int slot = FindTargetSlotUnderItemCursor(MousePosition, size);
+	if (slot < SLOTXY_EQUIPPED_FIRST || slot > SLOTXY_INV_LAST)
+		return std::nullopt;
+	if (slot < SLOTXY_INV_FIRST) {
+		const item_equip_type desired = MyPlayer->GetItemLocation(MyPlayer->HoldItem);
+		if (GetItemEquipType(slot, desired) != desired)
+			return std::nullopt;
+		return CtrInventorySlotRect(slot, IsStashOpen || IsVisualStoreOpen);
+	}
+	const int index = slot - SLOTXY_INV_FIRST;
+	if (index % InventorySizeInSlots.width + size.width > InventorySizeInSlots.width
+	    || index / InventorySizeInSlots.width + size.height > InventorySizeInSlots.height)
+		return std::nullopt;
+	return CtrItemArea(CtrInventorySlotRect(slot, IsStashOpen || IsVisualStoreOpen).position, size);
+}
+
+void DrawCtrInventoryItems(const Surface &out, bool split)
+{
+	const Player &player = *InspectPlayer;
+	for (int slot = SLOTXY_EQUIPPED_FIRST; slot <= SLOTXY_EQUIPPED_LAST; ++slot) {
+		const Item &item = player.InvBody[slot];
+		if (item.isEmpty())
+			continue;
+		const Rectangle cell = CtrInventorySlotRect(slot, split);
+		const bool isHovered = (pcursinvitem == slot);
+		const bool isUsable = item._iStatFlag && (item._iMagical == ITEM_QUALITY_NORMAL || item._iIdentified);
+		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
+		CtrTintCell(out, cell, tint);
+		const Size size = GetInventorySize(item);
+		const Size scaled { size.width * CtrItemSlotPitch - 1, size.height * CtrItemSlotPitch - 1 };
+		const Rectangle target { { cell.position.x + (cell.size.width - scaled.width) / 2,
+		    cell.position.y + (cell.size.height - scaled.height) / 2 }, scaled };
+		DrawCtrScaledItem(out, item, target, isHovered);
+	}
+	for (int index = 0; index < InventoryGridCells; ++index) {
+		const int id = player.InvGrid[index];
+		if (id == 0)
+			continue;
+		const int itemIndex = std::abs(id) - 1;
+		const Item &item = player.InvList[itemIndex];
+		const bool isHovered = (pcursinvitem == itemIndex + INVITEM_INV_FIRST);
+		const bool isUsable = item._iStatFlag && (item._iMagical == ITEM_QUALITY_NORMAL || item._iIdentified);
+		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
+		CtrTintCell(out, CtrInventorySlotRect(SLOTXY_INV_FIRST + index, split), tint);
+	}
+	for (int index = 0; index < InventoryGridCells; ++index) {
+		const int id = player.InvGrid[index];
+		if (id <= 0)
+			continue;
+		const Item &item = player.InvList[id - 1];
+		const Size size = GetInventorySize(item);
+		const int topIndex = index - (size.height - 1) * InventorySizeInSlots.width;
+		if (topIndex < 0)
+			continue;
+		const Rectangle target = CtrItemArea(CtrInventorySlotRect(SLOTXY_INV_FIRST + topIndex, split).position, size);
+		DrawCtrScaledItem(out, item, target, pcursinvitem == id - 1 + INVITEM_INV_FIRST);
+	}
+	if (const auto preview = GetCtrHeldItemPreviewRect()) {
+		if (CtrScreenToTop(MousePosition).x >= (split ? 210 : 114)) {
+			for (int y = preview->position.y; y < preview->position.y + preview->size.height; y += CtrItemSlotPitch) {
+				for (int x = preview->position.x; x < preview->position.x + preview->size.width; x += CtrItemSlotPitch) {
+					const int width = std::min(CtrItemSlotPixels, preview->position.x + preview->size.width - x);
+					const int height = std::min(CtrItemSlotPixels, preview->position.y + preview->size.height - y);
+					FillRect(out, x, y, width, height, 0);
+				}
+			}
+		}
+	}
+}
+
+void DrawCtrInvBelt(const Surface &out)
+{
+	if (ChatFlag)
+		return;
+
+	constexpr int IconSourceSize = 29;
+	static std::optional<OwnedSurface> icon;
+	if (!icon)
+		icon.emplace(IconSourceSize, IconSourceSize);
+	const Player &player = *InspectPlayer;
+	for (int slot = 0; slot < MaxBeltItems; ++slot) {
+		const Item &item = player.SpdList[slot];
+		if (item.isEmpty())
+			continue;
+
+		FillRect(*icon, 0, 0, IconSourceSize, IconSourceSize, 0);
+		const ClxSprite sprite = GetInvItemSprite(item._iCurs + CURSOR_FIRSTITEM);
+		if (pcursinvitem == slot + INVITEM_BELT_FIRST)
+			ClxDrawOutline(*icon, GetOutlineColor(item, true), { 0, IconSourceSize }, sprite);
+		DrawItem(item, *icon, { 0, IconSourceSize }, sprite);
+
+		const Rectangle target = CtrBottomBeltSlot(slot);
+		for (int y = 0; y < target.size.height; ++y) {
+			for (int x = 0; x < target.size.width; ++x) {
+				const uint8_t color = *icon->at(x * IconSourceSize / target.size.width, y * IconSourceSize / target.size.height);
+				if (color != 0)
+					*out.at(target.position.x + x, target.position.y + y) = color;
+			}
+		}
+	}
+}
+#endif
+
 void RemoveEquipment(Player &player, inv_body_loc bodyLocation, bool hiPri)
 {
 	if (&player == MyPlayer) {
@@ -1412,7 +1649,11 @@ bool AutoEquipEnabled(const Player &player, const Item &item)
 	if (item.isWeapon()) {
 		// Monk can use unarmed attack as an encouraged option, thus we do not automatically equip weapons on him so as to not
 		// annoy players who prefer that playstyle.
+#ifdef __3DS__
+		return *GetOptions().Gameplay.autoEquipWeapons;
+#else
 		return player._pClass != HeroClass::Monk && *GetOptions().Gameplay.autoEquipWeapons;
+#endif
 	}
 
 	if (item.isArmor()) {
@@ -1701,19 +1942,19 @@ void CheckInvItem(bool isShiftHeld, bool isCtrlHeld)
 
 void CheckInvScrn(bool isShiftHeld, bool isCtrlHeld)
 {
-	const Point mainPanelPosition = GetMainPanel().position;
 #ifdef __3DS__
-	if (MousePosition.x > 190 + mainPanelPosition.x && MousePosition.x < 445 + mainPanelPosition.x
-	    && MousePosition.y >= 240 && MousePosition.y < 430) {
-		if (MyPlayer != nullptr && !MyPlayer->HoldItem.isEmpty()) {
-			Point origMouse = MousePosition;
-			MousePosition.y = mainPanelPosition.y + 16;
-			CheckInvItem(isShiftHeld, isCtrlHeld);
-			MousePosition = origMouse;
+	if (MousePosition.y >= 240) {
+		const Point local { MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (CtrBottomBeltSlot(slot).contains(local)) {
+				if (invflag || CharFlag || QuestLogIsOpen || SpellbookFlag || !MyPlayer->HoldItem.isEmpty())
+					CheckInvItem(isShiftHeld, isCtrlHeld);
+				return;
+			}
 		}
-		return;
 	}
 #else
+	const Point mainPanelPosition = GetMainPanel().position;
 	if (MousePosition.x > 190 + mainPanelPosition.x && MousePosition.x < 437 + mainPanelPosition.x
 	    && MousePosition.y > mainPanelPosition.y && MousePosition.y < 33 + mainPanelPosition.y) {
 		CheckInvItem(isShiftHeld, isCtrlHeld);
@@ -1975,36 +2216,42 @@ int SyncDropEar(Point position, uint16_t icreateinfo, uint32_t iseed, uint8_t cu
 int8_t CheckInvHLight()
 {
 #ifdef __3DS__
-	Point mousePos = MousePosition;
-	if (mousePos.y < 240 && mousePos.x >= 422) {
-		mousePos = { ((mousePos.x - 422) * 320) / 218, (mousePos.y * 352) / 240 };
+	const Point mousePos = invflag ? CtrScreenToInventory(MousePosition) : Point { -1, -1 };
+	int8_t r = NUM_XY_SLOTS;
+	if (MousePosition.y >= 240) {
+		const Point local { MousePosition.x * 320 / gnScreenWidth, MousePosition.y - 240 };
+		for (int slot = 0; slot < MaxBeltItems; ++slot) {
+			if (CtrBottomBeltSlot(slot).contains(local)) {
+				r = SLOTXY_BELT_FIRST + slot;
+				break;
+			}
+		}
+	} else if (invflag) {
+		for (int8_t slot = 0; slot < SLOTXY_BELT_FIRST; ++slot) {
+			if (InvRect[slot].contains(mousePos)) {
+				r = slot;
+				break;
+			}
+		}
 	}
 #else
-	Point mousePos = MousePosition;
-#endif
-
+	const Point mousePos = MousePosition;
 	int8_t r = 0;
 	for (; r < NUM_XY_SLOTS; r++) {
 		int xo = 0;
 		int yo = 0;
-#ifdef __3DS__
-		if (r >= SLOTXY_BELT_FIRST) {
-			xo = GetMainPanel().position.x;
-			yo = GetMainPanel().position.y;
-		}
-#else
 		xo = GetRightPanel().position.x;
 		yo = GetRightPanel().position.y;
 		if (r >= SLOTXY_BELT_FIRST) {
 			xo = GetMainPanel().position.x;
 			yo = GetMainPanel().position.y;
 		}
-#endif
-
-		if (InvRect[r].contains(mousePos - Displacement(xo, yo))) {
+		const Point testPoint = mousePos;
+		if (InvRect[r].contains(testPoint - Displacement(xo, yo))) {
 			break;
 		}
 	}
+#endif
 
 	if (r >= NUM_XY_SLOTS)
 		return -1;

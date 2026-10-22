@@ -98,6 +98,16 @@
 #include "qol/xpbar.h"
 #include "quick_messages.hpp"
 #include "restrict.h"
+
+#ifdef __3DS__
+#include "engine/palette.h"
+#include "platform/ctr/ui_background.hpp"
+#include "platform/ctr/keyboard.h"
+#include "platform/ctr/system.h"
+#include "control/control_chat.hpp"
+#include <atomic>
+#include <vector>
+#endif
 #include "stores.h"
 #include "storm/storm_net.hpp"
 #include "storm/storm_svid.h"
@@ -144,7 +154,11 @@ bool cineflag;
 int PauseMode;
 clicktype sgbMouseDown;
 uint16_t gnTickDelay = 50;
+#ifdef __3DS__
+char gszProductName[64] = "Devil-3Ds vUnknown";
+#else
 char gszProductName[64] = "DevilutionX vUnknown";
+#endif
 
 #ifdef _DEBUG
 bool DebugDisableNetworkTimeout = false;
@@ -221,6 +235,10 @@ void FreeGame()
 
 bool ProcessInput()
 {
+#ifdef __3DS__
+	// System keyboard owns HID/GSP; only game/network logic advances there.
+	if (CtrNativeChatActive) return true;
+#endif
 	if (PauseMode == 2) {
 		return false;
 	}
@@ -521,6 +539,16 @@ void PressKey(SDL_Keycode vkey, uint16_t modState)
 	}
 
 	if (MyPlayerIsDead) {
+#ifdef __3DS__
+		if (vkey == SDLK_ESCAPE || vkey == SDLK_SPACE || vkey == SDLK_RETURN) {
+			if (!gbIsMultiplayer) {
+				gamemenu_exit_game(false);
+			} else {
+				NetSendCmd(true, CMD_RETOWN);
+			}
+			return;
+		}
+#else
 		if (vkey == SDLK_ESCAPE) {
 			if (!gbIsMultiplayer) {
 				if (gbValidSaveFile)
@@ -532,6 +560,7 @@ void PressKey(SDL_Keycode vkey, uint16_t modState)
 			}
 			return;
 		}
+#endif
 		if (sgnTimeoutCurs != CURSOR_NONE) {
 			return;
 		}
@@ -870,6 +899,80 @@ void GameEventHandler(const SDL_Event &event, uint16_t modState)
 	}
 }
 
+
+#ifdef __3DS__
+struct CtrChatSession {
+	LightLock lock = 1;
+	std::atomic_bool stop { false };
+};
+
+void RunCtrChatSession()
+{
+	CtrChatRequested = false;
+	if (!gbIsMultiplayer) return;
+	ControllerActionHeld = GameActionType_NONE;
+	sgbMouseDown = CLICK_NONE;
+	LastPlayerAction = PlayerActionType::None;
+	CtrChatSession session;
+	CtrNativeChatActive = true;
+	Thread worker = threadCreate([](void *opaque) {
+		auto &session = *static_cast<CtrChatSession *>(opaque);
+		while (!session.stop.load(std::memory_order_acquire)) {
+			LightLock_Lock(&session.lock);
+			if (!gbRunGame) {
+				session.stop.store(true, std::memory_order_release);
+			} else {
+				bool drawGame = false;
+				if (nthread_has_500ms_passed(&drawGame)) {
+					ProcessGameMessagePackets();
+					if (game_loop(false)) diablo_color_cyc_logic();
+				} else {
+					DvlNet_ProcessNetworkPackets();
+				}
+			}
+			LightLock_Unlock(&session.lock);
+			svcSleepThread(5 * 1000 * 1000);
+		}
+	}, &session, 512 * 1024, 0x30, -2, false);
+	if (worker == nullptr) {
+		CtrNativeChatActive = false;
+		EventPlrMsg(_("Not enough memory to open chat."));
+		return;
+	}
+	ctr_vkbdChat(MAX_SEND_STR_LEN, &session, [](void *opaque, std::string_view text) {
+		auto &session = *static_cast<CtrChatSession *>(opaque);
+		LightLock_Lock(&session.lock);
+		if (gbRunGame) SendCtrChatMessage(text);
+		LightLock_Unlock(&session.lock);
+		// Let the local broadcast be received before presenting the next snapshot.
+		svcSleepThread(50 * 1000 * 1000);
+	}, [](void *opaque) {
+		auto &session = *static_cast<CtrChatSession *>(opaque);
+		LightLock_Lock(&session.lock);
+		const bool running = gbRunGame;
+		if (running) { RedrawEverything(); DrawAndBlit(); }
+		LightLock_Unlock(&session.lock);
+		return running;
+	});
+	session.stop.store(true, std::memory_order_release);
+	threadJoin(worker, UINT64_MAX);
+	threadFree(worker);
+	CtrNativeChatActive = false;
+	ControllerActionHeld = GameActionType_NONE;
+	sgbMouseDown = CLICK_NONE;
+	LastPlayerAction = PlayerActionType::None;
+	// Discard applet button events before normal controls resume.
+	SDL_Event event;
+	std::vector<SDL_Event> gameEvents;
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_EVENT_QUIT) gbRunGame = false;
+		else if (IsCustomEvent(event.type)) gameEvents.push_back(event);
+	}
+	for (SDL_Event &queued : gameEvents) SDL_PushEvent(&queued);
+	RedrawEverything();
+}
+#endif
+
 void RunGameLoop(interface_mode uMsg)
 {
 	demo::NotifyGameLoopStart();
@@ -887,6 +990,9 @@ void RunGameLoop(interface_mode uMsg)
 	LoadPWaterPalette();
 	PaletteFadeIn(8);
 	InitBackbufferState();
+#ifdef __3DS__
+	Reset3DSGameStartHint();
+#endif
 	RedrawEverything();
 	gbGameLoopStartup = true;
 	nthread_ignore_mutex(false);
@@ -926,6 +1032,12 @@ void RunGameLoop(interface_mode uMsg)
 		if (!gbRunGame)
 			break;
 
+#ifdef __3DS__
+		if (CtrChatRequested) {
+			RunCtrChatSession();
+			if (!gbRunGame) break;
+		}
+#endif
 		bool drawGame = true;
 		bool processInput = true;
 		const bool runGameLoop = demo::IsRunning() ? demo::GetRunGameLoop(drawGame, processInput) : nthread_has_500ms_passed(&drawGame);
@@ -1054,7 +1166,11 @@ extern "C" void SdlLogToFile(void *userdata, int /*category*/, SDL_LogPriority p
 	PrintHelpOption("+<internal command>", "Pass commands to the engine");
 #endif
 	printNewlineInConsole();
+#ifdef __3DS__
+	printInConsole(_("Report bugs at https://github.com/Karolynaz/devil-3ds/"));
+#else
 	printInConsole(_("Report bugs at https://github.com/diasurgical/devilutionX/"));
+#endif
 	printNewlineInConsole();
 	diablo_quit(0);
 }
@@ -1224,7 +1340,11 @@ void DiabloInitScreen()
 
 void SetApplicationVersions()
 {
+#ifdef __3DS__
+	*BufCopy(gszProductName, "Devil-3Ds v", PROJECT_VERSION) = '\0';
+#else
 	*BufCopy(gszProductName, PROJECT_NAME, " v", PROJECT_VERSION) = '\0';
+#endif
 	*BufCopy(gszVersionNumber, "version ", PROJECT_VERSION) = '\0';
 }
 
@@ -1252,6 +1372,22 @@ void ApplicationInit()
 	init_create_window();
 	was_window_init = true;
 
+#ifdef __3DS__
+	LoadPalette("ui_art\\diablo.pal");
+	UpdateSystemPalette(logical_palette);
+	Draw3DSLoadingScreen(GlobalBackBuffer());
+	if (RenderDirectlyToOutputSurface && PalSurface != nullptr) {
+		const void *initialPixels = PalSurface->pixels;
+		RenderPresent();
+		while (PalSurface->pixels != initialPixels) {
+			Draw3DSLoadingScreen(GlobalBackBuffer());
+			RenderPresent();
+		}
+	} else {
+		RenderPresent();
+	}
+#endif
+
 	InitializeScreenReader();
 	LanguageInitialize();
 
@@ -1265,7 +1401,13 @@ void DiabloInit()
 	if (forceSpawn || *GetOptions().GameMode.shareware)
 		gbIsSpawn = true;
 
+#ifdef __3DS__
+	// Expansion files add a character creation choice, never replace startup presentation.
+	if (gbIsHellfire) GetOptions().Mods.SetHellfireEnabled(false);
+	GetOptions().GameMode.gameMode.SetValue(StartUpGameMode::Diablo);
+#endif
 	bool wasHellfireDiscovered = false;
+#ifndef __3DS__
 	if (!forceDiablo && !forceHellfire)
 		wasHellfireDiscovered = (HaveHellfire() && *GetOptions().GameMode.gameMode == StartUpGameMode::Ask);
 	bool enableHellfire = forceHellfire || wasHellfireDiscovered;
@@ -1277,6 +1419,7 @@ void DiabloInit()
 		GetOptions().Mods.SetHellfireEnabled(enableHellfire);
 	}
 
+#endif
 	gbIsHellfireSaveGame = gbIsHellfire;
 
 	for (size_t i = 0; i < QuickMessages.size(); i++) {
@@ -1346,6 +1489,10 @@ void DiabloSplash()
 
 void DiabloDeinit()
 {
+#ifdef __3DS__
+	// Stop consumers before SDL mutexes, archives and SDK services disappear.
+	ctr_sys_shutdown();
+#endif
 	FreeItemGFX();
 
 	LuaShutdown();
@@ -1653,6 +1800,10 @@ void InventoryKeyPressed()
 {
 	if (IsPlayerInStore())
 		return;
+#ifdef __3DS__
+	CloseCharPanel();
+	QuestLogIsOpen = false;
+#endif
 	invflag = !invflag;
 	if (!IsLeftPanelOpen() && CanPanelsCoverView()) {
 		if (!invflag) { // We closed the inventory
@@ -1740,6 +1891,10 @@ void SpellBookKeyPressed()
 {
 	if (IsPlayerInStore())
 		return;
+#ifdef __3DS__
+	CloseCharPanel();
+	QuestLogIsOpen = false;
+#endif
 	SpellbookFlag = !SpellbookFlag;
 	if (!IsLeftPanelOpen() && CanPanelsCoverView()) {
 		if (!SpellbookFlag) { // We closed the inventory
@@ -2327,7 +2482,6 @@ void InitPadmapActions()
 	    [] { UseBeltItem(BeltItemType::Healing); },
 	    nullptr,
 	    CanPlayerTakeAction);
-#undef CTR_DEFAULT_BUTTON
 	options.Padmapper.AddAction(
 	    "UseManaPotion",
 	    N_("Use mana potion"),
@@ -2380,7 +2534,7 @@ void InitPadmapActions()
 	    "DisplaySpells",
 	    N_("Speedbook"),
 	    N_("Open Speedbook."),
-	    ControllerButton_BUTTON_A,
+	    CTR_DEFAULT_BUTTON(ControllerButton_BUTTON_A),
 	    [] {
 		    ProcessGameAction(GameAction { GameActionType_TOGGLE_QUICK_SPELL_MENU });
 	    },
@@ -2420,25 +2574,41 @@ void InitPadmapActions()
 	    "MouseUp",
 	    N_("Move mouse up"),
 	    N_("Simulates upward mouse movement."),
+#ifdef __3DS__
+	    ControllerButton_NONE,
+#else
 	    { ControllerButton_BUTTON_BACK, ControllerButton_BUTTON_DPAD_UP },
+#endif
 	    [] {});
 	options.Padmapper.AddAction(
 	    "MouseDown",
 	    N_("Move mouse down"),
 	    N_("Simulates downward mouse movement."),
+#ifdef __3DS__
+	    ControllerButton_NONE,
+#else
 	    { ControllerButton_BUTTON_BACK, ControllerButton_BUTTON_DPAD_DOWN },
+#endif
 	    [] {});
 	options.Padmapper.AddAction(
 	    "MouseLeft",
 	    N_("Move mouse left"),
 	    N_("Simulates leftward mouse movement."),
+#ifdef __3DS__
+	    ControllerButton_NONE,
+#else
 	    { ControllerButton_BUTTON_BACK, ControllerButton_BUTTON_DPAD_LEFT },
+#endif
 	    [] {});
 	options.Padmapper.AddAction(
 	    "MouseRight",
 	    N_("Move mouse right"),
 	    N_("Simulates rightward mouse movement."),
+#ifdef __3DS__
+	    ControllerButton_NONE,
+#else
 	    { ControllerButton_BUTTON_BACK, ControllerButton_BUTTON_DPAD_RIGHT },
+#endif
 	    [] {});
 	auto leftMouseDown = [] {
 		const ControllerButtonCombo standGroundCombo = GetOptions().Padmapper.ButtonComboForAction("StandGround");
@@ -2496,9 +2666,10 @@ void InitPadmapActions()
 	    "PadHotspellMenu",
 	    N_("Gamepad hotspell menu"),
 	    N_("Hold to set or use spell hotkeys."),
-	    ControllerButton_BUTTON_BACK,
+	    CTR_DEFAULT_BUTTON(ControllerButton_BUTTON_BACK),
 	    [] { PadHotspellMenuActive = true; },
 	    [] { PadHotspellMenuActive = false; });
+#undef CTR_DEFAULT_BUTTON
 	options.Padmapper.AddAction(
 	    "PadMenuNavigator",
 	    N_("Gamepad menu navigator"),

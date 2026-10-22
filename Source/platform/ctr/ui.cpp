@@ -1,0 +1,238 @@
+#include "platform/ctr/ui_background.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <optional>
+#include <string>
+
+#include "engine/assets.hpp"
+#include "engine/palette.h"
+#include "engine/render/primitive_render.hpp"
+#include "platform/ctr/ui_geometry.hpp"
+#include "platform/ctr/display.hpp"
+#include "platform/ctr/world_surface.hpp"
+#include "DiabloUI/ui_flags.hpp"
+#include "engine/render/text_render.hpp"
+#include "utils/language.h"
+#include "utils/sdl_geometry.h"
+
+namespace devilution {
+namespace {
+
+constexpr int BackgroundWidth = 400;
+constexpr int BackgroundHeight = 240;
+constexpr size_t BackgroundBytes = BackgroundWidth * BackgroundHeight;
+
+constexpr size_t BackgroundCount = static_cast<size_t>(CtrPanelBackground::Count);
+std::optional<OwnedSurface> Backgrounds[BackgroundCount];
+bool BackgroundLoadAttempted[BackgroundCount] = {};
+std::optional<OwnedSurface> BottomBackground;
+bool BottomBackgroundLoadAttempted = false;
+constexpr int VerticalBarWidth = 26;
+constexpr int VerticalBarHeight = 84;
+constexpr int ExperienceBarWidth = 224;
+constexpr int ExperienceBarHeight = 14;
+constexpr size_t BarCount = 3;
+std::optional<OwnedSurface> Bars[BarCount];
+bool BarLoadAttempted[BarCount] = {};
+
+void LoadBar(size_t index)
+{
+	BarLoadAttempted[index] = true;
+	constexpr std::array<const char *, BarCount> Paths {
+	    "data\\ctr_health_bar.pal8",
+	    "data\\ctr_mana_bar.pal8",
+	    "data\\ctr_experience_bar.pal8",
+	};
+	constexpr std::array<int, BarCount> Widths { VerticalBarWidth, VerticalBarWidth, ExperienceBarWidth };
+	constexpr std::array<int, BarCount> Heights { VerticalBarHeight, VerticalBarHeight, ExperienceBarHeight };
+	auto image = LoadAsset(Paths[index]);
+	if (!image || image->size != static_cast<size_t>(Widths[index] * Heights[index]))
+		return;
+	Bars[index].emplace(Widths[index], Heights[index]);
+	const auto *src = reinterpret_cast<const uint8_t *>(image->data.get());
+	for (int y = 0; y < Heights[index]; ++y)
+		std::memcpy(Bars[index]->at(0, y), src + y * Widths[index], Widths[index]);
+}
+
+void LoadBackground(size_t index)
+{
+	BackgroundLoadAttempted[index] = true;
+	constexpr std::array<const char *, BackgroundCount> Paths {
+	    "data\\ctr_character_background.pal8",
+	    "data\\ctr_quest_background.pal8",
+	    "data\\ctr_spells_background.pal8",
+	    "data\\ctr_inventory_warrior.pal8",
+	    "data\\ctr_inventory_rogue.pal8",
+	    "data\\ctr_inventory_sorcerer.pal8",
+	    "data\\ctr_inventory_warrior_stash.pal8",
+	    "data\\ctr_inventory_rogue_stash.pal8",
+	    "data\\ctr_inventory_sorcerer_stash.pal8",
+	    "data\\ctr_spell_binding.pal8",
+	};
+	auto image = LoadAsset(Paths[index]);
+	if (!image || image->size != BackgroundBytes)
+		return;
+
+	Backgrounds[index].emplace(BackgroundWidth, BackgroundHeight);
+	const auto *src = reinterpret_cast<const uint8_t *>(image->data.get());
+	for (int y = 0; y < BackgroundHeight; ++y) {
+		std::memcpy(Backgrounds[index]->at(0, y), src + y * BackgroundWidth, BackgroundWidth);
+	}
+}
+
+void LoadBottomBackground()
+{
+	BottomBackgroundLoadAttempted = true;
+	auto image = LoadAsset("data\\ctr_bottom_ui.pal8");
+	if (!image || image->size != 320 * 240)
+		return;
+	BottomBackground.emplace(320, 240);
+	const auto *src = reinterpret_cast<const uint8_t *>(image->data.get());
+	for (int y = 0; y < 240; ++y)
+		std::memcpy(BottomBackground->at(0, y), src + y * 320, 320);
+}
+
+std::optional<OwnedSurface> LoadingBackground;
+bool LoadingBackgroundLoadAttempted = false;
+
+void LoadLoadingBackground()
+{
+	LoadingBackgroundLoadAttempted = true;
+	auto image = LoadAsset("data\\ctr_loading.pal8");
+	if (!image || image->size != BackgroundBytes)
+		return;
+
+	LoadingBackground.emplace(BackgroundWidth, BackgroundHeight);
+	const auto *src = reinterpret_cast<const uint8_t *>(image->data.get());
+	for (int y = 0; y < BackgroundHeight; ++y) {
+		std::memcpy(LoadingBackground->at(0, y), src + y * BackgroundWidth, BackgroundWidth);
+	}
+}
+
+} // namespace
+
+void DrawCtrPanelBackground(const Surface &out, CtrPanelBackground background)
+{
+	const size_t index = static_cast<size_t>(background);
+	if (!BackgroundLoadAttempted[index])
+		LoadBackground(index);
+	if (!Backgrounds[index]) {
+		FillRect(out, 0, 0, out.w(), out.h(), 0);
+		UnsafeDrawBorder2px(out, { { 1, 1 }, { out.w() - 2, out.h() - 2 } }, PAL16_BEIGE + 8);
+		DrawHorizontalLine(out, { 3, 3 }, out.w() - 6, PAL16_BEIGE + 3);
+		DrawVerticalLine(out, { 3, 3 }, out.h() - 6, PAL16_BEIGE + 3);
+		return;
+	}
+	out.BlitFrom(*Backgrounds[index], { 0, 0, BackgroundWidth, BackgroundHeight }, { 0, 0 });
+}
+
+void PrepareCtrHudOverlay(int experiencePixels, bool visible, bool dimmed)
+{
+	static std::array<std::optional<std::array<uint8_t, CtrHudBadgeSize * CtrHudBadgeSize * 4>>, 4> badges;
+	static bool attempted = false;
+	if (!attempted) {
+		attempted = true;
+		constexpr const char *paths[] = { "data\\hud\\button_x.rgba", "data\\hud\\button_y.rgba", "data\\hud\\button_l.rgba", "data\\hud\\button_r.rgba" };
+		for (size_t slot = 0; slot < badges.size(); ++slot) {
+			auto file = LoadAsset(paths[slot]);
+			if (!file || file->size != CtrHudBadgeSize * CtrHudBadgeSize * 4) continue;
+			badges[slot].emplace();
+			std::memcpy(badges[slot]->data(), file->data.get(), file->size);
+		}
+	}
+	CtrHudOverlay overlay;
+	for (size_t slot = 0; slot < badges.size(); ++slot)
+		overlay.badges[slot] = badges[slot] ? badges[slot]->data() : nullptr;
+	overlay.experiencePixels = std::clamp(experiencePixels, 0, CtrBottomExperienceBar.size.width);
+	overlay.visible = visible;
+	overlay.opacity = dimmed ? 128 : 255;
+	CTR_SetHudOverlay(overlay);
+}
+
+void DrawCtrBottomBackground(const Surface &out)
+{
+	if (!BottomBackgroundLoadAttempted)
+		LoadBottomBackground();
+	if (BottomBackground)
+		out.BlitFromSkipColorIndexZero(*BottomBackground, { 0, 0, 320, 240 }, { 0, 0 });
+}
+
+void DrawCtrBarArtwork(const Surface &out, CtrBarArtwork bar, Point position, float fill)
+{
+	const size_t index = static_cast<size_t>(bar);
+	if (!BarLoadAttempted[index])
+		LoadBar(index);
+	if (!Bars[index])
+		return;
+	const int sourceWidth = Bars[index]->w();
+	const int sourceHeight = Bars[index]->h();
+	const int width = bar == CtrBarArtwork::Experience ? CtrBottomExperienceBar.size.width : CtrBottomHealthBar.size.width;
+	const int height = bar == CtrBarArtwork::Experience ? CtrBottomExperienceBar.size.height : CtrBottomHealthBar.size.height;
+	const bool vertical = bar != CtrBarArtwork::Experience;
+	const int fillPixels = static_cast<int>(std::lround(std::clamp(fill, 0.0f, 1.0f) * (vertical ? height : width)));
+	if (fillPixels == 0)
+		return;
+	// Two slow counter-moving bands shade the liquid interior. Palette ramps
+	// preserve red/blue hues; borders and the fill height remain unchanged.
+	const unsigned phase = SDL_GetTicks() / 90 + (bar == CtrBarArtwork::Mana ? 16 : 0);
+	for (int y = 0; y < (vertical ? fillPixels : height); ++y) {
+		const int sourceY = (vertical ? height - fillPixels + y : y) * sourceHeight / height;
+		const uint8_t *srcRow = Bars[index]->at(0, sourceY);
+		for (int x = 0; x < (vertical ? width : fillPixels); ++x) {
+			// Reveal native artwork pixels; changing fill must not stretch the ornament.
+			const int sourceX = x * sourceWidth / width;
+			uint8_t color = srcRow[sourceX];
+			if (vertical && x >= 3 && x < width - 3 && y >= 3 && y < fillPixels - 3) {
+				const unsigned wave = (x * 2 + y + phase) & 31;
+				const unsigned counterWave = (y * 2 - x + phase / 2) & 31;
+				const int shade = wave < 5 ? 1 : 0;
+				const int highlight = counterWave < 3 ? 1 : 0;
+				const int rampStart = bar == CtrBarArtwork::Health ? PAL8_RED : PAL8_BLUE;
+				const int longRampStart = bar == CtrBarArtwork::Health ? PAL16_RED : PAL16_BLUE;
+				if (color >= rampStart && color < rampStart + 8)
+					color = std::clamp<int>(color + shade - highlight, rampStart, rampStart + 7);
+				else if (color >= longRampStart && color < longRampStart + 16)
+					color = std::clamp<int>(color + shade - highlight, longRampStart, longRampStart + 15);
+			}
+			if (color != 0)
+				out.SetPixel({ position.x + x, position.y + (vertical ? height - fillPixels + y : y) }, color);
+		}
+	}
+}
+
+void Draw3DSLoadingScreen(const Surface &out)
+{
+	if (!LoadingBackgroundLoadAttempted)
+		LoadLoadingBackground();
+
+	CtrWorldClearFrame();
+	SDL_FillSurfaceRect(out.surface, nullptr, 0);
+
+	if (LoadingBackground) {
+		// Encode the complete native 400x240 frame, rather than placing a
+		// 400-wide image inside the 640-wide canvas and squeezing it again.
+		out.ScaleBlitFromPreservingDownscale(*LoadingBackground,
+		    { 0, 0, BackgroundWidth, BackgroundHeight }, { 0, 0, out.w(), 240 });
+	}
+
+	std::string loadingText { _("Not Even Death Can Save You") };
+	if (loadingText == "Not Even Death Can Save You") {
+		loadingText = "Not Even Death\nCan Save You";
+	} else {
+		// Keep translations, splitting at a word near their midpoint.
+		const auto lineBreak = loadingText.find(' ', loadingText.size() / 2);
+		if (lineBreak != std::string::npos)
+			loadingText[lineBreak] = '\n';
+	}
+	const Rectangle bottomTextRect { { 20, 240 }, { out.w() - 40, 240 } };
+	DrawString(out, loadingText, bottomTextRect,
+	    { .flags = UiFlags::FontSize24 | UiFlags::ColorGold | UiFlags::AlignCenter | UiFlags::VerticalCenter,
+	      .spacing = 2, .lineHeight = 30 });
+}
+
+} // namespace devilution

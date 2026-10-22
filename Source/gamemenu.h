@@ -9,6 +9,11 @@
 
 namespace devilution {
 
+#ifdef __3DS__
+const char *gamemenu_network_address();
+bool gamemenu_gameplay_active();
+bool gamemenu_back();
+#endif
 void gamemenu_on();
 void gamemenu_off();
 void gamemenu_handle_previous();

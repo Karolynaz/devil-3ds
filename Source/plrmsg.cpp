@@ -102,6 +102,10 @@ void DrawPlrMsg(const Surface &out)
 		return;
 
 	int x = 10;
+#ifdef __3DS__
+	int y = 232;
+	int width = 520;
+#else
 	int y = GetMainPanel().position.y - 13;
 	int width = gnScreenWidth - 20;
 
@@ -111,6 +115,7 @@ void DrawPlrMsg(const Surface &out)
 	}
 	if (!ChatFlag && IsRightPanelOpen())
 		width -= gnScreenWidth - GetRightPanel().position.x;
+#endif
 
 	if (width < 300)
 		return;
@@ -123,8 +128,16 @@ void DrawPlrMsg(const Surface &out)
 		if (!ChatFlag && SDL_GetTicks() - message.time >= 10000)
 			break;
 
+#ifdef __3DS__
+		std::string text = WordWrapString(message.text, width, GameFont12, 1, CtrTextScale::TopScreen);
+#else
 		std::string text = WordWrapString(message.text, width);
+#endif
 		const int chatlines = CountLinesOfText(text);
+#ifdef __3DS__
+		if (y - message.lineHeight * chatlines < 8)
+			break;
+#endif
 		y -= message.lineHeight * chatlines;
 
 		DrawHalfTransparentRectTo(out, x - 3, y, width + 6, message.lineHeight * chatlines);

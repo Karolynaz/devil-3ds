@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string_view>
+#include <optional>
 
 #include <3ds.h>
 
@@ -11,9 +12,18 @@
  * @param inText Optional text to prefil the input field
  * @param textInputFn Callback to handle text input
  */
-void ctr_vkbdInput(std::string_view title, std::string_view inText, void (*textInputFn)(std::string_view));
+void ctr_vkbdInput(std::string_view title, std::string_view inText, void (*textInputFn)(std::string_view),
+    void (*cancelFn)(), int maxBytes, bool allowEmpty);
+void ctr_vkbdClear();
 
 /**
  * @brief Processes pending requests for user input
  */
 void ctr_vkbdFlush();
+
+/** Opens the native numeric keyboard; cancellation returns no value. */
+std::optional<int> ctr_vkbdNumberInput(std::string_view hint, int maximum);
+
+/** Repeated native Send/Cancel chat input. refresh runs with GSP restored. */
+void ctr_vkbdChat(int maxBytes, void *context,
+    void (*send)(void *, std::string_view), bool (*refresh)(void *));

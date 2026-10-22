@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 #include_next <netinet/in.h>
 
 struct in6_addr {

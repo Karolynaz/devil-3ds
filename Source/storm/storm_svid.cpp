@@ -1,5 +1,6 @@
 #include "storm/storm_svid.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -37,6 +38,12 @@
 #include "utils/log.hpp"
 #include "utils/sdl_compat.h"
 #include "utils/sdl_wrap.h"
+
+#ifdef __3DS__
+#include "platform/ctr/display.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
+#include "engine/surface.hpp"
+#endif
 
 namespace devilution {
 namespace {
@@ -220,8 +227,46 @@ void UpdatePalette()
 #endif
 }
 
+#ifdef __3DS__
+void BlitCtrMoviePixels(SDL_Surface *source, SDL_Surface *output, Size fit)
+{
+	// Compose the source-to-400px and 400-to-640px mappings once. The
+	// presenter then samples exactly the same native pixels as before.
+	std::array<int, 640> columns;
+	const int left = (400 - fit.width) / 2;
+	const int top = (240 - fit.height) / 2;
+	for (int x = 0; x < 640; ++x) {
+		const int nativeX = ((x + 1) * 400 + 639) / 640 - 1;
+		columns[x] = nativeX < left || nativeX >= left + fit.width
+		    ? -1 : (nativeX - left) * source->w / fit.width;
+	}
+	for (int y = 0; y < 240; ++y) {
+		auto *dst = static_cast<uint8_t *>(output->pixels) + y * output->pitch;
+		if (y < top || y >= top + fit.height) {
+			std::memset(dst, 0, 640);
+			continue;
+		}
+		const auto *src = static_cast<const uint8_t *>(source->pixels)
+		    + ((y - top) * source->h / fit.height) * source->pitch;
+		for (int x = 0; x < 640; ++x)
+			dst[x] = columns[x] < 0 ? 0 : src[columns[x]];
+	}
+}
+#endif
+
 bool BlitFrame()
 {
+#ifdef __3DS__
+	SDL_Surface *output = GetOutputSurface();
+	if (output->w == 640 && output->h == 480 && output->format->BitsPerPixel == 8) {
+		const Size fit = CtrFitImage({ static_cast<int>(SVidWidth), static_cast<int>(SVidHeight) }, { 400, 240 });
+		BlitCtrMoviePixels(SVidSurface.get(), output, fit);
+		CTR_UpdateBottomPalette(SVidPalette->colors);
+		RenderPresent();
+		return true;
+	}
+#endif
+
 #ifndef USE_SDL1
 	if (renderer != nullptr) {
 		if (
@@ -439,11 +484,29 @@ bool SVidPlayBegin(const char *filename, int flags)
 	}
 #endif
 #else
+#ifdef __3DS__
+	if (PalSurface != nullptr) {
+		SDL_Rect bottomRect = MakeSdlRect(0, 240, PalSurface->w, 240);
+		SDL_FillSurfaceRect(PalSurface, &bottomRect, 0x000000);
+		RenderPresent();
+		SDL_FillSurfaceRect(PalSurface, &bottomRect, 0x000000);
+		RenderPresent();
+	}
+#endif
+	#ifndef __3DS__
 	TrySetVideoModeToSVidForSDL1();
+	#endif
 #endif
 
 	// Set the background to black.
 	SDL_FillSurfaceRect(GetOutputSurface(), nullptr, 0x000000);
+#ifdef __3DS__
+	CTR_ClearBottomScreen();
+	// The two 3DS screens retain their last presented pixels independently.
+	// Present the cleared surface before the first movie frame so the title
+	// menu cannot remain visible on the lower screen during attract playback.
+	RenderPresent();
+#endif
 
 	// The buffer for the frame. It is not the same as the SDL surface because the SDL surface also has pitch padding.
 	SVidFrameBuffer = std::unique_ptr<uint8_t[]> { new uint8_t[static_cast<size_t>(SVidWidth * SVidHeight)] };

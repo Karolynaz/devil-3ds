@@ -1,5 +1,9 @@
 #include "panels/charpanel.hpp"
 
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#endif
+
 #include <cstdint>
 #include <expected>
 
@@ -267,6 +271,76 @@ void DrawStatButtons(const Surface &out)
 	}
 }
 
+#ifdef __3DS__
+void DrawChr3DS(const Surface &out)
+{
+	DrawCtrPanelBackground(out, CtrPanelBackground::Character);
+	const auto value = [&](unsigned index, Rectangle rect) {
+		const StyledText text = (*panelEntries[index].statDisplayFunc)();
+		DrawString(out, text.text, rect, { .flags = text.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
+	};
+	const auto label = [&](std::string_view text, Rectangle rect) {
+		DrawString(out, text, rect, { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing, .spacing = 0 });
+	};
+	// Keep the player name at the same native size as the panel labels.
+	DrawString(out, InspectPlayer->_pName, { { 12, 18 }, { 235, 18 } },
+	    { .flags = UiFlags::ColorWhite | UiFlags::KerningFitSpacing });
+	DrawString(out, InspectPlayer->getClassName(), { { 251, 18 }, { 137, 18 } },
+	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight });
+	DrawHorizontalLine(out, { 12, 36 }, 376, PAL16_BEIGE + 8);
+	label(_("Level"), { { 12, 42 }, { 74, 16 } });
+	value(2, { { 87, 42 }, { 106, 16 } });
+	label(_("Gold"), { { 216, 42 }, { 74, 16 } });
+	value(17, { { 291, 42 }, { 97, 16 } });
+	label(_("Experience"), { { 12, 59 }, { 89, 16 } });
+	value(3, { { 102, 59 }, { 91, 16 } });
+	label(_("Next level"), { { 216, 59 }, { 79, 16 } });
+	value(4, { { 296, 59 }, { 92, 16 } });
+	DrawHorizontalLine(out, { 12, 78 }, 376, PAL16_BEIGE + 8);
+	label(_("Life"), { { 12, 86 }, { 52, 17 } });
+	const StyledText maxLife = (*panelEntries[21].statDisplayFunc)();
+	DrawString(out, maxLife.text, { { 56, 86 }, { 40, 17 } },
+	    { .flags = maxLife.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
+	label(_("Mana"), { { 108, 86 }, { 56, 17 } });
+	const StyledText maxMana = (*panelEntries[23].statDisplayFunc)();
+	DrawString(out, maxMana.text, { { 164, 86 }, { 38, 17 } },
+	    { .flags = maxMana.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
+	for (unsigned i = 0; i < 4; ++i) {
+		const unsigned index = 7 + i * 2;
+		const int y = 110 + i * 24;
+		label(LanguageTranslate(panelEntries[index].label), { { 12, y }, { 120, 18 } });
+		// The compact panel has one value column: show the effective attribute,
+		// including equipment bonuses, rather than the base allocation value.
+		const StyledText current = (*panelEntries[index + 1].statDisplayFunc)();
+		const int valueWidth = !IsInspectingPlayer() && InspectPlayer->_pStatPts > 0 ? 42 : 70;
+		DrawString(out, current.text, { { 132, y }, { valueWidth, 18 } },
+		    { .flags = current.style | UiFlags::AlignRight, .spacing = 0 });
+		const auto attr = static_cast<CharacterAttribute>(i);
+		if (!IsInspectingPlayer() && InspectPlayer->_pStatPts > 0
+		    && InspectPlayer->GetBaseAttributeValue(attr) < InspectPlayer->GetMaximumAttributeValue(attr)) {
+			const Rectangle button = CtrStatButtons[i];
+			FillRect(out, button.position.x, button.position.y, button.size.width, button.size.height, CharPanelButton[i] ? PAL16_BEIGE + 12 : PAL16_GRAY + 12);
+			UnsafeDrawBorder2px(out, button, PAL16_BEIGE + 6);
+			DrawHorizontalLine(out, button.Center() - Displacement { 4, 0 }, 9, PAL16_GRAY);
+			DrawVerticalLine(out, button.Center() - Displacement { 0, 4 }, 9, PAL16_GRAY);
+		}
+	}
+	label(_("Points to distribute"), { { 12, 208 }, { 157, 16 } });
+	value(15, { { 170, 208 }, { 31, 16 } });
+	DrawVerticalLine(out, { 207, 83 }, 141, PAL16_BEIGE + 10);
+	constexpr unsigned combat[] = { 18, 19, 20, 25, 26, 27 };
+	for (unsigned i = 0; i < 6; ++i) {
+		const int y = 87 + i * 23;
+		const StyledText text = (*panelEntries[combat[i]].statDisplayFunc)();
+		// Damage ranges need more room than a single armor/resistance value.
+		const int valueWidth = std::clamp(GetLineWidth(text.text, GameFont12, 0), 38, 100);
+		label(LanguageTranslate(panelEntries[combat[i]].label), { { 216, y }, { 172 - valueWidth - 4, 18 } });
+		DrawString(out, text.text, { { 388 - valueWidth, y }, { valueWidth, 18 } },
+		    { .flags = text.style | UiFlags::AlignRight | UiFlags::KerningFitSpacing, .spacing = 0 });
+	}
+}
+#endif
+
 } // namespace
 
 std::expected<void, std::string> LoadCharPanel()
@@ -307,6 +381,10 @@ void FreeCharPanel()
 
 void DrawChr(const Surface &out)
 {
+#ifdef __3DS__
+	DrawChr3DS(out);
+	return;
+#endif
 	const Point pos = GetPanelPosition(UiPanels::Character, { 0, 0 });
 	RenderClxSprite(out, (*Panel)[0], pos);
 	for (auto &entry : panelEntries) {

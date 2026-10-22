@@ -186,10 +186,24 @@ bool SNetCreateGame(const char *pszGameName, const char *pszGamePassword, char *
 	return true;
 }
 
+bool DvlNet_JoinRequiresPassword()
+{
+	return dvlnet_inst && dvlnet_inst->join_requires_password();
+}
+
 bool SNetJoinGame(char *pszGameName, char *pszGamePassword, int *playerID)
 {
 #ifndef NONET
 	std::lock_guard<SdlMutex> lg(storm_net_mutex);
+#endif
+#ifdef __3DS__
+	// A failed handshake leaves queued handlers/socket state behind. Each
+	// TCP join attempt owns a fresh client, including a password retry.
+	if (provider == SELCONN_TCP) {
+		auto freshClient = net::abstract_net::MakeNet(provider);
+		dvlnet_inst->copy_session_configuration_to(*freshClient);
+		dvlnet_inst = std::move(freshClient);
+	}
 #endif
 	if (pszGameName != nullptr)
 		GameName = pszGameName;
@@ -264,9 +278,17 @@ void DvlNet_SetPassword(std::string pw)
 
 void DvlNet_ClearPassword()
 {
-	GameIsPublic = true;
+	// Only ZeroTier has password-free rooms with explicit privacy. Other
+	// transports infer public/private state from the password as before.
+	if (provider != SELCONN_ZT)
+		GameIsPublic = true;
 	GamePassword.clear();
 	dvlnet_inst->clear_password();
+}
+
+void DvlNet_SetGamePrivacy(bool isPublic)
+{
+	GameIsPublic = isPublic;
 }
 
 bool DvlNet_IsPublicGame()

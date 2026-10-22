@@ -4,6 +4,9 @@
  * Implementation of the save game encoding functionality.
  */
 #include "pfile.h"
+#ifdef __3DS__
+#include "movie.h"
+#endif
 
 #include <cstddef>
 #include <cstdint>
@@ -220,6 +223,10 @@ void Game2UiPlayer(const Player &player, _uiheroinfo *heroinfo, bool bHasSaveFil
 	heroinfo->hassaved = bHasSaveFile;
 	heroinfo->herorank = player.pDiabloKillLevel;
 	heroinfo->spawned = gbIsSpawn;
+#ifdef __3DS__
+	heroinfo->hellfire = gbIsHellfire;
+	heroinfo->graphics = player._pgfxnum;
+#endif
 }
 
 bool GetFileName(uint8_t lvl, char *dst)
@@ -763,6 +770,12 @@ bool pfile_ui_save_create(_uiheroinfo *heroinfo)
 	CopyUtf8(player._pName, heroinfo->name, PlayerNameLength);
 	PackPlayer(pkplr, player);
 	EncodeHero(saveWriter, &pkplr);
+#ifdef __3DS__
+	if (gbIsHellfire) {
+		const std::byte pending { 1 };
+		if (!saveWriter.WriteFile("hfintro", &pending, 1)) return false;
+	}
+#endif
 	Game2UiPlayer(player, heroinfo, false);
 	if (!gbVanilla) {
 		SaveHotkeys(saveWriter, player);
@@ -781,6 +794,26 @@ bool pfile_delete_save(_uiheroinfo *heroInfo)
 	}
 	return true;
 }
+
+#ifdef __3DS__
+void pfile_show_pending_hellfire_intro(uint32_t saveNum)
+{
+	if (!gbIsHellfire) return;
+	{
+		auto archive = OpenSaveArchive(saveNum);
+		if (!archive || !archive->HasFile("hfintro")) return;
+		size_t size = 0;
+		int32_t error = 0;
+		const auto marker = archive->ReadFile("hfintro", size, error);
+		if (error != 0 || !marker || size != 1 || marker[0] != std::byte { 1 }) return;
+	}
+	play_movie("gendata\\Hellfire.smk", true);
+	// Close the reader before opening a writer for the same archive.
+	const std::byte shown { 0 };
+	auto writer = GetSaveWriter(saveNum);
+	writer.WriteFile("hfintro", &shown, 1);
+}
+#endif
 
 void pfile_read_player_from_save(uint32_t saveNum, Player &player)
 {

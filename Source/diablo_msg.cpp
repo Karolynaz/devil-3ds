@@ -157,8 +157,24 @@ void ClrDiabloMsg()
 	DiabloMessages.clear();
 }
 
-void DrawDiabloMsg(const Surface &out)
+void DrawDiabloMsgBackground(const Surface &out, Rectangle bounds)
 {
+	const Point topLeft = bounds.position;
+	const int outerWidth = bounds.size.width;
+	const int outerHeight = bounds.size.height;
+	const int borderPartWidth = 12, borderPartHeight = 12, borderThickness = 3;
+	const int innerWidth = outerWidth - 2 * borderThickness;
+	const int innerHeight = outerHeight - 2 * borderThickness;
+	const int innerXBegin = topLeft.x + borderThickness;
+	const int innerYBegin = topLeft.y + borderThickness;
+	const int innerXEnd = innerXBegin + innerWidth;
+	const int innerYEnd = innerYBegin + innerHeight;
+	const int borderRightX = innerXEnd - (borderPartWidth - borderThickness);
+	const int borderBottomY = innerYEnd - (borderPartHeight - borderThickness);
+	if (!pSTextSlidCels) {
+		DrawHalfTransparentRectTo(out, topLeft.x, topLeft.y, outerWidth, outerHeight);
+		return;
+	}
 	const ClxSpriteList sprites = *pSTextSlidCels;
 	const ClxSprite borderCornerTopLeftSprite = sprites[0];
 	const ClxSprite borderCornerBottomLeftSprite = sprites[1];
@@ -168,27 +184,6 @@ void DrawDiabloMsg(const Surface &out)
 	const ClxSprite borderLeftSprite = sprites[5];
 	const ClxSprite borderBottomSprite = sprites[6];
 	const ClxSprite borderRightSprite = sprites[7];
-
-	const int borderPartWidth = 12;
-	const int borderPartHeight = 12;
-
-	const int textPaddingX = 5;
-	const int borderThickness = 3;
-
-	const int outerHeight = std::min<int>(out.h(), OuterHeight);
-	const int outerWidth = std::min<int>(out.w(), LineWidth + (2 * borderThickness) + textPaddingX);
-	const int innerWidth = outerWidth - (2 * borderThickness);
-	const int lineWidth = innerWidth - textPaddingX;
-	const int innerHeight = outerHeight - (2 * borderThickness);
-
-	const Point topLeft { (out.w() - outerWidth) / 2, (out.h() - outerHeight) / 2 };
-
-	const int innerXBegin = topLeft.x + borderThickness;
-	const int innerXEnd = innerXBegin + innerWidth;
-	const int innerYBegin = topLeft.y + borderThickness;
-	const int innerYEnd = innerYBegin + innerHeight;
-	const int borderRightX = innerXEnd - (borderPartWidth - borderThickness);
-	const int borderBottomY = innerYEnd - (borderPartHeight - borderThickness);
 
 	RenderClxSprite(out, borderCornerTopLeftSprite, topLeft);
 	RenderClxSprite(out, borderCornerBottomLeftSprite, { topLeft.x, borderBottomY });
@@ -207,6 +202,25 @@ void DrawDiabloMsg(const Surface &out)
 		RenderClxSprite(verticalBorderOut, borderRightSprite, { borderRightX, y });
 	}
 	DrawHalfTransparentRectTo(out, innerXBegin, innerYBegin, innerWidth, innerHeight);
+
+}
+
+void DrawDiabloMsg(const Surface &out)
+{
+	const int textPaddingX = 5, borderThickness = 3;
+	const int outerHeight = std::min<int>(out.h(), OuterHeight);
+	const int outerWidth = std::min<int>(out.w(), LineWidth + 2 * borderThickness + textPaddingX);
+	const int innerWidth = outerWidth - 2 * borderThickness;
+	const int innerHeight = outerHeight - 2 * borderThickness;
+	const int lineWidth = innerWidth - textPaddingX;
+#ifdef __3DS__
+	const Point topLeft { (out.w() - outerWidth) / 2, std::max(0, (240 - outerHeight) / 2) };
+#else
+	const Point topLeft { (out.w() - outerWidth) / 2, (out.h() - outerHeight) / 2 };
+#endif
+	const int innerXBegin = topLeft.x + borderThickness;
+	const int innerYBegin = topLeft.y + borderThickness;
+	DrawDiabloMsgBackground(out, { topLeft, { outerWidth, outerHeight } });
 
 	const int textX = innerXBegin + textPaddingX;
 	int textY = innerYBegin + ((innerHeight - LineHeight * static_cast<int>(TextLines.size())) / 2);

@@ -113,8 +113,13 @@ public:
 		sprite_ = sprite;
 	}
 
+	bool showTitleBackground = true;
+	void setAllowUpscale(bool value) { allowUpscale_ = value; }
+	[[nodiscard]] bool allowsUpscale() const { return allowUpscale_; }
+
 private:
 	ClxSprite sprite_;
+	bool allowUpscale_ = false;
 };
 
 //=============================================================================
@@ -368,6 +373,11 @@ public:
 
 	// private:
 	StringOrView m_text;
+#ifdef __3DS__
+	std::string rightText;
+	int columnValueWidth = 104;
+	bool columns = false;
+#endif
 	std::vector<DrawStringFormatArg> args;
 	int m_value;
 	UiFlags uiFlags;

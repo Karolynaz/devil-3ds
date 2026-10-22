@@ -30,6 +30,11 @@
 #include "utils/palette_blending.hpp"
 #include "utils/sdl_compat.h"
 #include "utils/str_cat.hpp"
+#ifdef __3DS__
+#include "platform/ctr/display.hpp"
+#include "platform/ctr/world_view.hpp"
+#include "platform/ctr/world_surface.hpp"
+#endif
 
 namespace devilution {
 
@@ -165,6 +170,9 @@ void SystemPaletteUpdated(int first, int ncolor)
 	if (!SDLC_SetSurfaceAndPaletteColors(PalSurface, Palette.get(), system_palette.data() + first, first, ncolor)) {
 		ErrSdl();
 	}
+#ifdef __3DS__
+	CTR_UpdateBottomPalette(system_palette.data());
+#endif
 }
 
 void palette_init()
@@ -195,7 +203,13 @@ void LoadPaletteAndInitBlending(const char *path)
 	} else if (leveltype == DTYPE_NEST) {
 		GenerateBlendedLookupTable(logical_palette.data(), /*skipFrom=*/1, /*skipTo=*/15);
 	} else {
+#ifdef __3DS__
+		// The 3DS top-screen UI layer uses this index as its "world" key. A blend
+		// must never return it, or a translucent UI pixel could show the world.
+		GenerateBlendedLookupTable(logical_palette.data(), CtrWorldDimKeyIndex, CtrWorldKeyIndex);
+#else
 		GenerateBlendedLookupTable(logical_palette.data());
+#endif
 	}
 }
 
@@ -305,6 +319,10 @@ void PaletteFadeIn(int fr, const std::array<SDL_Color, 256> &srcPalette)
 			prevFadeValue = i;
 
 			BltFast(nullptr, nullptr);
+#ifdef __3DS__
+			// Palette-only frames still need the scene behind the keyed UI.
+			CtrWorldRepeatFrame();
+#endif
 			RenderPresent();
 		}
 	}
@@ -315,6 +333,9 @@ void PaletteFadeIn(int fr, const std::array<SDL_Color, 256> &srcPalette)
 
 	if (fr <= 0) {
 		BltFast(nullptr, nullptr);
+#ifdef __3DS__
+		CtrWorldRepeatFrame();
+#endif
 		RenderPresent();
 	}
 
@@ -345,6 +366,10 @@ void PaletteFadeOut(int fr, const std::array<SDL_Color, 256> &srcPalette)
 			prevFadeValue = i;
 
 			BltFast(nullptr, nullptr);
+#ifdef __3DS__
+			// Palette-only frames still need the scene behind the keyed UI.
+			CtrWorldRepeatFrame();
+#endif
 			RenderPresent();
 		}
 	}
@@ -354,6 +379,9 @@ void PaletteFadeOut(int fr, const std::array<SDL_Color, 256> &srcPalette)
 
 	if (fr <= 0) {
 		BltFast(nullptr, nullptr);
+#ifdef __3DS__
+		CtrWorldRepeatFrame();
+#endif
 		RenderPresent();
 	}
 

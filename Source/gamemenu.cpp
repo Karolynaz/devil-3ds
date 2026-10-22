@@ -5,11 +5,27 @@
  */
 #include "gamemenu.h"
 
+#ifdef __3DS__
+#include <algorithm>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+#endif
+
 #ifdef USE_SDL3
 #include <SDL3/SDL_timer.h>
 #endif
 
 #include "cursor.h"
+#ifdef __3DS__
+#include "control/control_chat.hpp"
+#include "engine/render/text_render.hpp"
+#include "platform/ctr/sockets.hpp"
+#include "storm/storm_net.hpp"
+#endif
+#include "automap.h"
 #include "diablo_msg.hpp"
 #include "engine/backbuffer_state.hpp"
 #include "engine/demomode.h"
@@ -33,6 +49,10 @@
 namespace devilution {
 
 bool isGameMenuOpen = false;
+#ifdef __3DS__
+namespace { std::string MenuNetworkAddress; }
+const char *gamemenu_network_address() { return MenuNetworkAddress.c_str(); }
+#endif
 
 namespace {
 
@@ -44,6 +64,15 @@ void GamemenuMusicVolume(bool bActivate);
 void GamemenuSoundVolume(bool bActivate);
 void GamemenuBrightness(bool bActivate);
 void GamemenuSpeed(bool bActivate);
+#ifdef __3DS__
+void GamemenuResetGameplay(bool bActivate);
+void GamemenuMods(bool bActivate);
+void GamemenuModsBack(bool bActivate);
+void GamemenuModsOption(bool bActivate);
+void GamemenuTalk(bool bActivate);
+void GamemenuHostile(bool bActivate);
+void GamemenuBuildModsMenu();
+#endif
 
 /** Contains the game menu items of the single player menu. */
 TMenuItem sgSingleMenu[] = {
@@ -53,7 +82,9 @@ TMenuItem sgSingleMenu[] = {
 	{ GMENU_ENABLED, N_("Save Game"),         &gamemenu_save_game },
 	{ GMENU_ENABLED, N_("Load Game"),         &gamemenu_load_game },
 	{ GMENU_ENABLED, N_("Exit to Main Menu"), &GamemenuNewGame    },
+#ifndef __3DS__
 	{ GMENU_ENABLED, N_("Quit Game"),         &gamemenu_quit_game },
+#endif
 	{ GMENU_ENABLED, nullptr,                 nullptr             },
 	// clang-format on
 };
@@ -62,8 +93,14 @@ TMenuItem sgMultiMenu[] = {
 	// clang-format off
 	// dwFlags,      pszStr,                  fnMenu
 	{ GMENU_ENABLED, N_("Options"),           &GamemenuOptions    },
+#ifdef __3DS__
+	{ GMENU_ENABLED, N_("Talk"),              &GamemenuTalk       },
+	{ GMENU_ENABLED, N_("I'm hostile: No"),   &GamemenuHostile    },
+#endif
 	{ GMENU_ENABLED, N_("Exit to Main Menu"), &GamemenuNewGame    },
+#ifndef __3DS__
 	{ GMENU_ENABLED, N_("Quit Game"),         &gamemenu_quit_game },
+#endif
 	{ GMENU_ENABLED, nullptr,                 nullptr             },
 	// clang-format on
 };
@@ -74,10 +111,18 @@ TMenuItem sgOptionsMenu[] = {
 	{ GMENU_ENABLED | GMENU_SLIDER, nullptr,             &GamemenuSoundVolume  },
 	{ GMENU_ENABLED | GMENU_SLIDER, N_("Gamma"),         &GamemenuBrightness   },
 	{ GMENU_ENABLED | GMENU_SLIDER, N_("Speed"),         &GamemenuSpeed        },
+#ifdef __3DS__
+	{ GMENU_ENABLED               , N_("Gameplay"),        &GamemenuMods         },
+#else
 	{ GMENU_ENABLED               , N_("Previous Menu"), &GamemenuPrevious     },
+#endif
 	{ GMENU_ENABLED               , nullptr,             nullptr               },
 	// clang-format on
 };
+#ifdef __3DS__
+std::vector<TMenuItem> sgModsMenu;
+std::vector<std::string> sgModsMenuLabels;
+#endif
 /** Specifies the menu names for music enabled and disabled. */
 const char *const MusicToggleNames[] = {
 	N_("Music"),
@@ -182,8 +227,131 @@ int GamemenuSliderBrightness()
 	return gmenu_slider_get(&sgOptionsMenu[2], 0, 100);
 }
 
+#ifdef __3DS__
+void GamemenuUpdateMulti()
+{
+	sgMultiMenu[2].pszStr = MyPlayer->friendlyMode ? N_("I'm hostile: No") : N_("I'm hostile: Yes");
+}
+
+void GamemenuTalk(bool /*bActivate*/)
+{
+	gamemenu_off();
+	CtrChatRequested = true;
+}
+
+void GamemenuHostile(bool /*bActivate*/)
+{
+	// The synchronized command handler changes the flag for all peers.
+	NetSendCmd(true, CMD_FRIENDLYMODE);
+}
+
+void UpdateGameplayMap()
+{
+	SetAutomapType(*GetOptions().Gameplay.showSmallMap ? AutomapType::Minimap : AutomapType::Opaque);
+	UpdateMinimapRect();
+	AutomapOffset = { 0, 0 };
+	RedrawEverything();
+}
+
+std::vector<OptionEntryBase *> GamemenuGetLiveModsOptions()
+{
+	return GetCtrGameplayEntries();
+}
+
+std::string GamemenuFormatModsLabel(std::string_view name, std::string_view value)
+{
+	const int availableWidth = gnScreenWidth - 2 * 56 - 48;
+	std::string label(name);
+	label.append(": ");
+	label.append(value);
+	if (GetLineWidth(label, GameFont12, 0, nullptr, CtrTextScale::TopScreen) <= availableWidth)
+		return label;
+	label.assign(name);
+	label.push_back('\n');
+	label.append(value);
+	return label;
+}
+
+void GamemenuBuildModsMenu()
+{
+	struct MenuRow {
+		std::string label;
+		void (*handler)(bool);
+		bool enabled;
+		OptionEntryBase *option;
+	};
+	const std::vector<OptionEntryBase *> options = GamemenuGetLiveModsOptions();
+	std::vector<MenuRow> rows;
+	rows.reserve(options.size() + 1);
+	for (OptionEntryBase *pOption : options) {
+		std::string label = GamemenuFormatModsLabel(pOption->GetName(), pOption->GetValueDescription());
+		rows.push_back({ std::move(label), &GamemenuModsOption, true, pOption });
+	}
+	rows.push_back({ std::string(_("Reset to default")), &GamemenuResetGameplay, true, nullptr });
+
+	sgModsMenuLabels.clear();
+	sgModsMenuLabels.reserve(rows.size());
+	sgModsMenu.clear();
+	sgModsMenu.reserve(rows.size() + 1);
+	for (MenuRow &row : rows)
+		sgModsMenuLabels.push_back(std::move(row.label));
+	for (size_t i = 0; i < rows.size(); i++) {
+		const MenuRow &row = rows[i];
+		const uint32_t flags = row.enabled ? GMENU_ENABLED : 0;
+		sgModsMenu.push_back({ flags, sgModsMenuLabels[i].c_str(), row.handler, row.option, false });
+	}
+	sgModsMenu.push_back({ GMENU_ENABLED, nullptr, nullptr });
+}
+
+void GamemenuMods(bool /*bActivate*/)
+{
+	GamemenuBuildModsMenu();
+	gmenu_set_items(sgModsMenu.data(), nullptr);
+}
+
+void GamemenuResetGameplay(bool /*bActivate*/)
+{
+	ResetCtrGameplayOptions(true);
+	UpdateGameplayMap();
+	SaveOptions();
+	GamemenuMods(true);
+}
+
+void GamemenuModsBack(bool /*bActivate*/)
+{
+	gmenu_set_items(sgOptionsMenu, nullptr);
+}
+
+void GamemenuModsOption(bool /*bActivate*/)
+{
+	if (sgpActivatedMenuItem == nullptr || sgpActivatedMenuItem->userData == nullptr)
+		return;
+	auto *pOption = static_cast<OptionEntryBase *>(sgpActivatedMenuItem->userData);
+	if (pOption->GetType() == OptionEntryType::Boolean) {
+		auto *pBooleanOption = static_cast<OptionEntryBoolean *>(pOption);
+		pBooleanOption->SetValue(!**pBooleanOption);
+	} else if (pOption->GetType() == OptionEntryType::List) {
+		auto *pListOption = static_cast<OptionEntryListBase *>(pOption);
+		const size_t listSize = pListOption->GetListSize();
+		if (listSize != 0)
+			pListOption->SetActiveListIndex((pListOption->GetActiveListIndex() + 1) % listSize);
+	}
+	ApplyCtrGameplayOptions();
+	UpdateGameplayMap();
+	SaveOptions();
+	const size_t itemIndex = static_cast<size_t>(sgpActivatedMenuItem - sgModsMenu.data());
+	std::string label = GamemenuFormatModsLabel(pOption->GetName(), pOption->GetValueDescription());
+	sgModsMenuLabels[itemIndex] = std::move(label);
+	sgpActivatedMenuItem->pszStr = sgModsMenuLabels[itemIndex].c_str();
+}
+
+#endif
+
 void GamemenuOptions(bool /*bActivate*/)
 {
+#ifdef __3DS__
+	ApplyCtrGameplayOptions();
+#endif
 	GamemenuGetMusic();
 	GamemenuGetSound();
 	GamemenuGetBrightness();
@@ -365,10 +533,24 @@ void gamemenu_save_game(bool /*bActivate*/)
 void gamemenu_on()
 {
 	isGameMenuOpen = true;
+#ifdef __3DS__
+	MenuNetworkAddress.clear();
+	if (gbIsMultiplayer && provider == SELCONN_TCP) {
+		const std::string ip = n3ds_localAddress();
+		MenuNetworkAddress = ip.empty() ? "IP: unavailable" : "IP: " + ip;
+	} else if (gbIsMultiplayer && provider == SELCONN_ZT && !GameName.empty()) {
+		MenuNetworkAddress = (!PublicGame ? "Game ID: " : "Game: ") + GameName;
+	}
+#endif
 	if (!gbIsMultiplayer) {
 		gmenu_set_items(sgSingleMenu, GamemenuUpdateSingle);
 	} else {
+		#ifdef __3DS__
+		GamemenuUpdateMulti();
+		gmenu_set_items(sgMultiMenu, GamemenuUpdateMulti);
+#else
 		gmenu_set_items(sgMultiMenu, nullptr);
+#endif
 	}
 	PressEscKey();
 }
@@ -379,8 +561,31 @@ void gamemenu_off()
 	gmenu_set_items(nullptr, nullptr);
 }
 
+#ifdef __3DS__
+bool gamemenu_gameplay_active()
+{
+	return !sgModsMenu.empty() && sgpCurrentMenu == sgModsMenu.data();
+}
+
+bool gamemenu_back()
+{
+	if (gamemenu_gameplay_active()) {
+		GamemenuModsBack(true);
+		return true;
+	}
+	if (sgpCurrentMenu == sgOptionsMenu) {
+		GamemenuPrevious(true);
+		return true;
+	}
+	return false;
+}
+#endif
+
 void gamemenu_handle_previous()
 {
+#ifdef __3DS__
+	if (gamemenu_back()) return;
+#endif
 	if (gmenu_is_active())
 		gamemenu_off();
 	else

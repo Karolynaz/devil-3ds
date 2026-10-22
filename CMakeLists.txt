@@ -373,7 +373,7 @@ add_subdirectory(Source)
 
 set(BIN_TARGET devilutionx)
 if(NINTENDO_3DS)
-  set(BIN_TARGET ${BIN_TARGET}.elf)
+  set(BIN_TARGET devil-3ds.elf)
 elseif(TARGET_PLATFORM STREQUAL "dos")
   set(BIN_TARGET devx)
 endif()
@@ -556,27 +556,30 @@ if(PS4)
 endif()
 
 if(NINTENDO_3DS)
-  set(APP_TITLE       "DevilutionX")
-  set(APP_DESCRIPTION "DevilutionX port for 3DS")
-  set(APP_AUTHOR      "Diasurgical Team")
+  set(APP_TITLE       "Devil-3Ds")
+  set(APP_DESCRIPTION "Diablo for Nintendo 3DS")
+  set(APP_AUTHOR      "Karolynaz")
   set(APP_ICON        "${PROJECT_SOURCE_DIR}/Packaging/ctr/icon.png")
   set(APP_BANNER      "${PROJECT_SOURCE_DIR}/Packaging/ctr/banner.png")
-  set(APP_AUDIO       "${CMAKE_BINARY_DIR}/banner_audio.wav")
+  set(APP_AUDIO       "${PROJECT_SOURCE_DIR}/assets/sfx/ctr/banner.wav")
   set(APP_RSF         "${PROJECT_SOURCE_DIR}/Packaging/ctr/template.rsf")
-  set(APP_VERSION ${PROJECT_VERSION})
-
-  find_program(FFMPEG ffmpeg)
-  if(FFMPEG)
-    add_custom_command(OUTPUT ${APP_AUDIO}
-      COMMAND ${FFMPEG} -y -ss 3.3 -t 3 -i "${PROJECT_SOURCE_DIR}/Packaging/resources/shareware-startup.wav" -af "afade=t=in:st=0:d=0.1,afade=t=out:st=2.9:d=0.1" ${APP_AUDIO}
-      DEPENDS ${PROJECT_SOURCE_DIR}/Packaging/resources/shareware-startup.wav
-      VERBATIM)
-  else()
-    add_custom_command(OUTPUT ${APP_AUDIO}
-      COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/Packaging/ctr/audio_silent.wav ${APP_AUDIO}
-      DEPENDS ${PROJECT_SOURCE_DIR}/Packaging/ctr/audio_silent.wav
-      VERBATIM)
+  file(STRINGS "${PROJECT_SOURCE_DIR}/PORT_VERSION" CTR_PACKAGE_VERSION LIMIT_COUNT 1)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/PORT_VERSION")
+  if(NOT CTR_PACKAGE_VERSION MATCHES "^([0-9]+)\\.([0-9]+)(\\.([0-9]+))?$")
+    message(FATAL_ERROR "Invalid 3DS port version: ${CTR_PACKAGE_VERSION}")
   endif()
+  set(CTR_CIA_MAJOR "${CMAKE_MATCH_1}")
+  set(CTR_CIA_MINOR "${CMAKE_MATCH_2}")
+  set(CTR_CIA_MICRO 0)
+  if(NOT "${CMAKE_MATCH_4}" STREQUAL "")
+    set(CTR_CIA_MICRO "${CMAKE_MATCH_4}")
+  endif()
+  if(CTR_CIA_MAJOR GREATER 63 OR CTR_CIA_MINOR GREATER 63 OR CTR_CIA_MICRO GREATER 15)
+    message(FATAL_ERROR "3DS CIA version exceeds its 6/6/4-bit fields")
+  endif()
+  set(APP_VERSION "${CTR_CIA_MAJOR}.${CTR_CIA_MINOR}.${CTR_CIA_MICRO}")
+
+  # Share the exact same PCM clip with the in-game death cue.
 
   include(Tools3DS)
   add_3dsx_target(${BIN_TARGET})

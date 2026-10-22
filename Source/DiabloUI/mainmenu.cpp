@@ -53,7 +53,11 @@ void MainmenuLoad(const char *name)
 	vecMenuItems.push_back(std::make_unique<UiListItem>(_("Single Player"), MAINMENU_SINGLE_PLAYER));
 	vecMenuItems.push_back(std::make_unique<UiListItem>(_("Multi Player"), MAINMENU_MULTIPLAYER));
 	vecMenuItems.push_back(std::make_unique<UiListItem>(_("Settings"), MAINMENU_SETTINGS));
+#ifdef __3DS__
+	vecMenuItems.push_back(std::make_unique<UiListItem>(_("Credits"), MAINMENU_SHOW_CREDITS));
+#else
 	vecMenuItems.push_back(std::make_unique<UiListItem>(_("Show Credits"), MAINMENU_SHOW_CREDITS));
+#endif
 #ifndef NOEXIT
 	vecMenuItems.push_back(std::make_unique<UiListItem>(gbIsHellfire ? _("Exit Hellfire") : _("Exit Diablo"), MAINMENU_EXIT_DIABLO));
 #endif
@@ -73,12 +77,12 @@ void MainmenuLoad(const char *name)
 
 	const int itemHeight = 36;
 	const int totalMenuHeight = static_cast<int>(vecMenuItems.size()) * itemHeight;
+	// Vertically center the menu items across the bottom screen (y = 240..479).
 	const int menuY = 240 + (240 - totalMenuHeight) / 2;
+	const int menuWidth = 510;
+	const int menuX = uiPosition.x + (GetUIRectangle().size.width - menuWidth) / 2;
 
-	vecMainMenuDialog.push_back(std::make_unique<UiList>(vecMenuItems, vecMenuItems.size(), uiPosition.x + 64, menuY, 510, itemHeight, UiFlags::FontSize30 | UiFlags::ColorUiGold | UiFlags::AlignCenter, 4));
-
-	const SDL_Rect rect2 = { 17, (Sint16)(gnScreenHeight - 22), 605, 20 };
-	vecMainMenuDialog.push_back(std::make_unique<UiArtText>(name, rect2, UiFlags::FontSize12 | UiFlags::ColorUiSilverDark));
+	vecMainMenuDialog.push_back(std::make_unique<UiList>(vecMenuItems, vecMenuItems.size(), menuX, menuY, menuWidth, itemHeight, UiFlags::FontSize24 | UiFlags::ColorUiGold | UiFlags::AlignCenter, 4));
 #else
 	UiAddBackground(&vecMainMenuDialog);
 	UiAddLogo(&vecMainMenuDialog);

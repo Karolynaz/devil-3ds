@@ -6,6 +6,20 @@
 #include "platform/ctr/random.hpp"
 #include "platform/ctr/sockets.hpp"
 #include "platform/ctr/system.h"
+#include "platform/ctr/update.hpp"
+#include "multi.h"
+#include "storm/storm_net.hpp"
+#if !defined(NONET) && !defined(DISABLE_ZERO_TIER)
+#include "dvlnet/zerotier_native.h"
+#include "platform/ctr/zerotier_log.hpp"
+#endif
+
+// ZeroTier sends multicast frames synchronously on the calling UI thread.
+// Its nested send path exceeds libctru's default 32 KiB main stack.
+// Match ZeroTier's 1 MiB minimum; the CIA exheader uses the same size.
+extern "C" {
+u32 __stacksize__ = 1024 * 1024;
+}
 
 using namespace devilution;
 
@@ -75,12 +89,28 @@ bool ctr_should_disable_backlight()
 	return false;
 }
 
+void ctr_sys_shutdown()
+{
+	static bool stopped = false;
+	if (stopped)
+		return;
+	stopped = true;
+	NetClose();
+	SNetDestroy();
+	CtrStopUpdateCheck();
+#if !defined(NONET) && !defined(DISABLE_ZERO_TIER)
+	net::zerotier_network_shutdown();
+	CtrZeroTierLogStop();
+#endif
+}
+
 void ctr_sys_init()
 {
 	if (ctr_check_dsp() == false)
 		exit(0);
 
 	aptHook(&cookie, aptHookFunc, NULL);
+	atexit([]() { aptUnhook(&cookie); });
 
 	if (ctr_is_n3ds())
 		osSetSpeedupEnable(true);
@@ -93,17 +123,18 @@ void ctr_sys_init()
 	romfsInit();
 	atexit([]() { romfsExit(); });
 
-	acInit();
-	atexit([]() { acExit(); });
-
-	n3ds_socInit();
+	// Multiplayer and the update checker initialize SOC when needed. Avoid a
+	// five-second Wi-Fi wait and a 1 MiB socket buffer in single player.
 	atexit([]() { n3ds_socExit(); });
 
 #ifdef PACKET_ENCRYPTION
 	randombytes_ctrrandom_init();
+#endif
+	// ZeroTier also uses ps:ps when packet encryption is disabled.
 	atexit([]() {
 		if (psGetSessionHandle())
 			psExit();
 	});
-#endif
+	// Runs before SOC/RomFS exit and global destructors, including early exits.
+	atexit(ctr_sys_shutdown);
 }

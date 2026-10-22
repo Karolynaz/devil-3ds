@@ -1,6 +1,10 @@
 #include "panels/spell_list.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
+#include <cstdlib>
+#include <limits>
 
 #include "control/control.hpp"
 #include "controls/control_mode.hpp"
@@ -15,10 +19,17 @@
 #include "player.h"
 #include "spells.h"
 #include "utils/algorithm/container.hpp"
+#include "utils/display.h"
 #include "utils/format.hpp"
 #include "utils/language.h"
+#include "utils/sdl_compat.h"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
+
+#ifdef __3DS__
+#include "platform/ctr/native_blit.hpp"
+#include "platform/ctr/spell_geometry.hpp"
+#endif
 
 #define SPLROWICONLS 10
 
@@ -79,6 +90,40 @@ std::optional<std::string_view> GetHotkeyName(SpellID spellId, SpellType spellTy
 	return {};
 }
 
+#ifdef __3DS__
+constexpr std::array<SpellType, 4> SpellRowTypes {
+	SpellType::Spell, SpellType::Charges, SpellType::Skill, SpellType::Scroll
+};
+std::array<size_t, 4> SpellRowFirst {};
+constexpr int SpellListMargin = 8;
+static_assert(CtrSpellIconSize == SPLICONLENGTH);
+
+size_t SpellRowIndex(SpellType type)
+{
+	return static_cast<size_t>(std::find(SpellRowTypes.begin(), SpellRowTypes.end(), type) - SpellRowTypes.begin());
+}
+
+Point SpellItemCenter(const SpellListItem &item)
+{
+	const int x = CtrInverseColumn(item.location.x, 400);
+	return { CtrNativeColumn(x + CtrSpellIconSize / 2, 400), item.location.y - CtrSpellIconSize / 2 };
+}
+
+void Draw3dsSpellHudIcon(const Surface &out, SpellID spell, SpellType type, Point position, bool selected = false)
+{
+	static OwnedSurface iconSurface(SPLICONLENGTH, SPLICONLENGTH);
+	FillRect(iconSurface, 0, 0, SPLICONLENGTH, SPLICONLENGTH, 0);
+	const Point iconPosition { 0, SPLICONLENGTH - 1 };
+	SetSpellTrans(type);
+	DrawLargeSpellIcon(iconSurface, iconPosition, spell);
+	if (std::optional<std::string_view> hotkeyName = GetHotkeyName(spell, type, true))
+		PrintSBookHotkey(iconSurface, iconPosition, *hotkeyName);
+	if (selected)
+		DrawLargeSpellIconBorder(iconSurface, iconPosition, PAL16_YELLOW - 46);
+	CtrBlitTopNative(out, iconSurface, position);
+}
+#endif
+
 } // namespace
 
 void DrawSpell(const Surface &out)
@@ -104,12 +149,19 @@ void DrawSpell(const Surface &out)
 		st = SpellType::Invalid;
 
 	SetSpellTrans(st);
+#ifdef __3DS__
+	if (SpellSelectFlag)
+		return; // Selection already shows the same full-size icon.
+	Draw3dsSpellHudIcon(out, spl, st,
+	    { 400 - SpellListMargin - CtrSpellIconSize, 240 - SpellListMargin - CtrSpellIconSize });
+#else
 	const Point position = GetMainPanel().position + Displacement { 565, 119 };
 	DrawLargeSpellIcon(out, position, spl);
 
 	std::optional<std::string_view> hotkeyName = GetHotkeyName(spl, myPlayer._pRSplType, true);
 	if (hotkeyName)
 		PrintSBookHotkey(out, position, *hotkeyName);
+#endif
 }
 
 void DrawSpellList(const Surface &out)
@@ -118,7 +170,10 @@ void DrawSpellList(const Surface &out)
 
 	const Player &myPlayer = *MyPlayer;
 
-	for (auto &spellListItem : GetSpellListItems()) {
+	const auto items = GetSpellListItems();
+	for (const auto &spellListItem : items) {
+		if (!spellListItem.isVisible)
+			continue;
 		const SpellID spellId = spellListItem.id;
 		SpellType transType = spellListItem.type;
 		int spellLevel = 0;
@@ -133,29 +188,41 @@ void DrawSpellList(const Surface &out)
 		}
 
 		SetSpellTrans(transType);
+#ifdef __3DS__
+		Draw3dsSpellHudIcon(out, spellId, transType,
+		    { CtrInverseColumn(spellListItem.location.x, 400), spellListItem.location.y - CtrSpellIconSize }, spellListItem.isSelected);
+#else
 		DrawLargeSpellIcon(out, spellListItem.location, spellId);
+#endif
 
+#ifndef __3DS__
 		std::optional<std::string_view> shortHotkeyName = GetHotkeyName(spellId, spellListItem.type, true);
-
 		if (shortHotkeyName)
 			PrintSBookHotkey(out, spellListItem.location, *shortHotkeyName);
+#endif
 
 		if (!spellListItem.isSelected)
 			continue;
 
+#ifndef __3DS__
 		uint8_t spellColor = PAL16_GRAY + 5;
+#endif
 
 		switch (spellListItem.type) {
 		case SpellType::Skill:
+#ifndef __3DS__
 			spellColor = PAL16_YELLOW - 46;
 			PrintSBookSpellType(out, spellListItem.location, _("Skill"), spellColor);
+#endif
 			InfoString = FormatRuntime(_("{:s} Skill"), pgettext("spell", spellDataItem.sNameText));
 			break;
 		case SpellType::Spell:
+#ifndef __3DS__
 			if (!myPlayer.isOnLevel(0)) {
 				spellColor = PAL16_BLUE + 5;
 			}
 			PrintSBookSpellType(out, spellListItem.location, _("Spell"), spellColor);
+#endif
 			InfoString = FormatRuntime(_("{:s} Spell"), pgettext("spell", spellDataItem.sNameText));
 			if (spellId == SpellID::HolyBolt) {
 				AddInfoBoxString(_("Damages undead only"));
@@ -166,10 +233,12 @@ void DrawSpellList(const Surface &out)
 				AddInfoBoxString(FormatRuntime(_("Spell Level {:d}"), spellLevel));
 			break;
 		case SpellType::Scroll: {
+#ifndef __3DS__
 			if (!myPlayer.isOnLevel(0)) {
 				spellColor = PAL16_RED - 59;
 			}
 			PrintSBookSpellType(out, spellListItem.location, _("Scroll"), spellColor);
+#endif
 			InfoString = FormatRuntime(_("Scroll of {:s}"), pgettext("spell", spellDataItem.sNameText));
 			const int scrollCount = c_count_if(InventoryAndBeltPlayerItemsRange { myPlayer }, [spellId](const Item &item) {
 				return item.isScrollOf(spellId);
@@ -177,10 +246,12 @@ void DrawSpellList(const Surface &out)
 			AddInfoBoxString(FormatRuntime(ngettext("{:d} Scroll", "{:d} Scrolls", scrollCount), scrollCount));
 		} break;
 		case SpellType::Charges: {
+#ifndef __3DS__
 			if (!myPlayer.isOnLevel(0)) {
 				spellColor = PAL16_ORANGE + 5;
 			}
 			PrintSBookSpellType(out, spellListItem.location, _("Staff"), spellColor);
+#endif
 			InfoString = FormatRuntime(_("Staff of {:s}"), pgettext("spell", spellDataItem.sNameText));
 			int charges = myPlayer.InvBody[INVLOC_HAND_LEFT]._iCharges;
 			AddInfoBoxString(FormatRuntime(ngettext("{:d} Charge", "{:d} Charges", charges), charges));
@@ -193,25 +264,31 @@ void DrawSpellList(const Surface &out)
 			AddInfoBoxString(FormatRuntime(_("Spell Hotkey {:s}"), *fullHotkeyName));
 		}
 	}
-}
-
 #ifdef __3DS__
-constexpr int SpellListStartX = 640 - 12 - SPLICONLENGTH;
-constexpr int SpellListStartY = 230;
-constexpr int SpellListWrapX = 640 - 12 - (SPLICONLENGTH * (SPLROWICONLS + 1));
+	for (size_t typeIndex = 0; typeIndex < SpellRowTypes.size(); ++typeIndex) {
+		const SpellType type = SpellRowTypes[typeIndex];
+		const size_t count = std::count_if(items.begin(), items.end(), [type](const SpellListItem &item) { return item.type == type; });
+		if (count <= CtrSpellColumns) continue;
+		const auto first = std::find_if(items.begin(), items.end(), [type](const SpellListItem &item) { return item.type == type && item.isVisible; });
+		if (first == items.end()) continue;
+		const int y = first->location.y - CtrSpellIconSize / 2 - 6;
+		const auto drawArrow = [&](const char *text, int x) {
+			DrawString(out, text, { { CtrNativeColumn(x, 400), y }, { CtrNativeColumn(20, 400), 16 } },
+			    { .flags = UiFlags::AlignCenter | UiFlags::ColorGold, .spacing = 0 });
+		};
+		if (SpellRowFirst[typeIndex] != 0) drawArrow("<", 0);
+		if (SpellRowFirst[typeIndex] + CtrSpellColumns < count) drawArrow(">", 380);
+	}
 #endif
+}
 
 std::vector<SpellListItem> GetSpellListItems()
 {
 	std::vector<SpellListItem> spellListItems;
 
 	uint64_t mask;
+#ifndef __3DS__
 	const Point mainPanelPosition = GetMainPanel().position;
-
-#ifdef __3DS__
-	int x = SpellListStartX;
-	int y = SpellListStartY;
-#else
 	int x = mainPanelPosition.x + 12 + (SPLICONLENGTH * SPLROWICONLS);
 	int y = mainPanelPosition.y - 17;
 #endif
@@ -238,31 +315,23 @@ std::vector<SpellListItem> GetSpellListItems()
 		for (uint64_t spl = 1; static_cast<size_t>(j) < SpellsData.size(); spl <<= 1, j++) {
 			if ((mask & spl) == 0)
 				continue;
+#ifdef __3DS__
+			spellListItems.emplace_back(SpellListItem {
+				{ -1000, -1000 }, static_cast<SpellType>(i), static_cast<SpellID>(j), false, false
+			});
+#else
 			const int lx = x;
 			const int ly = y - SPLICONLENGTH;
 			const bool isSelected = (MousePosition.x >= lx && MousePosition.x < lx + SPLICONLENGTH && MousePosition.y >= ly && MousePosition.y < ly + SPLICONLENGTH);
 			spellListItems.emplace_back(SpellListItem { { x, y }, static_cast<SpellType>(i), static_cast<SpellID>(j), isSelected });
 			x -= SPLICONLENGTH;
-#ifdef __3DS__
-			if (x == SpellListWrapX) {
-				x = SpellListStartX;
-				y -= SPLICONLENGTH;
-			}
-#else
 			if (x == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 				x = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 				y -= SPLICONLENGTH;
 			}
 #endif
 		}
-#ifdef __3DS__
-		if (mask != 0 && x != SpellListStartX)
-			x -= SPLICONLENGTH;
-		if (x == SpellListWrapX) {
-			x = SpellListStartX;
-			y -= SPLICONLENGTH;
-		}
-#else
+#ifndef __3DS__
 		if (mask != 0 && x != mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS)
 			x -= SPLICONLENGTH;
 		if (x == mainPanelPosition.x + 12 - SPLICONLENGTH) {
@@ -272,8 +341,101 @@ std::vector<SpellListItem> GetSpellListItems()
 #endif
 	}
 
+#ifdef __3DS__
+	std::array<size_t, 4> counts {};
+	for (const auto &item : spellListItems)
+		++counts[SpellRowIndex(item.type)];
+	const int rows = static_cast<int>(std::count_if(counts.begin(), counts.end(), [](size_t n) { return n != 0; }));
+	int row = 0;
+	for (size_t typeIndex = 0; typeIndex < SpellRowTypes.size(); ++typeIndex) {
+		const size_t count = counts[typeIndex];
+		if (count == 0) continue;
+		size_t &first = SpellRowFirst[typeIndex];
+		first = std::min(first, count > CtrSpellColumns ? count - CtrSpellColumns : 0);
+		size_t index = 0;
+		for (auto &item : spellListItems) {
+			if (item.type != SpellRowTypes[typeIndex]) continue;
+			if (index >= first && index < first + CtrSpellColumns) {
+				const Rectangle rect = CtrSpellRect(static_cast<int>(index - first), row, rows);
+				const int x = CtrNativeColumn(rect.position.x, 400);
+				const int right = CtrNativeColumn(rect.position.x + CtrSpellIconSize, 400);
+				item.location = { x, rect.position.y + CtrSpellIconSize };
+				item.isVisible = true;
+				item.isSelected = MousePosition.x >= x && MousePosition.x < right
+				    && MousePosition.y >= rect.position.y && MousePosition.y < item.location.y;
+			}
+			++index;
+		}
+		++row;
+	}
+#endif
 	return spellListItems;
 }
+
+#ifdef __3DS__
+bool Focus3dsSpellListItem(SpellID spell, SpellType type)
+{
+	const auto items = GetSpellListItems();
+	size_t index = 0, count = 0;
+	bool found = false;
+	for (const auto &item : items) {
+		if (item.type != type) continue;
+		if (item.id == spell) { index = count; found = true; }
+		++count;
+	}
+	if (!found) return false;
+	const size_t row = SpellRowIndex(type);
+	SpellRowFirst[row] = CtrSpellScrollFirst(index, SpellRowFirst[row], count);
+	for (const auto &item : GetSpellListItems()) {
+		if (item.type == type && item.id == spell && item.isVisible) {
+			SetCursorPos(SpellItemCenter(item));
+			return true;
+		}
+	}
+	return false;
+}
+
+void Move3dsSpellListSelection(AxisDirection dir)
+{
+	const auto items = GetSpellListItems();
+	const SpellListItem *current = nullptr;
+	int nearest = std::numeric_limits<int>::max();
+	for (const auto &item : items) {
+		if (!item.isVisible) continue;
+		const int distance = MousePosition.ManhattanDistance(SpellItemCenter(item));
+		if (distance < nearest) { nearest = distance; current = &item; }
+	}
+	if (current == nullptr) return;
+	const SpellListItem *target = current;
+	if (dir.y != AxisDirectionY_NONE) {
+		const Point origin = SpellItemCenter(*current);
+		int best = std::numeric_limits<int>::max();
+		for (const auto &item : items) {
+			if (!item.isVisible) continue;
+			const Point center = SpellItemCenter(item);
+			const int dy = center.y - origin.y;
+			if ((dir.y == AxisDirectionY_UP && dy >= 0) || (dir.y == AxisDirectionY_DOWN && dy <= 0)) continue;
+			const int distance = std::abs(dy) * 640 + std::abs(center.x - origin.x);
+			if (distance < best) { best = distance; target = &item; }
+		}
+	} else if (dir.x != AxisDirectionX_NONE) {
+		const SpellListItem *previous = nullptr;
+		for (const auto &item : items) {
+			if (item.type != current->type) continue;
+			if (&item == current) {
+				if (dir.x == AxisDirectionX_LEFT && previous != nullptr) target = previous;
+				if (dir.x == AxisDirectionX_RIGHT) {
+					const auto next = std::find_if(&item + 1, items.data() + items.size(), [current](const SpellListItem &entry) { return entry.type == current->type; });
+					if (next != items.data() + items.size()) target = next;
+				}
+				break;
+			}
+			previous = &item;
+		}
+	}
+	Focus3dsSpellListItem(target->id, target->type);
+}
+#endif
 
 void SetSpell()
 {
@@ -360,14 +522,22 @@ void ToggleSpell(size_t slot)
 void DoSpeedBook()
 {
 	SpellSelectFlag = true;
-	const Point mainPanelPosition = GetMainPanel().position;
 #ifdef __3DS__
-	int xo = SpellListStartX;
-	int yo = SpellListStartY;
+	SpellRowFirst.fill(0);
+	if (!Focus3dsSpellListItem(MyPlayer->_pRSpell, MyPlayer->_pRSplType)) {
+		for (SpellType type : SpellRowTypes) {
+			const auto items = GetSpellListItems();
+			const auto item = std::find_if(items.begin(), items.end(), [type](const SpellListItem &entry) { return entry.type == type; });
+			if (item != items.end()) {
+				Focus3dsSpellListItem(item->id, item->type);
+				break;
+			}
+		}
+	}
 #else
+	const Point mainPanelPosition = GetMainPanel().position;
 	int xo = mainPanelPosition.x + 12 + (SPLICONLENGTH * 10);
 	int yo = mainPanelPosition.y - 17;
-#endif
 	int x = xo + (SPLICONLENGTH / 2);
 	int y = yo - (SPLICONLENGTH / 2);
 
@@ -400,39 +570,24 @@ void DoSpeedBook()
 						y = yo - SPLICONLENGTH / 2;
 					}
 					xo -= SPLICONLENGTH;
-#ifdef __3DS__
-					if (xo == SpellListWrapX) {
-						xo = SpellListStartX;
-						yo -= SPLICONLENGTH;
-					}
-#else
 					if (xo == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 						xo = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 						yo -= SPLICONLENGTH;
 					}
-#endif
 				}
 				spell <<= 1ULL;
 			}
-#ifdef __3DS__
-			if (spells != 0 && xo != SpellListStartX)
-				xo -= SPLICONLENGTH;
-			if (xo == SpellListWrapX) {
-				xo = SpellListStartX;
-				yo -= SPLICONLENGTH;
-			}
-#else
 			if (spells != 0 && xo != mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS)
 				xo -= SPLICONLENGTH;
 			if (xo == mainPanelPosition.x + 12 - SPLICONLENGTH) {
 				xo = mainPanelPosition.x + 12 + SPLICONLENGTH * SPLROWICONLS;
 				yo -= SPLICONLENGTH;
 			}
-#endif
 		}
 	}
 
 	SetCursorPos({ x, y });
+#endif
 }
 
 } // namespace devilution

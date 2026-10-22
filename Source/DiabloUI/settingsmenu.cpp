@@ -42,12 +42,23 @@
 #include "utils/str_cat.hpp"
 #include "utils/ui_fwd.h"
 #include "utils/utf8.hpp"
+#ifdef __3DS__
+#include "platform/ctr/update.hpp"
+#endif
 
 namespace devilution {
 namespace {
 
 constexpr size_t IndexKeyOrPadInput = 1;
 constexpr size_t IndexPadTimerText = 2;
+#ifdef __3DS__
+constexpr int ControlsCategoryIndex = 999;
+constexpr int UpdateCategoryIndex = 1000;
+std::string updateStatus;
+
+int gameplayGroup = 0;
+
+#endif
 
 bool endMenu = false;
 bool backToMain = false;
@@ -64,6 +75,11 @@ enum class ShownMenuType : uint8_t {
 	ListOption,
 	KeyInput,
 	PadInput,
+#ifdef __3DS__
+	Controls,
+	Update,
+	GameplayGroups,
+#endif
 };
 
 ShownMenuType shownMenu;
@@ -79,6 +95,7 @@ enum class SpecialMenuEntry : int8_t {
 	UnbindKey = -3,
 	BindPadButton = -4,
 	UnbindPadButton = -5,
+	ResetGameplay = -6,
 };
 
 ControllerButtonCombo padEntryCombo {};
@@ -87,24 +104,57 @@ std::string padEntryTimerText;
 
 bool IsValidEntry(OptionEntryBase *pOptionEntry)
 {
+#ifdef __3DS__
+	if (pOptionEntry == &GetOptions().StartUp.hellfireIntro) return false;
+	for (auto *entry : GetOptions().Mods.GetEntries()) {
+		if (pOptionEntry == entry && entry->key == "hf") return false;
+	}
+	if (pOptionEntry == &GetOptions().Gameplay.showSmallMap) return true;
+	if (pOptionEntry == &GetOptions().Gameplay.quickCast) return false;
+	for (OptionEntryBase *pGraphicsEntry : GetOptions().Graphics.GetEntries()) {
+		if (pOptionEntry == pGraphicsEntry)
+			return false;
+	}
+	if (pOptionEntry == &GetOptions().Gameplay.grabInput
+	    || pOptionEntry == &GetOptions().Gameplay.pauseOnFocusLoss) {
+		return false;
+	}
+#endif
 	auto flags = pOptionEntry->GetFlags();
 	if (HasAnyOf(flags, OptionEntryFlags::NeedDiabloMpq) && !HaveIntro())
 		return false;
 	return HasNoneOf(flags, OptionEntryFlags::Invisible | (gbIsHellfire ? OptionEntryFlags::OnlyDiablo : OptionEntryFlags::OnlyHellfire));
 }
 
+std::vector<OptionEntryBase *> GetCategoryEntriesForMenu(OptionCategoryBase *pCategory)
+{
+#ifdef __3DS__
+	if (pCategory == &GetOptions().GameMode || pCategory == &GetOptions().Gameplay)
+		return {};
+	if (pCategory == &GetOptions().Mods)
+		return GetCtrGameplayEntries(gameplayGroup);
+#endif
+	return pCategory->GetEntries();
+}
+
+constexpr UiFlags SettingsSecondaryTextColor = UiFlags::ColorUiSilver;
+
 std::vector<DrawStringFormatArg> CreateDrawStringFormatArgForEntry(OptionEntryBase *pEntry)
 {
 	return std::vector<DrawStringFormatArg> {
 		{ pEntry->GetName(), UiFlags::ColorUiGold },
-		{ pEntry->GetValueDescription(), UiFlags::ColorUiSilver }
+		{ pEntry->GetValueDescription(), SettingsSecondaryTextColor }
 	};
 }
 
 /** @brief Check if the option text can't fit in one list line (list width minus drawn selector) */
 bool NeedsTwoLinesToDisplayOption(std::vector<DrawStringFormatArg> &formatArgs)
 {
+#ifdef __3DS__
+	return GetLineWidth("{}: {}", formatArgs.data(), formatArgs.size(), 0, GameFontTables::GameFont24, 1, nullptr, std::nullopt, /*doubleWidth=*/true) >= (rectList.size.width - 90);
+#else
 	return GetLineWidth("{}: {}", formatArgs.data(), formatArgs.size(), 0, GameFontTables::GameFont24, 1) >= (rectList.size.width - 90);
+#endif
 }
 
 void CleanUpSettingsUI()
@@ -128,6 +178,15 @@ void GoBackOneMenuLevel()
 		backToMain = true;
 		break;
 	case ShownMenuType::Settings:
+#ifdef __3DS__
+		if (selectedCategory == &GetOptions().Mods) {
+			shownMenu = ShownMenuType::GameplayGroups;
+			break;
+		}
+	case ShownMenuType::GameplayGroups:
+	case ShownMenuType::Controls:
+	case ShownMenuType::Update:
+#endif
 		shownMenu = ShownMenuType::Categories;
 		break;
 	default:
@@ -173,13 +232,21 @@ void UpdatePadEntryTimerText()
 
 void UpdateDescription(const OptionEntryBase &option)
 {
+#ifdef __3DS__
+	auto paragraphs = WordWrapString(option.GetDescription(), rectDescription.size.width, GameFont12, 1, /*doubleWidth=*/true);
+#else
 	auto paragraphs = WordWrapString(option.GetDescription(), rectDescription.size.width, GameFont12, 1);
+#endif
 	CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
 }
 
 void UpdateDescription(const OptionCategoryBase &category)
 {
+#ifdef __3DS__
+	auto paragraphs = WordWrapString(category.GetDescription(), rectDescription.size.width, GameFont12, 1, /*doubleWidth=*/true);
+#else
 	auto paragraphs = WordWrapString(category.GetDescription(), rectDescription.size.width, GameFont12, 1);
+#endif
 	CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
 }
 
@@ -191,9 +258,32 @@ void ItemFocused(size_t value)
 		optionDescription[0] = '\0';
 		if (vecItem->m_value < 0)
 			return;
+#ifdef __3DS__
+		if (vecItem->m_value == UpdateCategoryIndex) {
+			CopyUtf8(optionDescription, _("Check GitHub for a newer Devil-3Ds release."), sizeof(optionDescription));
+			return;
+		}
+		if (vecItem->m_value == ControlsCategoryIndex) {
+			CopyUtf8(optionDescription, _("3DS button layout and in-game controls."), sizeof(optionDescription));
+			return;
+		}
+#endif
 		auto *pCategory = GetOptions().GetCategories()[vecItem->m_value];
+#ifdef __3DS__
+		if (pCategory == &GetOptions().Mods) {
+			auto paragraphs = WordWrapString(_("Game mode, gameplay tweaks and modifications."), rectDescription.size.width, GameFont12, 1, /*doubleWidth=*/true);
+			CopyUtf8(optionDescription, paragraphs, sizeof(optionDescription));
+			return;
+		}
+
+#endif
 		UpdateDescription(*pCategory);
 	} break;
+#ifdef __3DS__
+	case ShownMenuType::GameplayGroups:
+		CopyUtf8(optionDescription, vecDialogItems[value]->m_value < 0 ? _("Restores gameplay defaults. Keeps the selected game mode and installed extra mods.") : _("Choose a group of gameplay settings. B returns to Settings."), sizeof(optionDescription));
+		break;
+#endif
 	case ShownMenuType::Settings: {
 		auto &vecItem = vecDialogItems[value];
 		optionDescription[0] = '\0';
@@ -232,6 +322,9 @@ bool ChangeOptionValue(OptionEntryBase *pOption, size_t listIndex)
 		break;
 	}
 
+#ifdef __3DS__
+	ApplyCtrGameplayOptions();
+#endif
 	if (HasAnyOf(pOption->GetFlags(), OptionEntryFlags::RecreateUI)) {
 		// Reinitialize UI with changed settings (for example game mode, language or resolution)
 		UiInitialize();
@@ -251,6 +344,13 @@ void ItemSelected(size_t value)
 		auto specialMenuEntry = static_cast<SpecialMenuEntry>(vecItemValue);
 		switch (specialMenuEntry) {
 		case SpecialMenuEntry::None:
+			break;
+		case SpecialMenuEntry::ResetGameplay:
+#ifdef __3DS__
+			ResetCtrGameplayOptions(false);
+			SaveOptions();
+			endMenu = true;
+#endif
 			break;
 		case SpecialMenuEntry::PreviousMenu:
 			GoBackOneMenuLevel();
@@ -275,10 +375,34 @@ void ItemSelected(size_t value)
 
 	switch (shownMenu) {
 	case ShownMenuType::Categories: {
+#ifdef __3DS__
+		if (vecItemValue == UpdateCategoryIndex) {
+			endMenu = true;
+			shownMenu = ShownMenuType::Update;
+			updateStatus = std::string(_("Checking for updates..."));
+			if (!CtrUpdateBusy()) CtrCheckForUpdates();
+			return;
+		}
+		if (vecItemValue == ControlsCategoryIndex) {
+			endMenu = true;
+			shownMenu = ShownMenuType::Controls;
+			return;
+		}
+#endif
 		selectedCategory = GetOptions().GetCategories()[vecItemValue];
 		endMenu = true;
 		shownMenu = ShownMenuType::Settings;
+#ifdef __3DS__
+		if (selectedCategory == &GetOptions().Mods) shownMenu = ShownMenuType::GameplayGroups;
+#endif
 	} break;
+#ifdef __3DS__
+	case ShownMenuType::GameplayGroups:
+		gameplayGroup = vecItemValue;
+		endMenu = true;
+		shownMenu = ShownMenuType::Settings;
+		break;
+#endif
 	case ShownMenuType::Settings: {
 		auto *pOption = vecOptions[vecItemValue];
 		bool updateValueDescription = false;
@@ -307,6 +431,12 @@ void ItemSelected(size_t value)
 			updateValueDescription = ChangeOptionValue(pOption, 0);
 		}
 		if (updateValueDescription) {
+#ifdef __3DS__
+			if (vecItem->columns) {
+				vecItem->rightText = pOption->GetValueDescription();
+				break;
+			}
+#endif
 			auto args = CreateDrawStringFormatArgForEntry(pOption);
 			const bool optionUsesTwoLines = ((value + 1) < vecDialogItems.size() && vecDialogItems[value]->m_value == vecDialogItems[value + 1]->m_value);
 			if (NeedsTwoLinesToDisplayOption(args) != optionUsesTwoLines) {
@@ -322,6 +452,11 @@ void ItemSelected(size_t value)
 			}
 		}
 	} break;
+#ifdef __3DS__
+	case ShownMenuType::Update:
+		GoBackOneMenuLevel();
+		break;
+#endif
 	case ShownMenuType::ListOption: {
 		ChangeOptionValue(selectedOption, vecItemValue);
 		GoBackOneMenuLevel();
@@ -385,7 +520,11 @@ void UiSettingsMenu()
 		UiAddLogo(&vecDialog, uiRectangle.position.y);
 #endif
 
+		#ifdef __3DS__
+		const int descriptionLineHeight = shownMenu == ShownMenuType::Update ? 14 : (IsSmallFontTall() ? 20 : 18);
+#else
 		const int descriptionLineHeight = IsSmallFontTall() ? 20 : 18;
+#endif
 		const int descriptionMarginTop = IsSmallFontTall() ? 10 : 16;
 
 		optionDescription[0] = '\0';
@@ -395,15 +534,30 @@ void UiSettingsMenu()
 		case ShownMenuType::Categories:
 			titleText = _("Settings");
 			break;
+#ifdef __3DS__
+		case ShownMenuType::GameplayGroups:
+			titleText = _("Gameplay");
+			break;
+		case ShownMenuType::Update:
+			titleText = _("Update");
+			break;
+		case ShownMenuType::Controls:
+			titleText = _("Controls");
+			break;
+#endif
 		case ShownMenuType::Settings:
 			titleText = selectedCategory->GetName();
+#ifdef __3DS__
+			if (selectedCategory == &GetOptions().Mods) titleText = _(CtrGameplayGroupName(gameplayGroup));
+#endif
 			break;
 		default:
 			titleText = selectedOption->GetName();
 			break;
 		}
 #ifdef __3DS__
-		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, 175, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
+		// Keep every settings view inside the 3DS bottom screen (y = 240..479).
+		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, 246, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
 #else
 		vecDialog.push_back(std::make_unique<UiArtText>(titleText.data(), MakeSdlRect(uiRectangle.position.x, uiRectangle.position.y + 161, uiRectangle.size.width, 35), UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
 #endif
@@ -415,31 +569,102 @@ void UiSettingsMenu()
 		case ShownMenuType::Categories: {
 			size_t catIndex = 0;
 			for (OptionCategoryBase *pCategory : GetOptions().GetCategories()) {
-				for (OptionEntryBase *pEntry : pCategory->GetEntries()) {
+#ifdef __3DS__
+				if (pCategory == &GetOptions().Keymapper || pCategory == &GetOptions().Padmapper || pCategory == &GetOptions().Graphics) {
+					catIndex++;
+					continue;
+				}
+				if (pCategory == &GetOptions().Mods) {
+					if (selectedCategory == pCategory) itemToSelect = vecDialogItems.size();
+					vecDialogItems.push_back(std::make_unique<UiListItem>(_("Gameplay"), static_cast<int>(catIndex), UiFlags::ColorUiGold));
+					catIndex++;
+					continue;
+				}
+				if (pCategory == &GetOptions().GameMode || pCategory == &GetOptions().Gameplay) {
+					catIndex++;
+					continue;
+				}
+#endif
+				for (OptionEntryBase *pEntry : GetCategoryEntriesForMenu(pCategory)) {
 					if (!IsValidEntry(pEntry))
 						continue;
 					if (selectedCategory == pCategory)
 						itemToSelect = vecDialogItems.size();
-					vecDialogItems.push_back(std::make_unique<UiListItem>(pCategory->GetName(), static_cast<int>(catIndex), UiFlags::ColorUiGold));
+					vecDialogItems.push_back(std::make_unique<UiListItem>(
+#ifdef __3DS__
+					    pCategory == &GetOptions().Mods ? _("Gameplay") :
+#endif
+					    pCategory->GetName(), static_cast<int>(catIndex), UiFlags::ColorUiGold));
 					break;
 				}
 				catIndex++;
 			}
+#ifdef __3DS__
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Controls"), ControlsCategoryIndex, UiFlags::ColorUiGold));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Update"), UpdateCategoryIndex, UiFlags::ColorUiGold));
+#endif
 		} break;
+#ifdef __3DS__
+		case ShownMenuType::GameplayGroups:
+			for (int group = 0; group < CtrGameplayGroupCount; ++group) {
+				bool visible = false;
+				for (auto *entry : GetCtrGameplayEntries(group)) visible |= IsValidEntry(entry);
+				if (visible) vecDialogItems.push_back(std::make_unique<UiListItem>(_(CtrGameplayGroupName(group)), group, UiFlags::ColorUiGold));
+			}
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Reset to default"), static_cast<int>(SpecialMenuEntry::ResetGameplay), UiFlags::ColorUiGold));
+			break;
+		case ShownMenuType::Update:
+			vecDialog.push_back(std::make_unique<UiArtText>(CtrProjectUrl.data(), MakeSdlRect(12, 465, 616, 14), UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 0));
+			break;
+		case ShownMenuType::Controls: {
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Player Controls"), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiGold | UiFlags::ElementDisabled));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(A): Action / Attack / Talk"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(B): Cancel / Back"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(X): Cast Spell / Use Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(Y): Cast Bound Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(L): Cast Bound Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(R): Cast Bound Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(Circle Pad): Move"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(D-Pad Up): Open Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(D-Pad Down): Show Map"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(D-Pad Left): Drink Potions 1-4"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(D-Pad Right): Drink Potions 5-8"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(SELECT): Open Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(START): In-Game Menu"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view {}, static_cast<int>(SpecialMenuEntry::None), UiFlags::ElementDisabled));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Panels & Menus"), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiGold | UiFlags::ElementDisabled));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(L) / (R): Switch panels / stack tabs"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(A): Pickup / Place"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Hold (A): Use Item / Sell Item"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(Y): Drop Item from Inventory"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Spell Book: (Y) to Bind Spell / Skill"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("(B): Close Panel"), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor));
+			itemToSelect = 1;
+		} break;
+#endif
 		case ShownMenuType::Settings: {
-			for (OptionEntryBase *pEntry : selectedCategory->GetEntries()) {
+			for (OptionEntryBase *pEntry : GetCategoryEntriesForMenu(selectedCategory)) {
 				if (!IsValidEntry(pEntry))
 					continue;
 				if (selectedOption == pEntry)
 					itemToSelect = vecDialogItems.size();
 				auto formatArgs = CreateDrawStringFormatArgForEntry(pEntry);
 				const int optionId = static_cast<int>(vecOptions.size());
+#ifdef __3DS__
+				auto row = std::make_unique<UiListItem>(pEntry->GetName(), optionId, UiFlags::ColorUiGold);
+				row->columns = true;
+				row->rightText = pEntry->GetValueDescription();
+				if (GetLineWidth(row->rightText, GameFont12, 0, nullptr, true) > row->columnValueWidth)
+					row->columnValueWidth = 192;
+				vecDialogItems.push_back(std::move(row));
+#else
 				if (NeedsTwoLinesToDisplayOption(formatArgs)) {
 					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view("{}:"), formatArgs, optionId, UiFlags::ColorUiGold | UiFlags::NeedsNextElement));
-					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string(pEntry->GetValueDescription()), optionId, UiFlags::ColorUiSilver | UiFlags::ElementDisabled));
+					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string(pEntry->GetValueDescription()), optionId, SettingsSecondaryTextColor | UiFlags::ElementDisabled));
 				} else {
 					vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view("{}: {}"), formatArgs, optionId, UiFlags::ColorUiGold));
 				}
+#endif
 				vecOptions.push_back(pEntry);
 			}
 		} break;
@@ -501,7 +726,7 @@ void UiSettingsMenu()
 				vecDialogItems[IndexKeyOrPadInput]->m_text = selectedOption->GetValueDescription();
 				return true;
 			};
-			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Press any key to change."), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiSilver | UiFlags::ElementDisabled));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Press any key to change."), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor | UiFlags::ElementDisabled));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view {}, static_cast<int>(SpecialMenuEntry::None), UiFlags::ElementDisabled));
 			vecDialogItems.push_back(std::make_unique<UiListItem>(_("Unbind key"), static_cast<int>(SpecialMenuEntry::UnbindKey), UiFlags::ColorUiGold));
 			UpdateDescription(*selectedOption);
@@ -512,7 +737,7 @@ void UiSettingsMenu()
 			assert(IndexKeyOrPadInput == vecDialogItems.size() - 1);
 			itemToSelect = IndexKeyOrPadInput;
 
-			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view(padEntryTimerText), static_cast<int>(SpecialMenuEntry::None), UiFlags::ColorUiSilver | UiFlags::ElementDisabled));
+			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view(padEntryTimerText), static_cast<int>(SpecialMenuEntry::None), SettingsSecondaryTextColor | UiFlags::ElementDisabled));
 			assert(IndexPadTimerText == vecDialogItems.size() - 1);
 
 			vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view {}, static_cast<int>(SpecialMenuEntry::None), UiFlags::ElementDisabled));
@@ -559,36 +784,76 @@ void UiSettingsMenu()
 		} break;
 		}
 
+#ifndef __3DS__
 		vecDialogItems.push_back(std::make_unique<UiListItem>(std::string_view {}, static_cast<int>(SpecialMenuEntry::None), UiFlags::ElementDisabled));
 		vecDialogItems.push_back(std::make_unique<UiListItem>(_("Previous Menu"), static_cast<int>(SpecialMenuEntry::PreviousMenu), UiFlags::ColorUiGold));
+#endif
 
 #ifdef __3DS__
-		constexpr int ListItemHeight = 25;
-		constexpr int maxListHeight = 175;
-		rectList = { { uiRectangle.position.x + 50, 244 },
-			Size { uiRectangle.size.width - 100, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, maxListHeight) } };
+		const bool isControlsMenu = (shownMenu == ShownMenuType::Controls);
+		const bool isSettingsMenu = (shownMenu == ShownMenuType::Settings);
+		const int ListItemHeight = isControlsMenu ? 19 : (isSettingsMenu ? 32 : 27);
+		const int maxListHeight = isControlsMenu ? 171 : 135;
+		rectList = { { uiRectangle.position.x + 24, isControlsMenu ? 292 : 283 },
+			Size { uiRectangle.size.width - 48, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, maxListHeight) } };
 		rectDescription = { { uiRectangle.position.x + 24, 423 },
 			Size { uiRectangle.size.width - 48, 53 } };
+		if (shownMenu == ShownMenuType::Update)
+			rectDescription = { { 24, 332 }, { 592, 125 } };
+		const UiFlags listFontFlags = isControlsMenu ? (UiFlags::FontSize12 | UiFlags::AlignCenter) : (UiFlags::FontSize24 | UiFlags::AlignCenter);
 #else
 		constexpr int ListItemHeight = 26;
 		rectList = { uiRectangle.position + Displacement { 50, 204 },
 			Size { uiRectangle.size.width - 100, std::min<int>(static_cast<int>(vecDialogItems.size()) * ListItemHeight, uiRectangle.size.height - 272) } };
 		rectDescription = { rectList.position + Displacement { -26, rectList.size.height + descriptionMarginTop },
 			Size { uiRectangle.size.width - 50, 80 - descriptionMarginTop } };
+		const UiFlags listFontFlags = UiFlags::FontSize24 | UiFlags::AlignCenter;
+#endif
+#ifdef __3DS__
+		if (shownMenu != ShownMenuType::Update)
 #endif
 		vecDialog.push_back(std::make_unique<UiScrollbar>((*ArtScrollBarBackground)[0], (*ArtScrollBarThumb)[0],
 		    *ArtScrollBarArrow, MakeSdlRect(rectList.position.x + rectList.size.width + 5, rectList.position.y, 25, rectList.size.height)));
 		vecDialog.push_back(std::make_unique<UiArtText>(optionDescription, MakeSdlRect(rectDescription),
-		    UiFlags::FontSize12 | UiFlags::ColorUiSilverDark | UiFlags::AlignCenter, 1, descriptionLineHeight));
+		    UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 1, descriptionLineHeight));
+#ifdef __3DS__
+		if (shownMenu != ShownMenuType::Update)
+#endif
 		vecDialog.push_back(std::make_unique<UiList>(vecDialogItems, rectList.size.height / ListItemHeight,
-		    rectList.position.x, rectList.position.y, rectList.size.width, ListItemHeight, UiFlags::FontSize24 | UiFlags::AlignCenter));
+		    rectList.position.x, rectList.position.y, rectList.size.width, ListItemHeight, listFontFlags));
 
-		UiInitList(ItemFocused, ItemSelected, EscPressed, vecDialog, true, FullscreenChanged, nullptr, itemToSelect);
+#ifdef __3DS__
+		if (shownMenu == ShownMenuType::Update)
+			UiInitList(nullptr, nullptr, EscPressed, vecDialog, false);
+		else
+#endif
+			UiInitList(ItemFocused, ItemSelected, EscPressed, vecDialog, true, FullscreenChanged, nullptr, itemToSelect);
 
 		while (!endMenu) {
+#ifdef __3DS__
+			if (shownMenu == ShownMenuType::Update) {
+				if (auto result = CtrPollUpdate()) {
+					switch (result->state) {
+					case CtrUpdateState::Available: updateStatus = std::string(_("A newer release is available.")); break;
+					case CtrUpdateState::Current: updateStatus = std::string(_("No newer release. This build is up to date.")); break;
+					case CtrUpdateState::Different: updateStatus = std::string(_("Different release branch. Check GitHub for details.")); break;
+					case CtrUpdateState::Error: updateStatus = std::string(_("Update check failed.")) + "\n" + std::string(_(result->detail)); break;
+					}
+					if (!result->version.empty()) updateStatus += "\n" + std::string(_("Latest release: ")) + result->version;
+				}
+				const std::string status = std::string(_("Version: ")) + std::string(CtrPortVersion()) + " (" + std::string(CtrBuildCommit().substr(0, 7)) + ")" + "\n\n" + (updateStatus.empty() ? std::string(_("Checking for updates...")) : updateStatus);
+				CopyUtf8(optionDescription, WordWrapString(status, rectDescription.size.width, GameFont12, 1, true), sizeof(optionDescription));
+			}
+#endif
 			UiClearScreen();
 			UpdatePadEntryTimerText();
 			UiPollAndRender(eventHandler);
+#ifdef __3DS__
+			// The TLS worker has lower priority than the UI. Give it a real
+			// CPU window so cryptography can finish before the server closes
+			// a slow handshake. Restore normal menu speed when it completes.
+			if (CtrUpdateBusy()) SDL_Delay(25);
+#endif
 		}
 
 		CleanUpSettingsUI();

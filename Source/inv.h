@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 #include "engine/palette.h"
 #include "engine/point.hpp"
@@ -108,9 +109,15 @@ void InitInv();
 /**
  * @brief Render the inventory panel to the given buffer.
  */
-void DrawInv(const Surface &out);
+void DrawInv(const Surface &out, bool drawBackground = true);
 
 void DrawInvBelt(const Surface &out);
+#ifdef __3DS__
+void DrawCtrInvBelt(const Surface &out);
+void DrawCtrInventoryItems(const Surface &out, bool split);
+void DrawCtrScaledItem(const Surface &out, const Item &item, Rectangle target, bool highlighted = false);
+std::optional<Rectangle> GetCtrHeldItemPreviewRect();
+#endif
 
 /**
  * @brief Removes equipment from the specified location on the player's body.

@@ -3,6 +3,10 @@
 #include <function_ref.hpp>
 
 #include "options.h"
+#ifdef __3DS__
+#include "loadsave.h"
+#include "levels/gendung.h"
+#endif
 
 namespace devilution {
 namespace {
@@ -20,5 +24,14 @@ bool gbIsSpawn;
 bool gbIsHellfire;
 bool gbVanilla;
 bool forceHellfire;
+#ifdef __3DS__
+void SetCtrHeroGameMode(bool hellfire)
+{
+	if (gbIsHellfire != hellfire)
+		GetOptions().Mods.SetHellfireEnabled(hellfire);
+	gbIsHellfireSaveGame = gbIsHellfire;
+	giNumberOfLevels = gbIsHellfire ? 25 : 17;
+}
+#endif
 
 } // namespace devilution

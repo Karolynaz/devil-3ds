@@ -30,6 +30,12 @@ extern bool TalkButtonsDown[3];
 extern int sgbPlrTalkTbl;
 extern bool WhisperList[MAX_PLRS];
 
+#ifdef __3DS__
+extern bool CtrChatRequested;
+extern bool CtrNativeChatActive;
+void SendCtrChatMessage(std::string_view text);
+#endif
+
 bool CheckChatCommand(std::string_view text);
 
 template <typename InputStateType>

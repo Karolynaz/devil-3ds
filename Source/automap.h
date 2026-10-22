@@ -132,6 +132,9 @@ AutomapType GetAutomapType();
  */
 void InitAutomapOnce();
 
+/** @brief Places the minimap in the top right corner of the world view. Call it when the view width changes. */
+void UpdateMinimapRect();
+
 /**
  * @brief Loads the mapping between tile IDs and automap shapes.
  */

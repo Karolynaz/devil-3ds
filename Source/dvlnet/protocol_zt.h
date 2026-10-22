@@ -3,9 +3,11 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cerrno>
 #include <cstdint>
 #include <deque>
 #include <exception>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -14,6 +16,9 @@
 #include "dvlnet/frame_queue.h"
 #include "dvlnet/packet.h"
 #include "utils/log.hpp"
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+#include "platform/ctr/zerotier_log.hpp"
+#endif
 
 namespace devilution {
 namespace net {
@@ -22,6 +27,9 @@ template <typename... Args>
 PacketError ProtocolError(std::string_view fmt, Args &&...args)
 {
 	auto str = detail::format(fmt, std::forward<Args>(args)...);
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+	CtrZeroTierLogStage(str.c_str(), errno);
+#endif
 	return PacketError(str);
 }
 
@@ -99,8 +107,14 @@ private:
 	static constexpr uint32_t PKTBUF_LEN = 65536;
 	static constexpr uint16_t default_port = 6112;
 
+	// Lobby polling runs on the 3DS main thread, whose stack cannot hold a
+	// full receive packet. TCP and UDP reuse this heap-owned buffer.
+	std::unique_ptr<unsigned char[]> receiveBuffer = std::make_unique<unsigned char[]>(PKTBUF_LEN);
+
 	struct peer_state {
 		int fd = -1;
+		bool connecting = false;
+		uint32_t connectStarted = 0;
 		std::deque<buffer_t> send_queue;
 		frame_queue recv_queue;
 	};
@@ -115,7 +129,7 @@ private:
 	static uint64_t current_ms();
 	void close_all();
 
-	static void set_nonblock(int fd);
+	static bool set_nonblock(int fd);
 	static void set_nodelay(int fd);
 	static void set_reuseaddr(int fd);
 

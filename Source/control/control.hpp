@@ -58,6 +58,7 @@ extern bool LevelButtonDown;
 extern std::optional<OwnedSurface> BottomBuffer;
 #ifdef __3DS__
 extern std::optional<OwnedSurface> SidePanelBuffer;
+extern std::optional<OwnedSurface> TopPanelBuffer;
 #endif
 extern OptionalOwnedClxSpriteList GoldBoxBuffer;
 
@@ -87,8 +88,14 @@ void ToggleCharPanel();
  */
 [[nodiscard]] inline bool CanPanelsCoverView()
 {
+#ifdef __3DS__
+	// The 3DS world is 400 px wide and the 3DS panels replace the whole top screen
+	// or sit in their own area. The world never shifts aside for a side panel.
+	return false;
+#else
 	const Rectangle &mainPanel = GetMainPanel();
 	return GetScreenWidth() <= mainPanel.size.width && GetScreenHeight() <= SidePanelSize.height + mainPanel.size.height;
+#endif
 }
 
 void AddInfoBoxString(std::string_view str, bool floatingBox = false);
@@ -136,6 +143,9 @@ void FreeControlPan();
  * Sets a string to be drawn in the info box and then draws it.
  */
 void DrawInfoBox(const Surface &out);
+#ifdef __3DS__
+void Reset3DSGameStartHint();
+#endif
 void DrawFloatingInfoBox(const Surface &out);
 void CheckLevelButton();
 void CheckLevelButtonUp();

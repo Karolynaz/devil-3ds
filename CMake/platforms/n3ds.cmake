@@ -6,6 +6,8 @@ set(BUILD_ASSETS_MPQ OFF)
 set(DEVILUTIONX_SYSTEM_LIBSODIUM OFF)
 set(DEVILUTIONX_STATIC_LIBSODIUM ON)
 set(DISABLE_ZERO_TIER ON)
+# Keep the existing exception policy while removing the unused transport.
+set(DEVILUTIONX_DISABLE_EXCEPTIONS OFF)
 set(MPQFS_FILE_BUFFER_SIZE 32768)
 set(NOEXIT ON)
 
@@ -34,6 +36,9 @@ set(DEFAULT_PER_PIXEL_LIGHTING false)
 
 #Deploy assets to romfs
 set(DEVILUTIONX_ASSETS_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/romfs")
+# Hellfire is a built-in mod with its own tables, script and UI assets.
+# Package them in the same RomFS as the core assets for both CIA and 3DSX.
+set(DEVILUTIONX_MODS_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/romfs/mods")
 
 #SDL Joystick axis mapping (circle-pad/C-stick)
 set(JOY_AXIS_LEFTX 0)
@@ -49,11 +54,11 @@ set(JOY_HAT_DPAD_UP 1)
 set(JOY_HAT_DPAD_RIGHT 2)
 set(JOY_HAT_DPAD_DOWN 4)
 set(JOY_HAT_DPAD_LEFT 8)
-#SDL Joystick button mapping (A / B and X / Y inverted)
+#SDL Joystick button mapping (A / B inverted; X / Y use physical labels)
 set(JOY_BUTTON_A 2)
 set(JOY_BUTTON_B 1)
-set(JOY_BUTTON_X 4)
-set(JOY_BUTTON_Y 3)
+set(JOY_BUTTON_X 3)
+set(JOY_BUTTON_Y 4)
 set(JOY_BUTTON_LEFTSHOULDER 5)
 set(JOY_BUTTON_RIGHTSHOULDER 6)
 set(JOY_BUTTON_BACK 7)

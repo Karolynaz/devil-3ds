@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <optional>
 #include <string>
@@ -46,6 +47,7 @@
 #include "engine/surface.hpp"
 #include "engine/ticks.hpp"
 #include "headless_mode.hpp"
+#include "game_mode.hpp"
 #include "hwcursor.hpp"
 #include "init.hpp"
 #include "options.h"
@@ -74,6 +76,8 @@
 #ifdef __3DS__
 // for virtual keyboard on 3DS
 #include "platform/ctr/keyboard.h"
+#include "platform/ctr/pixel_geometry.hpp"
+#include "platform/ctr/world_surface.hpp"
 #endif
 
 namespace devilution {
@@ -91,6 +95,7 @@ std::size_t SelectedItem = 0;
 
 #ifdef __3DS__
 bool gb3DSUseBottomBoxBackground = false;
+bool gb3DSBackgroundIsTitle = false;
 #endif
 
 namespace {
@@ -184,7 +189,9 @@ void UiUpdateFadePalette()
 #ifdef __3DS__
 void HandleCtrTextInput(std::string_view textInput)
 {
+	if (!UiTextInputState) return;
 	UiTextInputState->assign(textInput);
+	UiFocusNavigationSelect();
 }
 #endif
 
@@ -197,9 +204,13 @@ bool IsTextInputActive()
 
 void UiInitList(void (*fnFocus)(size_t value), void (*fnSelect)(size_t value), void (*fnEsc)(), const std::vector<std::unique_ptr<UiItemBase>> &items, bool itemsWraps, void (*fnFullscreen)(), bool (*fnYesNo)(), size_t selectedItem /*= 0*/)
 {
+#ifdef __3DS__
+	ctr_vkbdClear();
+#endif
 	SelectedItem = selectedItem;
 	SelectedItemMax = 0;
-	ListViewportSize = 0;
+	ListViewportSize = 1;
+	gUiList = nullptr;
 	gfnListFocus = fnFocus;
 	gfnListSelect = fnSelect;
 	gfnListEsc = fnEsc;
@@ -227,7 +238,8 @@ void UiInitList(void (*fnFocus)(size_t value), void (*fnSelect)(size_t value), v
 #elif defined(__vita__)
 			vita_start_text_input(pItemUIEdit->m_hint, pItemUIEdit->m_value, pItemUIEdit->m_max_length);
 #elif defined(__3DS__)
-			ctr_vkbdInput(pItemUIEdit->m_hint, pItemUIEdit->m_value, &HandleCtrTextInput);
+			ctr_vkbdInput(pItemUIEdit->m_hint, pItemUIEdit->m_value, &HandleCtrTextInput, &UiFocusNavigationEsc,
+			    pItemUIEdit->m_max_length, pItemUIEdit->m_allowEmpty);
 #else
 			SDLC_StartTextInput(ghMainWnd);
 #endif
@@ -252,11 +264,16 @@ void UiInitList(void (*fnFocus)(size_t value), void (*fnSelect)(size_t value), v
 	AdjustListOffset(selectedItem);
 
 	if (uiScrollbar != nullptr) {
+#ifdef __3DS__
+		// Controller navigation still scrolls the list without a visible scrollbar.
+		uiScrollbar->Hide();
+#else
 		if (ListViewportSize >= static_cast<std::size_t>(SelectedItemMax + 1)) {
 			uiScrollbar->Hide();
 		} else {
 			uiScrollbar->Show();
 		}
+#endif
 	}
 }
 
@@ -267,6 +284,9 @@ void UiRenderListItems()
 
 void UiInitList_clear()
 {
+#ifdef __3DS__
+	ctr_vkbdClear();
+#endif
 	SelectedItem = 0;
 	SelectedItemMax = 0;
 	ListViewportSize = 1;
@@ -294,6 +314,7 @@ namespace {
 
 void UiFocus(std::size_t itemIndex, bool checkUp, bool ignoreItemsWraps = false)
 {
+	if (gUiList == nullptr) return;
 	if (SelectedItem == itemIndex)
 		return;
 
@@ -671,16 +692,105 @@ void LoadUiGFX()
 
 #ifdef __3DS__
 std::unique_ptr<OwnedSurface> UiBottomBackgroundBuffer;
+std::unique_ptr<OwnedSurface> UiTopBackgroundBuffer;
+std::unique_ptr<OwnedSurface> UiMenuSymbol;
+std::unique_ptr<OwnedSurface> UiMenuSymbolSource;
+std::array<SDL_Color, 256> UiMenuSymbolSourcePalette {};
+std::array<SDL_Color, 256> UiMenuSymbolPalette {};
+bool UiMenuSymbolSpawn = false;
+void Draw3DSMenuSymbol(const Surface &out)
+{
+	const bool spawn = gbIsSpawn && !gbIsHellfire;
+	if (!UiMenuSymbolSource || UiMenuSymbolSpawn != spawn) {
+		const auto art = LoadPcx(spawn ? "ui_art\\swmmenu" : "ui_art\\mainmenu", std::nullopt, UiMenuSymbolSourcePalette.data(), false);
+		if (!art || (*art)[0].width() < 640 || (*art)[0].height() < 430) return;
+		OwnedSurface original(640, 480);
+		SDL_FillSurfaceRect(original.surface, nullptr, 0);
+		RenderClxSprite(original, (*art)[0], { 0, 0 });
+		const Size fit = CtrFitImage({640,226}, {320,240});
+		UiMenuSymbolSource = std::make_unique<OwnedSurface>(fit);
+		UiMenuSymbolSource->ScaleBlitFrom(original, MakeSdlRect(0,204,640,226), MakeSdlRect(0,0,fit.width,fit.height));
+		UiMenuSymbolSpawn = spawn;
+		UiMenuSymbol.reset();
+	}
+	if (!UiMenuSymbol || std::memcmp(UiMenuSymbolPalette.data(), logical_palette.data(), sizeof(UiMenuSymbolPalette)) != 0) {
+		// Cache the native crop independently of the active menu palette.
+		// Menu transitions only remap 320x113 pixels; no archive reads/decoding.
+		std::array<uint8_t, 256> translation {};
+		for (size_t i = 0; i < 256; ++i) {
+			int best = 3 * 256 * 256;
+			for (size_t j = 0; j < 256; ++j) {
+				const int r = int(UiMenuSymbolSourcePalette[i].r) - logical_palette[j].r;
+				const int g = int(UiMenuSymbolSourcePalette[i].g) - logical_palette[j].g;
+				const int b = int(UiMenuSymbolSourcePalette[i].b) - logical_palette[j].b;
+				const int distance = r*r + g*g + b*b;
+				if (distance < best) { best = distance; translation[i] = static_cast<uint8_t>(j); }
+			}
+		}
+		OwnedSurface native(320, 240);
+		SDL_FillSurfaceRect(native.surface, nullptr, 0);
+		const int left = (320 - UiMenuSymbolSource->w()) / 2;
+		const int top = (240 - UiMenuSymbolSource->h()) / 2;
+		for (int y = 0; y < UiMenuSymbolSource->h(); ++y)
+			for (int x = 0; x < UiMenuSymbolSource->w(); ++x)
+				*native.at(left + x, top + y) = translation[*UiMenuSymbolSource->at(x,y)];
+		UiMenuSymbol = std::make_unique<OwnedSurface>(640,240);
+		UiMenuSymbol->ScaleBlitFromPreservingDownscale(native, MakeSdlRect(0,0,320,240), MakeSdlRect(0,0,640,240));
+		UiMenuSymbolPalette = logical_palette;
+	}
+	out.BlitFromSkipColorIndexZero(*UiMenuSymbol, {0,0,640,240}, {(out.w()-640)/2,240});
+}
+
+void Prepare3DSMenuTitleBackground()
+{
+	UiTopBackgroundBuffer = nullptr;
+	std::array<SDL_Color, 256> titlePalette {};
+	// Read the original demon artwork from the player's game files, as the
+	// title dialog does. No additional redistributed game asset is needed.
+	const auto title = LoadPcx("ui_art\\title", std::nullopt, titlePalette.data(), false);
+	if (!title || (*title)[0].width() < 640 || (*title)[0].height() < 480)
+		return;
+	OwnedSurface original(640, 480);
+	RenderClxSprite(original, (*title)[0], { 0, 0 });
+	OwnedSurface native(400, 240);
+	native.BlitFrom(original, MakeSdlRect(120, 0, 400, 240), { 0, 0 });
+
+	// Main-menu text keeps its own palette. Translate the title background
+	// once on loading, preserving the demon's colors behind the flames.
+	std::array<uint8_t, 256> translation {};
+	for (size_t i = 0; i < translation.size(); ++i) {
+		int bestDistance = 3 * 256 * 256;
+		for (size_t j = 0; j < logical_palette.size(); ++j) {
+			const int r = static_cast<int>(titlePalette[i].r) - logical_palette[j].r;
+			const int g = static_cast<int>(titlePalette[i].g) - logical_palette[j].g;
+			const int b = static_cast<int>(titlePalette[i].b) - logical_palette[j].b;
+			const int distance = r * r + g * g + b * b;
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				translation[i] = static_cast<uint8_t>(j);
+			}
+		}
+	}
+	for (int y = 0; y < native.h(); ++y)
+		for (int x = 0; x < native.w(); ++x)
+			*native.at(x, y) = translation[*native.at(x, y)];
+	UiTopBackgroundBuffer = std::make_unique<OwnedSurface>(640, 240);
+	UiTopBackgroundBuffer->ScaleBlitFromPreservingDownscale(native,
+	    MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, 640, 240));
+}
 
 void Prepare3DSBackground()
 {
 	if (!gb3DSUseBottomBoxBackground || !ArtBackground) {
 		UiBottomBackgroundBuffer = nullptr;
+		UiTopBackgroundBuffer = nullptr;
 		return;
 	}
+	Prepare3DSMenuTitleBackground();
 	const ClxSprite sprite = (*ArtBackground)[0];
 	if (sprite.height() < 480 || sprite.width() < 640) {
 		UiBottomBackgroundBuffer = nullptr;
+		UiTopBackgroundBuffer = nullptr;
 		return;
 	}
 
@@ -694,15 +804,24 @@ void Prepare3DSBackground()
 
 	SDL_FillSurfaceRect(UiBottomBackgroundBuffer->surface, nullptr, 0);
 
-	// Scale the box area (rows 204..430, height 226) into bottom screen (rows 2..188, height 186)
-	// That maps to virtual Y 242..428.
-	const SDL_Rect srcRect = { 0, 204, 640, 226 };
-	const SDL_Rect dstRect = { 0, 2, 640, 186 };
-	UiBottomBackgroundBuffer->ScaleBlitFrom(tempSurface, srcRect, dstRect);
+	static OwnedSurface native(320, 240);
+	SDL_FillSurfaceRect(native.surface, nullptr, 0);
+	const Size fit = CtrFitImage({ 640, 226 }, { 320, 240 });
+	native.ScaleBlitFrom(tempSurface, MakeSdlRect(0, 204, 640, 226),
+		MakeSdlRect((320 - fit.width) / 2, (240 - fit.height) / 2, fit.width, fit.height));
+	UiBottomBackgroundBuffer->ScaleBlitFromPreservingDownscale(native,
+		MakeSdlRect(0, 0, 320, 240), MakeSdlRect(0, 0, 640, 240));
 }
 #endif
 
 } // namespace
+
+#ifdef __3DS__
+void UiReloadHeroPortraits()
+{
+	LoadHeros();
+}
+#endif
 
 ClxSprite UiGetHeroDialogSprite(size_t heroClassIndex)
 {
@@ -715,6 +834,9 @@ void UnloadUiGFX()
 {
 #ifdef __3DS__
 	UiBottomBackgroundBuffer = nullptr;
+	UiTopBackgroundBuffer = nullptr;
+	UiMenuSymbol = nullptr;
+	UiMenuSymbolSource = nullptr;
 #endif
 	ArtHero = std::nullopt;
 	for (OptionalOwnedClxSpriteList &override : ArtHeroOverrides)
@@ -803,6 +925,7 @@ bool UiLoadBlackBackground()
 	ArtBackground = std::nullopt;
 #ifdef __3DS__
 	UiBottomBackgroundBuffer = nullptr;
+	UiTopBackgroundBuffer = nullptr;
 #endif
 	UiLoadDefaultPalette();
 	UiOnBackgroundChange();
@@ -814,6 +937,8 @@ void LoadBackgroundArt(const char *pszFile, int frames)
 	ArtBackground = std::nullopt;
 #ifdef __3DS__
 	UiBottomBackgroundBuffer = nullptr;
+	std::string_view filePath { pszFile != nullptr ? pszFile : "" };
+	gb3DSBackgroundIsTitle = filePath.find("title") != std::string_view::npos || filePath.find("hf_logo1") != std::string_view::npos;
 #endif
 	ArtBackground = LoadPcxSpriteList(pszFile, static_cast<uint16_t>(frames), /*transparentColor=*/std::nullopt, logical_palette.data());
 	if (!ArtBackground)
@@ -826,14 +951,16 @@ void LoadBackgroundArt(const char *pszFile, int frames)
 	UiOnBackgroundChange();
 }
 
-void UiAddBackground(std::vector<std::unique_ptr<UiItemBase>> *vecDialog)
+void UiAddBackground(std::vector<std::unique_ptr<UiItemBase>> *vecDialog, bool showTitle)
 {
 	const SDL_Rect rect = MakeSdlRect(0, GetUIRectangle().position.y, 0, 0);
 	if (ArtBackgroundWidescreen) {
 		vecDialog->push_back(std::make_unique<UiImageClx>((*ArtBackgroundWidescreen)[0], rect, UiFlags::AlignCenter));
 	}
 	if (ArtBackground) {
-		vecDialog->push_back(std::make_unique<UiImageClx>((*ArtBackground)[0], rect, UiFlags::AlignCenter));
+		auto background = std::make_unique<UiImageClx>((*ArtBackground)[0], rect, UiFlags::AlignCenter);
+		background->showTitleBackground = showTitle;
+		vecDialog->push_back(std::move(background));
 	}
 }
 
@@ -868,6 +995,12 @@ ClxSpriteList GetListSelectorSprites(int itemHeight)
 }
 } // namespace
 
+#ifdef __3DS__
+namespace {
+void RenderCtrImage(ClxSprite sprite, SDL_Rect rect, bool centered, bool allowUpscale = false);
+}
+#endif
+
 void DrawSelector(const SDL_Rect &rect)
 {
 	const ClxSpriteList sprites = GetListSelectorSprites(rect.h);
@@ -877,6 +1010,13 @@ void DrawSelector(const SDL_Rect &rect)
 	const int y = rect.y + ((rect.h - static_cast<int>(sprite.height())) / 2);
 
 	const Surface &out = Surface(DiabloUiSurface());
+#ifdef __3DS__
+	const int screenWidth = rect.y >= 240 ? 320 : 400;
+	const int logicalWidth = (sprite.width() * 640 + screenWidth - 1) / screenWidth;
+	RenderCtrImage(sprite, MakeSdlRect(rect.x, y, logicalWidth, sprite.height()), false);
+	RenderCtrImage(sprite, MakeSdlRect(rect.x + rect.w - logicalWidth, y, logicalWidth, sprite.height()), false);
+	return;
+#endif
 	RenderClxSprite(out, sprite, { rect.x, y });
 	RenderClxSprite(out, sprite, { rect.x + rect.w - sprite.width(), y });
 }
@@ -884,7 +1024,9 @@ void DrawSelector(const SDL_Rect &rect)
 void UiClearScreen()
 {
 #ifdef __3DS__
+	CtrWorldClearFrame();
 	SDL_FillSurfaceRect(DiabloUiSurface(), nullptr, 0);
+	Draw3DSMenuSymbol(Surface(DiabloUiSurface()));
 #else
 	if (!ArtBackground || gnScreenWidth > (*ArtBackground)[0].width() || gnScreenHeight > (*ArtBackground)[0].height()) {
 		SDL_FillSurfaceRect(DiabloUiSurface(), nullptr, 0);
@@ -918,7 +1060,7 @@ void UiPollAndRender(std::optional<tl::function_ref<bool(SDL_Event &)>> eventHan
 #ifdef __3DS__
 	// Keyboard blocks until input is finished
 	// so defer until after render and fade-in
-	ctr_vkbdFlush();
+	if (fadeValue == 256) ctr_vkbdFlush();
 #endif
 
 	discord_manager::UpdateMenu();
@@ -933,12 +1075,77 @@ void Render(const UiText &uiText)
 	    { .flags = uiText.GetFlags() | UiFlags::FontSizeDialog });
 }
 
+#ifdef __3DS__
+void FitCtrUiText(std::string_view text, int width, CtrTextScale scale, UiFlags &flags, int &spacing)
+{
+	// Keep every letter and native glyph pixel. Tighten spacing first, then
+	// use a smaller bitmap font when a translation is still too wide.
+	constexpr UiFlags fonts = UiFlags::FontSize12 | UiFlags::FontSize24 | UiFlags::FontSize30 | UiFlags::FontSize42 | UiFlags::FontSize46 | UiFlags::FontSizeDialog;
+	while (spacing > 0 && GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) > width)
+		--spacing;
+	if (GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) <= width)
+		return;
+	if (GetFontSizeFromUiFlags(flags) > GameFont24)
+		flags = (flags & ~fonts) | UiFlags::FontSize24;
+	if (GetLineWidth(text, GetFontSizeFromUiFlags(flags), spacing, nullptr, scale) > width)
+		flags = (flags & ~fonts) | UiFlags::FontSize12;
+}
+#endif
+
 void Render(const UiArtText &uiArtText)
 {
 	const Surface &out = Surface(DiabloUiSurface());
+	UiFlags flags = uiArtText.GetFlags();
+	int spacing = uiArtText.GetSpacing();
+#ifdef __3DS__
+	const std::string_view text = uiArtText.GetText();
+	if (uiArtText.m_rect.h <= 40 && text.find('\n') == std::string_view::npos) {
+		const CtrTextScale scale = uiArtText.m_rect.y >= 240 ? CtrTextScale::BottomScreen : CtrTextScale::TopScreen;
+		FitCtrUiText(text, uiArtText.m_rect.w, scale, flags, spacing);
+	}
+#endif
 	DrawString(out, uiArtText.GetText(), MakeRectangle(uiArtText.m_rect),
-	    { .flags = uiArtText.GetFlags(), .spacing = uiArtText.GetSpacing(), .lineHeight = uiArtText.GetLineHeight() });
+	    { .flags = flags, .spacing = spacing, .lineHeight = uiArtText.GetLineHeight() });
 }
+
+#ifdef __3DS__
+// Draw into physical pixel coordinates first, then encode each pixel on the
+// global logical canvas grid. The presenter restores it without filtering.
+void RenderCtrImage(ClxSprite sprite, SDL_Rect rect, bool centered, bool allowUpscale)
+{
+	const Surface &out = Surface(DiabloUiSurface());
+	const bool bottom = rect.y >= 240;
+	const int screenWidth = bottom ? 320 : 400;
+	const int screenY = bottom ? 240 : 0;
+	const int nativeX = rect.x * screenWidth / 640;
+	const int areaWidth = rect.w > 0 ? rect.w * screenWidth / 640 : screenWidth;
+	const int areaHeight = rect.h > 0 ? rect.h : 240 - (rect.y - screenY);
+	const Size sourceSize { sprite.width(), sprite.height() };
+	const Size bounds { areaWidth, areaHeight };
+	const Size enlarged = allowUpscale ? CtrEnlargeImage(sourceSize, bounds) : Size { 0, 0 };
+	const Size size = enlarged.width > 0 ? enlarged : CtrFitImage(sourceSize, bounds);
+	if (size.width <= 0 || size.height <= 0) return;
+	const int x = nativeX + (centered ? (areaWidth - size.width) / 2 : 0);
+	const int y = rect.y + (rect.h > 0 ? (rect.h - size.height) / 2 : 0);
+	static std::optional<OwnedSurface> scratch;
+	if (!scratch || scratch->w() != sprite.width() || scratch->h() != sprite.height())
+		scratch.emplace(sprite.width(), sprite.height());
+	SDL_FillSurfaceRect(scratch->surface, nullptr, 0);
+	RenderClxSprite(*scratch, sprite, { 0, 0 });
+	const int firstX = CtrNativeColumn(std::max(x, 0), screenWidth);
+	const int lastX = CtrNativeColumn(std::min(x + size.width, screenWidth), screenWidth);
+	for (int dstY = std::max(y, screenY); dstY < std::min(y + size.height, screenY + 240); ++dstY) {
+		const uint8_t *src = scratch->at(0, (dstY - y) * sprite.height() / size.height);
+		uint8_t *dst = out.at(0, dstY);
+		for (int dstX = firstX; dstX < lastX; ++dstX) {
+			const int imageX = CtrInverseColumn(dstX, screenWidth) - x;
+			if (imageX < 0 || imageX >= size.width) continue;
+			const uint8_t color = src[imageX * sprite.width() / size.width];
+			if (color != 0) dst[dstX] = color;
+		}
+	}
+}
+#endif
 
 void Render(const UiImageClx &uiImage)
 {
@@ -950,20 +1157,43 @@ void Render(const UiImageClx &uiImage)
 #ifdef __3DS__
 	if (ArtBackground && sprite == (*ArtBackground)[0] && sprite.height() >= 480) {
 		const Surface &out = Surface(DiabloUiSurface());
-		SDL_Rect topRect = MakeSdlRect(0, 0, 640, 240);
-		SDL_FillSurfaceRect(out.surface, &topRect, 0);
+		if (gb3DSUseBottomBoxBackground) {
+			SDL_Rect topRect = MakeSdlRect(0, 0, out.w(), 240);
+			SDL_FillSurfaceRect(out.surface, &topRect, 0);
 
-		if (!UiBottomBackgroundBuffer) {
-			Prepare3DSBackground();
+			if (!UiBottomBackgroundBuffer) {
+				Prepare3DSBackground();
+			}
+			if (uiImage.showTitleBackground && UiTopBackgroundBuffer)
+				out.BlitFrom(*UiTopBackgroundBuffer, { 0, 0, 640, 240 }, { 0, 0 });
+			if (UiBottomBackgroundBuffer) {
+				out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { (out.w() - 640) / 2, 240 });
+			} else {
+				SDL_Rect bottomRect = MakeSdlRect(0, 240, out.w(), 240);
+				SDL_FillSurfaceRect(out.surface, &bottomRect, 0);
+			}
+			return;
 		}
-		if (UiBottomBackgroundBuffer) {
-			out.BlitFrom(*UiBottomBackgroundBuffer, { 0, 0, 640, 240 }, { 0, 240 });
-		} else {
-			SDL_Rect bottomRect = MakeSdlRect(0, 240, 640, 240);
+		if (gb3DSBackgroundIsTitle) {
+			static OwnedSurface titleScratch(640, 480);
+			SDL_FillSurfaceRect(titleScratch.surface, nullptr, 0);
+			RenderClxSprite(titleScratch, sprite, { 0, 0 });
+			static OwnedSurface titleTop(400, 240);
+			titleTop.BlitFrom(titleScratch, MakeSdlRect(120, 0, 400, 240), { 0, 0 });
+			out.ScaleBlitFromPreservingDownscale(titleTop, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, 640, 240));
+			SDL_Rect bottomRect = MakeSdlRect(0, 240, out.w(), 240);
 			SDL_FillSurfaceRect(out.surface, &bottomRect, 0);
+			Draw3DSMenuSymbol(out);
+			return;
 		}
+		// Share the menu watermark across hero, settings and network screens.
+		SDL_FillSurfaceRect(out.surface, nullptr, 0);
+		Draw3DSMenuSymbol(out);
 		return;
 	}
+
+	RenderCtrImage(sprite, uiImage.m_rect, uiImage.isCentered(), uiImage.allowsUpscale());
+	return;
 #endif
 	RenderClxSprite(Surface(DiabloUiSurface()), sprite, { x, uiImage.m_rect.y });
 }
@@ -971,6 +1201,10 @@ void Render(const UiImageClx &uiImage)
 void Render(const UiImageAnimatedClx &uiImage)
 {
 	const ClxSprite sprite = uiImage.sprite(GetAnimationFrame(uiImage.numFrames()));
+#ifdef __3DS__
+	RenderCtrImage(sprite, uiImage.m_rect, uiImage.isCentered());
+	return;
+#endif
 	int x = uiImage.m_rect.x;
 	if (uiImage.isCentered()) {
 		x += GetCenterOffset(sprite.width(), uiImage.m_rect.w);
@@ -994,20 +1228,50 @@ void Render(const UiList &uiList)
 		if (i == SelectedItem)
 			DrawSelector(rect);
 
+		const bool doubleWidth =
+#ifdef __3DS__
+		    (out.w() >= 640 && rect.y >= 240);
+#else
+		    false;
+#endif
+		#ifdef __3DS__
+		const CtrTextScale textScale = rect.y >= 240 ? CtrTextScale::BottomScreen : CtrTextScale::TopScreen;
+		const int screenWidth = rect.y >= 240 ? 320 : 400;
+		const int selectorWidth = (GetListSelectorSprites(rect.h)[0].width() * 640 + screenWidth - 1) / screenWidth + 8;
+#else
+		const bool textScale = doubleWidth;
+		const int selectorWidth = GetListSelectorSprites(rect.h)[0].width();
+#endif
 		const Rectangle rectangle = MakeRectangle(rect).inset(
-		    Displacement(GetListSelectorSprites(rect.h)[0].width(), 0));
+		    Displacement(selectorWidth, 0));
 
-		const UiFlags uiFlags = uiList.GetFlags() | item.uiFlags;
-		const GameFontTables fontSize = GetFontSizeFromUiFlags(uiFlags);
+		UiFlags uiFlags = uiList.GetFlags() | item.uiFlags;
+#ifdef __3DS__
+		if (item.columns) {
+			const int valueWidth = item.columnValueWidth;
+			const Rectangle nameRect { rectangle.position, { rectangle.size.width - valueWidth - 12, rectangle.size.height } };
+			const Rectangle valueRect { { rectangle.position.x + rectangle.size.width - valueWidth, rectangle.position.y }, { valueWidth, rectangle.size.height } };
+			const std::string wrapped = WordWrapString(item.m_text.str(), nameRect.size.width, GameFont12, 0, doubleWidth);
+			DrawString(out, wrapped, nameRect, { .flags = UiFlags::FontSize12 | UiFlags::ColorUiGold | UiFlags::VerticalCenter, .spacing = 0, .lineHeight = 14 });
+			const std::string wrappedValue = WordWrapString(item.rightText, valueWidth, GameFont12, 0, doubleWidth);
+			DrawString(out, wrappedValue, valueRect, { .flags = UiFlags::FontSize12 | UiFlags::ColorUiSilver | UiFlags::AlignRight | UiFlags::VerticalCenter, .spacing = 0, .lineHeight = 14 });
+			continue;
+		}
+#endif
 		std::string_view text = item.m_text.str();
-		while (GetLineWidth(text, fontSize, 1) > rectangle.size.width) {
+		int spacing = uiList.GetSpacing();
+#ifdef __3DS__
+		FitCtrUiText(text, rectangle.size.width, textScale, uiFlags, spacing);
+#endif
+		const GameFontTables fontSize = GetFontSizeFromUiFlags(uiFlags);
+		while (GetLineWidth(text, fontSize, spacing, nullptr, textScale) > rectangle.size.width) {
 			text = std::string_view(text.data(), FindLastUtf8Symbols(text));
 		}
 
 		if (item.args.empty()) {
-			DrawString(out, text, rectangle, { .flags = uiFlags, .spacing = uiList.GetSpacing() });
+			DrawString(out, text, rectangle, { .flags = uiFlags, .spacing = spacing });
 		} else {
-			DrawStringWithColors(out, text, item.args, rectangle, { .flags = uiFlags, .spacing = uiList.GetSpacing() });
+			DrawStringWithColors(out, text, item.args, rectangle, { .flags = uiFlags, .spacing = spacing });
 		}
 	}
 }
@@ -1052,7 +1316,13 @@ void Render(const UiEdit &uiEdit)
 	DrawSelector(uiEdit.m_rect);
 
 	// To simulate padding we inset the region used to draw text in an edit control
-	const Rectangle rect = MakeRectangle(uiEdit.m_rect).inset({ 43, 1 });
+	#ifdef __3DS__
+	const int screenWidth = uiEdit.m_rect.y >= 240 ? 320 : 400;
+	const int padding = (GetListSelectorSprites(uiEdit.m_rect.h)[0].width() * 640 + screenWidth - 1) / screenWidth + 12;
+#else
+	const int padding = 43;
+#endif
+	const Rectangle rect = MakeRectangle(uiEdit.m_rect).inset({ padding, 1 });
 
 	const Surface &out = Surface(DiabloUiSurface());
 	DrawString(out, uiEdit.m_value, rect,
@@ -1286,6 +1556,11 @@ void DrawMouse()
 {
 	if (ControlDevice != ControlTypes::KeyboardAndMouse || IsHardwareCursor() || !ArtCursor)
 		return;
-	RenderClxSprite(Surface(DiabloUiSurface()), (*ArtCursor)[0], MousePosition);
+	const Surface &out = Surface(DiabloUiSurface());
+#ifdef __3DS__
+	RenderCtrImage((*ArtCursor)[0], MakeSdlRect(MousePosition.x, MousePosition.y, 0, 0), false);
+	return;
+#endif
+	RenderClxSprite(out, (*ArtCursor)[0], MousePosition);
 }
 } // namespace devilution

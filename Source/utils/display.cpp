@@ -27,6 +27,8 @@
 
 #ifdef __3DS__
 #include "platform/ctr/display.hpp"
+#include "platform/ctr/world_view.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
 #endif
 
 #ifdef NXDK
@@ -86,7 +88,23 @@ uint16_t GetScreenHeight()
 
 uint16_t GetViewportHeight()
 {
+#ifdef __3DS__
+	// The world buffer height (240 / s), not the 240 rows of the top screen UI.
+	return static_cast<uint16_t>(CtrWorldHeight());
+#else
 	return gnViewportHeight;
+#endif
+}
+
+
+uint16_t GetViewportWidth()
+{
+#ifdef __3DS__
+	// The world buffer width (400 / s).
+	return static_cast<uint16_t>(CtrWorldWidth());
+#else
+	return gnScreenWidth;
+#endif
 }
 
 Rectangle UIRectangle;
@@ -145,7 +163,12 @@ void CalculateUIRectangle()
 
 Size GetPreferredWindowSize()
 {
+#ifdef __3DS__
+	// Physical screens and all native UI encoders share this one canvas size.
+	Size windowSize = CtrCanvasSize;
+#else
 	Size windowSize = forceResolution.width != 0 ? forceResolution : *GetOptions().Graphics.resolution;
+#endif
 
 #ifndef USE_SDL1
 	if (*GetOptions().Graphics.upscale && *GetOptions().Graphics.fitToScreen) {
@@ -478,6 +501,10 @@ void SetVideoMode(int width, int height, int bpp, uint32_t flags)
 	if (surface == nullptr) {
 		ErrSdl();
 	}
+#ifdef __3DS__
+	CTR_ConfigureFramePresenter((flags & 0x00300000U) == 0x00300000U
+	    && surface->w == 640 && surface->h == 480 && surface->format->BitsPerPixel == 8);
+#endif
 	Log("Video surface is now {}x{} bpp={} flags=0x{:08X}",
 	    surface->w, surface->h, surface->format->BitsPerPixel, surface->flags);
 }
@@ -816,6 +843,11 @@ void ReinitializeRenderer()
 
 void SetFullscreenMode()
 {
+#ifdef __3DS__
+	// A console is always fullscreen. SDL's bpp=0 toggle would recreate the
+	// surface as 32-bit and discard the dual-screen flags and native presenter.
+	return;
+#endif
 #ifdef USE_SDL1
 	Uint32 flags = ghMainWnd->flags ^ SDL_FULLSCREEN;
 	if (*GetOptions().Graphics.fullscreen) {

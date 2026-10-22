@@ -23,9 +23,15 @@
 #include "headless_mode.hpp"
 #include "hwcursor.hpp"
 #include "inv.h"
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#include "platform/ctr/keyboard.h"
+#include "engine/backbuffer_state.hpp"
+#endif
 #include "minitext.h"
 #include "stores.h"
 #include "utils/display.h"
+#include "utils/format.hpp"
 #include "utils/format_int.hpp"
 #include "utils/language.h"
 #include "utils/sdl_compat.h"
@@ -59,6 +65,25 @@ constexpr Rectangle StashButtonRect[] = {
 	// clang-format on
 };
 
+#ifdef __3DS__
+constexpr Rectangle CtrStashButtonRect[] = {
+	{},
+	{ { 19, 24 }, { 26, 18 } },
+	{ { 50, 24 }, { 110, 18 } },
+	{ { 165, 24 }, { 26, 18 } },
+	{},
+};
+constexpr int StashHalfCellPixels = CtrItemSlotPixels / 2;
+
+Point CtrStashPointer(Point point)
+{
+	return CtrScreenToTop(point);
+}
+#endif
+#ifndef __3DS__
+constexpr int StashHalfCellPixels = INV_SLOT_HALF_SIZE_PX;
+#endif
+
 OptionalOwnedClxSpriteList StashPanelArt;
 OptionalOwnedClxSpriteList StashNavButtonArt;
 
@@ -77,11 +102,18 @@ void AddItemToStashGrid(unsigned page, Point position, uint16_t stashListIndex, 
 
 std::optional<Point> FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 {
+#ifdef __3DS__
+	cursorPosition = CtrStashPointer(cursorPosition);
+#endif
 	for (auto point : StashGridRange) {
+#ifdef __3DS__
+		const Rectangle cell = CtrStashSlotRect(point);
+#else
 		const Rectangle cell {
 			GetStashSlotCoord(point),
 			InventorySlotSizeInPixels + 1
 		};
+#endif
 
 		if (cell.contains(cursorPosition)) {
 			// When trying to paste into the stash we need to determine the top left cell of the nearest area that could fit the item, not the slot under the center/hot pixel.
@@ -92,11 +124,11 @@ std::optional<Point> FindTargetSlotUnderItemCursor(Point cursorPosition, Size it
 			// Otherwise work out how far the central cell is from the top-left cell
 			Displacement hotPixelCellOffset = { (itemSize.width - 1) / 2, (itemSize.height - 1) / 2 };
 			// For even dimension items we need to work out if the cursor is in the left/right (or top/bottom) half of the central cell and adjust the offset so the item lands in the area most covered by the cursor.
-			if (itemSize.width % 2 == 0 && cell.contains(cursorPosition + Displacement { INV_SLOT_HALF_SIZE_PX, 0 })) {
+			if (itemSize.width % 2 == 0 && cell.contains(cursorPosition + Displacement { StashHalfCellPixels, 0 })) {
 				// hot pixel was in the left half of the cell, so we want to increase the offset to preference the column to the left
 				hotPixelCellOffset.deltaX++;
 			}
-			if (itemSize.height % 2 == 0 && cell.contains(cursorPosition + Displacement { 0, INV_SLOT_HALF_SIZE_PX })) {
+			if (itemSize.height % 2 == 0 && cell.contains(cursorPosition + Displacement { 0, StashHalfCellPixels })) {
 				// hot pixel was in the top half of the cell, so we want to increase the offset to preference the row above
 				hotPixelCellOffset.deltaY++;
 			}
@@ -186,16 +218,23 @@ void CheckStashPaste(Point cursorPosition)
 void CheckStashCut(Point cursorPosition, bool automaticMove)
 {
 	Player &player = *MyPlayer;
+#ifdef __3DS__
+	cursorPosition = CtrStashPointer(cursorPosition);
+#endif
 
 	CloseGoldWithdraw();
 
 	Point slot = InvalidStashPoint;
 
 	for (auto point : StashGridRange) {
+#ifdef __3DS__
+		const Rectangle cell = CtrStashSlotRect(point);
+#else
 		const Rectangle cell {
 			GetStashSlotCoord(point),
 			InventorySlotSizeInPixels + 1
 		};
+#endif
 
 		// check which inventory rectangle the mouse is in, if any
 		if (cell.contains(cursorPosition)) {
@@ -262,13 +301,21 @@ void WithdrawGold(Player &player, int amount)
 	Stash.dirty = true;
 }
 
+Point LegacyStashSlotCoord(Point slot)
+{
+	constexpr int StashNextCell = INV_SLOT_SIZE_PX + 1;
+	return GetPanelPosition(UiPanels::Stash, slot * StashNextCell + Displacement { 17, 48 });
+}
+
 } // namespace
 
 Point GetStashSlotCoord(Point slot)
 {
-	constexpr int StashNextCell = INV_SLOT_SIZE_PX + 1; // spacing between each cell
-
-	return GetPanelPosition(UiPanels::Stash, slot * StashNextCell + Displacement { 17, 48 });
+#ifdef __3DS__
+	return CtrTopToScreen(CtrStashSlotRect(slot).position);
+#else
+	return LegacyStashSlotCoord(slot);
+#endif
 }
 
 void FreeStashGFX()
@@ -313,8 +360,13 @@ void CheckStashButtonRelease(Point mousePosition)
 	if (StashButtonPressed == -1)
 		return;
 
+#ifdef __3DS__
+	Rectangle stashButton = CtrStashButtonRect[StashButtonPressed];
+		mousePosition = CtrStashPointer(mousePosition);
+#else
 	Rectangle stashButton = StashButtonRect[StashButtonPressed];
 	stashButton.position = GetPanelPosition(UiPanels::Stash, stashButton.position);
+#endif
 	if (stashButton.contains(mousePosition)) {
 		switch (StashButtonPressed) {
 		case 0:
@@ -341,10 +393,21 @@ void CheckStashButtonRelease(Point mousePosition)
 void CheckStashButtonPress(Point mousePosition)
 {
 	Rectangle stashButton;
+#ifdef __3DS__
+	mousePosition = CtrStashPointer(mousePosition);
+#endif
 
+#ifdef __3DS__
+	for (int i = 1; i <= 3; i++) {
+#else
 	for (int i = 0; i < 5; i++) {
+#endif
+#ifdef __3DS__
+		stashButton = CtrStashButtonRect[i];
+#else
 		stashButton = StashButtonRect[i];
 		stashButton.position = GetPanelPosition(UiPanels::Stash, stashButton.position);
+#endif
 		if (stashButton.contains(mousePosition)) {
 			StashButtonPressed = i;
 			return;
@@ -371,7 +434,7 @@ void DrawStash(const Surface &out)
 			continue; // No item in the given slot
 		}
 		const Item &item = Stash.stashList[itemId];
-		InvDrawSlotBack(out, GetStashSlotCoord(slot) + offset, InventorySlotSizeInPixels, item._iMagical);
+		InvDrawSlotBack(out, LegacyStashSlotCoord(slot) + offset, InventorySlotSizeInPixels, item._iMagical);
 	}
 
 	for (auto slot : StashGridRange) {
@@ -387,7 +450,7 @@ void DrawStash(const Surface &out)
 
 		const int frame = item._iCurs + CURSOR_FIRSTITEM;
 
-		const Point position = GetStashSlotCoord(item.position) + offset;
+		const Point position = LegacyStashSlotCoord(item.position) + offset;
 		const ClxSprite sprite = GetInvItemSprite(frame);
 
 		if (pcursstashitem == itemId) {
@@ -408,6 +471,82 @@ void DrawStash(const Surface &out)
 	    { .flags = UiFlags::AlignRight | style });
 }
 
+#ifdef __3DS__
+void DrawCtrStashItems(const Surface &out)
+{
+	for (const Point slot : StashGridRange) {
+		const StashStruct::StashCell itemId = Stash.GetItemIdAtPosition(slot);
+		if (itemId == StashStruct::EmptyCell)
+			continue;
+		const Item &item = Stash.stashList[itemId];
+		const bool isHovered = (pcursstashitem == itemId);
+		const bool isUsable = item._iStatFlag && (item._iMagical == ITEM_QUALITY_NORMAL || item._iIdentified);
+		const uint8_t tint = isHovered ? 250 : (isUsable ? (PAL16_BLUE + 6) : (PAL16_RED + 6));
+		const Rectangle cell = CtrStashSlotRect(slot);
+		DrawHalfTransparentRectTo(out, cell.position.x + 1, cell.position.y + 1,
+		    cell.size.width - 2, cell.size.height - 2,
+		    tint);
+	}
+
+	for (const Point slot : StashGridRange) {
+		const StashStruct::StashCell itemId = Stash.GetItemIdAtPosition(slot);
+		if (itemId == StashStruct::EmptyCell)
+			continue;
+		const Item &item = Stash.stashList[itemId];
+		if (item.position != slot)
+			continue;
+
+		const Size itemSize = GetInventorySize(item);
+		const Point topLeft { item.position.x, item.position.y - itemSize.height + 1 };
+		const Rectangle firstCell = CtrStashSlotRect(topLeft);
+		const Rectangle target { firstCell.position,
+		    { (itemSize.width - 1) * CtrItemSlotPitch + CtrItemSlotPixels,
+		        (itemSize.height - 1) * CtrItemSlotPitch + CtrItemSlotPixels } };
+		DrawCtrScaledItem(out, item, target, pcursstashitem == itemId);
+	}
+
+	if (!MyPlayer->HoldItem.isEmpty()) {
+		const Size heldSize = GetInventorySize(MyPlayer->HoldItem);
+		const std::optional<Point> target = FindTargetSlotUnderItemCursor(MousePosition, heldSize);
+		if (target) {
+			for (const Point cell : PointsInRectangle(Rectangle { *target, heldSize })) {
+				const Rectangle rect = CtrStashSlotRect(cell);
+				FillRect(out, rect.position.x, rect.position.y, rect.size.width, rect.size.height, 0);
+			}
+		}
+	}
+
+	const UiFlags labelStyle = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing;
+	DrawString(out, FormatRuntime(_("Stash ({:d})"), Stash.GetPage() + 1),
+	    { { 19, 13 }, { 180, 18 } }, { .flags = labelStyle });
+	for (int i = 1; i <= 3; ++i) {
+		const Rectangle button = CtrStashButtonRect[i];
+		FillRect(out, button.position.x, button.position.y, button.size.width, button.size.height, 0);
+		UnsafeDrawBorder2px(out, button, PAL16_BEIGE + 8);
+		if (i == 2) {
+			Item goldIcon;
+			goldIcon._itype = ItemType::Gold;
+			goldIcon._iCurs = ICURS_GOLD_LARGE;
+			goldIcon._iStatFlag = true;
+			DrawCtrScaledItem(out, goldIcon, { button.position + Displacement { 3, 2 }, { 14, 14 } }, false);
+			std::string amount = FormatInteger(Stash.gold);
+			if (Stash.gold >= 1000000) {
+				amount = StrCat(Stash.gold / 1000000);
+				const int tenths = Stash.gold % 1000000 / 100000;
+				if (tenths != 0)
+					amount = StrCat(amount, ".", tenths);
+				amount += "M";
+			}
+			DrawString(out, amount, { button.position + Displacement { 20, 2 }, { button.size.width - 24, button.size.height - 4 } },
+			    { .flags = UiFlags::AlignRight | UiFlags::VerticalCenter | labelStyle, .spacing = 0 });
+			continue;
+		}
+		DrawString(out, i == 1 ? "<" : ">", button,
+		    { .flags = UiFlags::AlignCenter | UiFlags::VerticalCenter | UiFlags::ColorWhitegold });
+	}
+}
+#endif
+
 void CheckStashItem(Point mousePosition, bool isShiftHeld, bool isCtrlHeld)
 {
 	if (!MyPlayer->HoldItem.isEmpty()) {
@@ -421,12 +560,19 @@ void CheckStashItem(Point mousePosition, bool isShiftHeld, bool isCtrlHeld)
 
 uint16_t CheckStashHLight(Point mousePosition)
 {
+#ifdef __3DS__
+	mousePosition = CtrStashPointer(mousePosition);
+#endif
 	Point slot = InvalidStashPoint;
 	for (auto point : StashGridRange) {
+#ifdef __3DS__
+		const Rectangle cell = CtrStashSlotRect(point);
+#else
 		const Rectangle cell {
 			GetStashSlotCoord(point),
 			InventorySlotSizeInPixels + 1
 		};
+#endif
 
 		if (cell.contains(mousePosition)) {
 			slot = point;
@@ -594,6 +740,16 @@ void StartGoldWithdraw()
 	if (ChatFlag)
 		ResetChat();
 
+#ifdef __3DS__
+	// The applet blocks until confirmation/cancellation; no legacy gold
+	// dialog or text-input state is opened behind the native keyboard.
+	const auto amount = ctr_vkbdNumberInput(_("How many gold pieces do you want to withdraw?"), std::min(RoomForGold(), Stash.gold));
+	if (amount && IsStashOpen && !MyPlayer->hasNoLife()) {
+		WithdrawGold(*MyPlayer, std::min(*amount, std::min(RoomForGold(), Stash.gold)));
+		PlaySFX(SfxID::ItemGold);
+	}
+	RedrawEverything();
+#else
 	const Point start = GetPanelPosition(UiPanels::Stash, { 67, 128 });
 	SDL_Rect rect = MakeSdlRect(start.x, start.y, 180, 20);
 	SDL_SetTextInputArea(ghMainWnd, &rect, /*cursor=*/0);
@@ -610,6 +766,7 @@ void StartGoldWithdraw()
 	    .max = std::min(RoomForGold(), Stash.gold),
 	});
 	SDLC_StartTextInput(ghMainWnd);
+#endif
 }
 
 void WithdrawGoldKeyPress(SDL_Keycode vkey)

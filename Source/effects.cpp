@@ -22,6 +22,7 @@
 #include "options.h"
 #include "player.h"
 #include "utils/is_of.hpp"
+#include "utils/log.hpp"
 
 namespace devilution {
 
@@ -41,6 +42,23 @@ TSFX *sgpStreamSFX = nullptr;
 
 /** List of all sounds, except monsters and music */
 std::vector<TSFX> sgSFX;
+#ifdef __3DS__
+std::unique_ptr<TSnd> ctrDeathSound;
+#endif
+
+// A missing or damaged voice file must not prevent an NPC conversation.
+bool LoadSpeechSound(TSFX &sfx)
+{
+	if (sfx.pSnd != nullptr)
+		return sfx.pSnd->DSB.IsLoaded();
+	auto result = SoundFileLoadWithStatus(sfx.pszName.c_str(), AllowStreaming && (sfx.bFlags & sfx_STREAM) != 0);
+	if (!result.has_value()) {
+		LogError(LogCategory::Audio, "Unable to load speech: {}", result.error());
+		return false;
+	}
+	sfx.pSnd = std::move(result).value();
+	return sfx.pSnd->DSB.IsLoaded();
+}
 
 void StreamPlay(TSFX *pSFX, int lVolume, int lPan)
 {
@@ -51,8 +69,8 @@ void StreamPlay(TSFX *pSFX, int lVolume, int lPan)
 	if (lVolume >= VOLUME_MIN) {
 		if (lVolume > VOLUME_MAX)
 			lVolume = VOLUME_MAX;
-		if (pSFX->pSnd == nullptr)
-			pSFX->pSnd = sound_file_load(pSFX->pszName.c_str(), AllowStreaming);
+		if (!LoadSpeechSound(*pSFX))
+			return;
 		if (pSFX->pSnd->DSB.IsLoaded())
 			pSFX->pSnd->DSB.PlayWithVolumeAndPan(lVolume, sound_get_or_set_sound_volume(1), lPan);
 		sgpStreamSFX = pSFX;
@@ -61,7 +79,7 @@ void StreamPlay(TSFX *pSFX, int lVolume, int lPan)
 
 void StreamUpdate()
 {
-	if (sgpStreamSFX != nullptr && !sgpStreamSFX->pSnd->isPlaying()) {
+	if (sgpStreamSFX != nullptr && (sgpStreamSFX->pSnd == nullptr || !sgpStreamSFX->pSnd->isPlaying())) {
 		stream_stop();
 	}
 }
@@ -205,13 +223,24 @@ void stream_stop()
 	}
 }
 
+#ifdef __3DS__
+void PlayCtrDeathSound()
+{
+	if (!gbSndInited || !gbSoundOn || ctrDeathSound == nullptr)
+		return;
+	snd_play_snd(ctrDeathSound.get(), 0, 0, *GetOptions().Audio.soundVolume);
+}
+#endif
+
 void PlaySFX(SfxID psfx)
 {
 	psfx = RndSFX(psfx);
 
-	if (!gbSndInited) return;
+	const auto index = static_cast<int16_t>(psfx);
+	if (!gbSndInited || index < 0 || static_cast<size_t>(index) >= sgSFX.size())
+		return;
 
-	PlaySfxPriv(&sgSFX[static_cast<int16_t>(psfx)], false, { 0, 0 });
+	PlaySfxPriv(&sgSFX[index], false, { 0, 0 });
 }
 
 void PlaySfxLoc(SfxID psfx, Point position, bool randomizeByCategory)
@@ -236,6 +265,10 @@ void sound_stop()
 	if (!gbSndInited)
 		return;
 	ClearDuplicateSounds();
+#ifdef __3DS__
+	if (ctrDeathSound != nullptr)
+		ctrDeathSound->DSB.Stop();
+#endif
 	for (auto &sfx : sgSFX) {
 		if (sfx.pSnd != nullptr && sfx.pSnd->DSB.IsLoaded()) {
 			sfx.pSnd->DSB.Stop();
@@ -254,7 +287,12 @@ void sound_update()
 
 void effects_cleanup_sfx(bool fullUnload)
 {
+	// Clear the borrowed pointer before freeing or replacing the sound table.
+	stream_stop();
 	sound_stop();
+#ifdef __3DS__
+	ctrDeathSound.reset();
+#endif
 
 	if (fullUnload) {
 		sgSFX.clear();
@@ -301,6 +339,10 @@ void sound_init()
 	}
 
 	PrivSoundInit(mask);
+#ifdef __3DS__
+	if (gbSndInited)
+		ctrDeathSound = sound_file_load("sfx\\ctr\\banner.wav");
+#endif
 }
 
 void ui_sound_init()
@@ -322,10 +364,12 @@ void effects_play_sound(SfxID id)
 
 int GetSFXLength(SfxID nSFX)
 {
-	TSFX &sfx = sgSFX[static_cast<int16_t>(nSFX)];
-	if (sfx.pSnd == nullptr)
-		sfx.pSnd = sound_file_load(sfx.pszName.c_str(),
-		    /*stream=*/AllowStreaming && (sfx.bFlags & sfx_STREAM) != 0);
+	const auto index = static_cast<int16_t>(nSFX);
+	if (!gbSndInited || index < 0 || static_cast<size_t>(index) >= sgSFX.size())
+		return 0;
+	TSFX &sfx = sgSFX[index];
+	if (!LoadSpeechSound(sfx))
+		return 0;
 	return sfx.pSnd->DSB.GetLength();
 }
 

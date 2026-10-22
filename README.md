@@ -34,15 +34,13 @@ You need a Nintendo 3DS set up to run homebrew + FBI and your own Diablo game da
 | Move | Circle Pad |
 | Attack / interact / talk / pick up a ground item | A |
 | Cast the selected spell or use a skill | X |
-| Open spell / skill selection | Y |
+| Cast assigned spells and skills | (Y), (L), (R) |
 | Cancel / go back | B |
-| Use a potion from belt slots 1–4 | L |
-| Use a potion from belt slots 5–8 | R |
+| Use a potion from belt slots 1–4 | D-pad Left |
+| Use a potion from belt slots 5–8 | D-pad Right |
 | Open inventory panels | SELECT |
 | Pause and open the game menu | START |
-| Open character panel | D-pad Up |
-| Open quest log | D-pad Left |
-| Open spell book | D-pad Right |
+| Open inventory | D-pad Up |
 | Toggle map | D-pad Down |
 | Use an item in the belt | Tap its lower-screen slot |
 
@@ -61,7 +59,7 @@ You need a Nintendo 3DS set up to run homebrew + FBI and your own Diablo game da
 | Change stash page | L / R while the stash is open |
 | Open the stash gold withdrawal prompt | SELECT while the stash is open |
 
-Panels cycle in this order: **Quests → Character → Inventory → Spell Book**, wrapping at either end. Use the Circle Pad to navigate spell selection and A to confirm. The lower screen displays information about the highlighted enemy, NPC or item. The title-screen settings also include a **Controls** reference.
+Panels cycle in this order: **Quests → Character → Inventory → Spell Book**, wrapping at either end. In **Spells & Skills**, press (A) to select the primary (X) spell or (Y) to assign a shortcut. Assign (X), (Y), (L), or (R) directly, or select a slot with the cursor and press (A). The lower screen displays information about the highlighted enemy, NPC or item. The title-screen settings also include a **Controls** reference.
 
 ## Credits
 

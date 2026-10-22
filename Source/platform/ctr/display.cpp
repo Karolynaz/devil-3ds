@@ -1,16 +1,28 @@
 #include "platform/ctr/display.hpp"
+#include "platform/ctr/pixel_geometry.hpp"
+#include "platform/ctr/ui_geometry.hpp"
+#include "platform/ctr/world_view.hpp"
 #include <SDL.h>
 #include <3ds.h>
+#include <citro3d.h>
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
+
+namespace devilution {
 
 namespace {
 struct CTRPaletteEntry {
 	uint8_t r, g, b;
 	uint16_t rgb565;
+	uint32_t rgba8;
 };
 
 CTRPaletteEntry bottomPalette[256];
+// Packed channels for the world interpolation: red in bits 0..7 and blue in
+// bits 16..23 (so one multiply scales both), green alone.
+uint32_t paletteRedBlue[256];
+uint32_t paletteGreen[256];
 bool paletteInitialized = false;
 } // namespace
 
@@ -41,6 +53,10 @@ void CTR_UpdateBottomPalette(const SDL_Color *palette)
 		const uint16_t g = c.g >> 2;
 		const uint16_t b = c.b >> 3;
 		bottomPalette[i].rgb565 = (r << 11) | (g << 5) | b;
+		bottomPalette[i].rgba8 = (static_cast<uint32_t>(c.r) << 24) | (static_cast<uint32_t>(c.g) << 16)
+		    | (static_cast<uint32_t>(c.b) << 8) | 0xFF;
+		paletteRedBlue[i] = static_cast<uint32_t>(c.r) | (static_cast<uint32_t>(c.b) << 16);
+		paletteGreen[i] = c.g;
 	}
 	paletteInitialized = true;
 }
@@ -62,9 +78,9 @@ void CTR_BlitBottomScreen(const uint8_t *srcPixels, int srcPitch, int srcX, int 
 	if (format == GSP_BGR8_OES) {
 		for (int y = 0; y < blitH; ++y) {
 			const uint8_t *srcRow = srcPixels + (srcY + y) * srcPitch + srcX;
-			const int hw_x = y;
+			const int hw_x = 239 - y;
 			for (int x = 0; x < blitW; ++x) {
-				const int hw_y = 319 - x;
+				const int hw_y = x;
 				const size_t offset = (static_cast<size_t>(hw_y) * 240 + hw_x) * 3;
 				const CTRPaletteEntry &entry = bottomPalette[srcRow[x]];
 				fb[offset + 0] = entry.b;
@@ -76,9 +92,9 @@ void CTR_BlitBottomScreen(const uint8_t *srcPixels, int srcPitch, int srcX, int 
 		u16 *fb16 = reinterpret_cast<u16 *>(fb);
 		for (int y = 0; y < blitH; ++y) {
 			const uint8_t *srcRow = srcPixels + (srcY + y) * srcPitch + srcX;
-			const int hw_x = y;
+			const int hw_x = 239 - y;
 			for (int x = 0; x < blitW; ++x) {
-				const int hw_y = 319 - x;
+				const int hw_y = x;
 				fb16[hw_y * 240 + hw_x] = bottomPalette[srcRow[x]].rgb565;
 			}
 		}
@@ -86,9 +102,9 @@ void CTR_BlitBottomScreen(const uint8_t *srcPixels, int srcPitch, int srcX, int 
 		u32 *fb32 = reinterpret_cast<u32 *>(fb);
 		for (int y = 0; y < blitH; ++y) {
 			const uint8_t *srcRow = srcPixels + (srcY + y) * srcPitch + srcX;
-			const int hw_x = y;
+			const int hw_x = 239 - y;
 			for (int x = 0; x < blitW; ++x) {
-				const int hw_y = 319 - x;
+				const int hw_y = x;
 				const CTRPaletteEntry &entry = bottomPalette[srcRow[x]];
 				fb32[hw_y * 240 + hw_x] = (static_cast<uint32_t>(entry.r) << 24)
 				                        | (static_cast<uint32_t>(entry.g) << 16)
@@ -103,3 +119,260 @@ void CTR_PresentBottomScreen()
 {
 	gfxFlushBuffers();
 }
+
+void CTR_ClearBottomScreen()
+{
+	u16 fbW = 0, fbH = 0;
+	u8 *fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &fbW, &fbH);
+	if (fb == nullptr)
+		return;
+
+	const GSPGPU_FramebufferFormat format = gfxGetScreenFormat(GFX_BOTTOM);
+	const size_t bytesPerPixel = (format == GSP_RGB565_OES) ? 2 : ((format == GSP_BGR8_OES) ? 3 : 4);
+	const size_t size = 320 * 240 * bytesPerPixel;
+	memset(fb, 0, size);
+	gfxFlushBuffers();
+}
+
+namespace {
+bool nativePresenterSynchronized = false;
+bool nativeDualScreenMode = false;
+
+template <int Width, GSPGPU_FramebufferFormat Format>
+void BlitFramebuffer(uint8_t *framebuffer, const uint8_t *source, int pitch)
+{
+	// A hardware framebuffer column is contiguous. Choose the format once,
+	// then write sequentially without per-pixel division or format branches.
+	constexpr int BytesPerPixel = Format == GSP_BGR8_OES ? 3 : Format == GSP_RGB565_OES ? 2 : 4;
+	for (int x = 0; x < Width; ++x) {
+		const uint8_t *src = source + CtrNativeColumn(x, Width) + 239 * pitch;
+		uint8_t *dst = framebuffer + x * 240 * BytesPerPixel;
+		for (int y = 0; y < 240; ++y, dst += BytesPerPixel) {
+			const CTRPaletteEntry &color = bottomPalette[*src];
+			if constexpr (Format == GSP_BGR8_OES) {
+				dst[0] = color.b;
+				dst[1] = color.g;
+				dst[2] = color.r;
+			} else if constexpr (Format == GSP_RGB565_OES) {
+				*reinterpret_cast<uint16_t *>(dst) = color.rgb565;
+			} else {
+				*reinterpret_cast<uint32_t *>(dst) = color.rgba8;
+			}
+			if (y != 239)
+				src -= pitch;
+		}
+	}
+}
+
+template <int Width>
+void BlitFramebuffer(uint8_t *framebuffer, GSPGPU_FramebufferFormat format, const uint8_t *source, int pitch)
+{
+	switch (format) {
+	case GSP_BGR8_OES: BlitFramebuffer<Width, GSP_BGR8_OES>(framebuffer, source, pitch); break;
+	case GSP_RGB565_OES: BlitFramebuffer<Width, GSP_RGB565_OES>(framebuffer, source, pitch); break;
+	case GSP_RGBA8_OES: BlitFramebuffer<Width, GSP_RGBA8_OES>(framebuffer, source, pitch); break;
+	default: break;
+	}
+}
+
+// The world for the next present (one-shot), see CTR_SetWorldFrame.
+bool worldFramePending = false;
+CtrWorldFrame worldFrame {};
+CtrHudOverlay hudOverlay {};
+template <GSPGPU_FramebufferFormat Format>
+inline void StoreColor(uint8_t *dst, uint32_t r, uint32_t g, uint32_t b)
+{
+	if constexpr (Format == GSP_BGR8_OES) {
+		dst[0] = static_cast<uint8_t>(b);
+		dst[1] = static_cast<uint8_t>(g);
+		dst[2] = static_cast<uint8_t>(r);
+	} else if constexpr (Format == GSP_RGB565_OES) {
+		*reinterpret_cast<uint16_t *>(dst) = static_cast<uint16_t>(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+	} else {
+		*reinterpret_cast<uint32_t *>(dst) = (r << 24) | (g << 16) | (b << 8) | 0xFF;
+	}
+}
+
+template <GSPGPU_FramebufferFormat Format>
+inline void StorePaletteColor(uint8_t *dst, uint8_t index)
+{
+	const CTRPaletteEntry &color = bottomPalette[index];
+	if constexpr (Format == GSP_BGR8_OES) {
+		dst[0] = color.b;
+		dst[1] = color.g;
+		dst[2] = color.r;
+	} else if constexpr (Format == GSP_RGB565_OES) {
+		*reinterpret_cast<uint16_t *>(dst) = color.rgb565;
+	} else {
+		*reinterpret_cast<uint32_t *>(dst) = color.rgba8;
+	}
+}
+
+// Overlay the exported badges after palette conversion, so their original
+// alpha and the solid #6F6721 experience color are retained on the 3DS screen.
+template <GSPGPU_FramebufferFormat Format>
+void BlitHudOverlay(uint8_t *framebuffer, const CtrHudOverlay &overlay)
+{
+	constexpr int BytesPerPixel = Format == GSP_BGR8_OES ? 3 : Format == GSP_RGB565_OES ? 2 : 4;
+	const auto pixel = [&](int x, int y) { return framebuffer + (x * 240 + 239 - y) * BytesPerPixel; };
+	const auto blend = [&](int x, int y, const uint8_t *rgba) {
+		const uint32_t alpha = rgba[3] * overlay.opacity / 255;
+		if (alpha == 0) return;
+		uint8_t *dst = pixel(x, y);
+		uint32_t r, g, b;
+		if constexpr (Format == GSP_BGR8_OES) { r = dst[2]; g = dst[1]; b = dst[0]; }
+		else if constexpr (Format == GSP_RGB565_OES) {
+			const auto color = *reinterpret_cast<uint16_t *>(dst);
+			r = ((color >> 11) & 31) * 255 / 31;
+			g = ((color >> 5) & 63) * 255 / 63;
+			b = (color & 31) * 255 / 31;
+		} else {
+			const auto color = *reinterpret_cast<uint32_t *>(dst);
+			r = color >> 24; g = (color >> 16) & 255; b = (color >> 8) & 255;
+		}
+		StoreColor<Format>(dst, (rgba[0] * alpha + r * (255 - alpha) + 127) / 255,
+		    (rgba[1] * alpha + g * (255 - alpha) + 127) / 255,
+		    (rgba[2] * alpha + b * (255 - alpha) + 127) / 255);
+	};
+	const uint8_t experience[] = { 0x6F, 0x67, 0x21, 255 };
+	for (int y = 0; y < CtrBottomExperienceBar.size.height; ++y)
+		for (int x = 0; x < std::clamp(overlay.experiencePixels, 0, CtrBottomExperienceBar.size.width); ++x)
+			blend(CtrBottomExperienceBar.position.x + x, CtrBottomExperienceBar.position.y + y, experience);
+	for (int slot = 0; slot < 4; ++slot) {
+		if (overlay.badges[slot] == nullptr) continue;
+		for (int y = 0; y < CtrHudBadgeSize; ++y)
+			for (int x = 0; x < CtrHudBadgeSize; ++x)
+				blend(CtrHudBadgePositions[slot].x + x, CtrHudBadgePositions[slot].y + y,
+				    overlay.badges[slot] + (y * CtrHudBadgeSize + x) * 4);
+	}
+}
+
+// Native UI is sampled on its exact screen grid. Only the unchanged 640-wide
+// world needs downsampling. No interpolation or zoom is applied.
+template <GSPGPU_FramebufferFormat Format>
+void BlitTopWithWorld(uint8_t *framebuffer, const uint8_t *source, int pitch, const uint8_t *world, int worldPitch)
+{
+	constexpr int BytesPerPixel = Format == GSP_BGR8_OES ? 3 : Format == GSP_RGB565_OES ? 2 : 4;
+	for (int x = 0; x < CtrScreenWidth; ++x) {
+		const int column = CtrNativeColumn(x, CtrScreenWidth);
+		const uint8_t *ui = source + column + (CtrScreenHeight - 1) * pitch;
+		const uint8_t *scene = world + x + (CtrScreenHeight - 1) * worldPitch;
+		uint8_t *dst = framebuffer + x * CtrScreenHeight * BytesPerPixel;
+		for (int y = 0; y < CtrScreenHeight; ++y, dst += BytesPerPixel) {
+			if (*ui == CtrWorldKeyIndex) {
+				StorePaletteColor<Format>(dst, *scene);
+			} else if (*ui == CtrWorldDimKeyIndex) {
+				const uint32_t redBlue = CtrDimRedBlue(paletteRedBlue[*scene]);
+				StoreColor<Format>(dst, redBlue & 0xFF, CtrDimChannel(paletteGreen[*scene]), redBlue >> 16);
+			} else {
+				StorePaletteColor<Format>(dst, *ui);
+			}
+			if (y != CtrScreenHeight - 1) { ui -= pitch; scene -= worldPitch; }
+		}
+	}
+}
+void BlitTopWithWorld(uint8_t *fb, GSPGPU_FramebufferFormat format, const uint8_t *ui, int pitch, const uint8_t *world, int worldPitch)
+{
+	switch (format) {
+	case GSP_BGR8_OES: BlitTopWithWorld<GSP_BGR8_OES>(fb, ui, pitch, world, worldPitch); break;
+	case GSP_RGB565_OES: BlitTopWithWorld<GSP_RGB565_OES>(fb, ui, pitch, world, worldPitch); break;
+	case GSP_RGBA8_OES: BlitTopWithWorld<GSP_RGBA8_OES>(fb, ui, pitch, world, worldPitch); break;
+	default: break;
+	}
+}
+
+} // namespace
+
+void CTR_SetWorldFrame(const CtrWorldFrame &frame)
+{
+	if (frame.pixels == nullptr) {
+		worldFramePending = false;
+		return;
+	}
+	if (frame.pitch < CtrWorldWidth())
+		return;
+	worldFrame = frame;
+	worldFramePending = true;
+}
+
+void CTR_ConfigureFramePresenter(bool dualScreen)
+{
+	// SDL_SetVideoMode has joined the old renderer thread and deleted its
+	// targets. The new worker is idle until SDL_Flip signals it.
+	nativeDualScreenMode = dualScreen;
+	nativePresenterSynchronized = false;
+	gfxSet3D(false);
+	// Synchronize on the first present when GPU access is available. A failed
+	// initial attempt must never hand the keyed UI canvas to SDL's GPU renderer.
+	worldFramePending = false;
+}
+
+void CTR_SetHudOverlay(const CtrHudOverlay &overlay)
+{
+	hudOverlay = overlay;
+}
+
+bool CTR_PresentFrame(const SDL_Surface *surface)
+{
+	// The world is for this present only. A later frame (for example a menu)
+	// without a new world is a plain UI frame, as before.
+	const bool hasWorld = worldFramePending;
+	worldFramePending = false;
+	if (!gspHasGpuRight())
+		return true;
+	// Initial palette setup can precede the first UI frame. Keep SDL
+	// inactive until it is ready, rather than waking its GPU worker.
+	if (nativeDualScreenMode && !paletteInitialized)
+		return true;
+	if (!nativeDualScreenMode || surface == nullptr || surface->pixels == nullptr || surface->format == nullptr
+	    || surface->format->BitsPerPixel != 8 || surface->w != 640 || surface->h != 480
+	    || surface->pitch < surface->w || !paletteInitialized) {
+		// Citro3D's regular SDL path presents a flat frame in this case.
+		gfxSet3D(false);
+		nativePresenterSynchronized = false;
+		return false;
+	}
+	if (!nativePresenterSynchronized) {
+		if (!C3D_FrameBegin(C3D_FRAME_SYNCDRAW))
+			return true; // Keep SDL idle and retry when GPU access is restored.
+		C3D_FrameEnd(GX_CMDLIST_FLUSH);
+		nativePresenterSynchronized = true;
+	}
+	// Always present a single 2D view, regardless of the hardware slider.
+	gfxSet3D(false);
+
+	u16 fbW = 0, fbH = 0;
+	u8 *fbLeft = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &fbW, &fbH);
+	u8 *fbBottom = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, nullptr, nullptr);
+	if (fbLeft == nullptr || fbBottom == nullptr)
+		return false;
+
+	const GSPGPU_FramebufferFormat topFormat = gfxGetScreenFormat(GFX_TOP);
+	const GSPGPU_FramebufferFormat bottomFormat = gfxGetScreenFormat(GFX_BOTTOM);
+	if ((topFormat != GSP_BGR8_OES && topFormat != GSP_RGB565_OES && topFormat != GSP_RGBA8_OES)
+	    || (bottomFormat != GSP_BGR8_OES && bottomFormat != GSP_RGB565_OES && bottomFormat != GSP_RGBA8_OES))
+		return false;
+	const uint8_t *srcPixels = static_cast<const uint8_t *>(surface->pixels);
+	const int srcPitch = surface->pitch;
+	if (hasWorld) {
+		BlitTopWithWorld(fbLeft, topFormat, srcPixels, srcPitch, worldFrame.pixels, worldFrame.pitch);
+	} else {
+		BlitFramebuffer<400>(fbLeft, topFormat, srcPixels, srcPitch);
+	}
+	BlitFramebuffer<320>(fbBottom, bottomFormat, srcPixels + 240 * srcPitch, srcPitch);
+	if (hasWorld && hudOverlay.visible) {
+		switch (bottomFormat) {
+		case GSP_BGR8_OES: BlitHudOverlay<GSP_BGR8_OES>(fbBottom, hudOverlay); break;
+		case GSP_RGB565_OES: BlitHudOverlay<GSP_RGB565_OES>(fbBottom, hudOverlay); break;
+		case GSP_RGBA8_OES: BlitHudOverlay<GSP_RGBA8_OES>(fbBottom, hudOverlay); break;
+		default: break;
+		}
+	}
+	gfxFlushBuffers();
+	gspWaitForVBlank();
+	gfxScreenSwapBuffers(GFX_TOP, false);
+	gfxScreenSwapBuffers(GFX_BOTTOM, false);
+	return true;
+}
+
+} // namespace devilution

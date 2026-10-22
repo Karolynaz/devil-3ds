@@ -69,6 +69,10 @@ struct _uiheroinfo {
 	uint16_t vitality;
 	bool hassaved;
 	bool spawned;
+#ifdef __3DS__
+	bool hellfire = false;
+	uint8_t graphics = 0; // Equipped armor/weapon appearance; menu-only metadata.
+#endif
 };
 
 extern OptionalOwnedClxSpriteList ArtLogo;
@@ -92,6 +96,9 @@ inline SDL_Surface *DiabloUiSurface()
 void UiDestroy();
 void UiTitleDialog();
 void UnloadUiGFX();
+#ifdef __3DS__
+void UiReloadHeroPortraits();
+#endif
 void UiInitialize();
 bool UiValidPlayerName(std::string_view name); /* check */
 void UiSelHeroMultDialog(bool (*fninfo)(bool (*fninfofunc)(_uiheroinfo *)), bool (*fncreate)(_uiheroinfo *), bool (*fnremove)(_uiheroinfo *), void (*fnstats)(HeroClass, _uidefaultstats *), _selhero_selections *dlgresult, uint32_t *saveNumber);
@@ -111,7 +118,7 @@ void DrawMouse();
 void UiLoadDefaultPalette();
 bool UiLoadBlackBackground();
 void LoadBackgroundArt(const char *pszFile, int frames = 1);
-void UiAddBackground(std::vector<std::unique_ptr<UiItemBase>> *vecDialog);
+void UiAddBackground(std::vector<std::unique_ptr<UiItemBase>> *vecDialog, bool showTitle = true);
 #ifdef __3DS__
 void UiAddLogo(std::vector<std::unique_ptr<UiItemBase>> *vecDialog, int y = 10);
 #else

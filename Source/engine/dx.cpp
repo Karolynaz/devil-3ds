@@ -31,6 +31,15 @@
 #include "utils/log.hpp"
 #include "utils/sdl_wrap.h"
 #include "utils/static_vector.hpp"
+#ifdef __3DS__
+#include "platform/ctr/display.hpp"
+#include "movie.h"
+#include "diablo.h"
+#include "gmenu.h"
+#include "player.h"
+#include "stores.h"
+#include "control/control.hpp"
+#endif
 
 #ifndef USE_SDL1
 #include "controls/touch/renderers.h"
@@ -94,16 +103,23 @@ bool CanRenderDirectlyToOutputSurface()
  */
 void LimitFrameRate()
 {
+#ifdef __3DS__
+	if (movie_playing) return;
+#endif
 	if (*GetOptions().Graphics.frameRateControl != FrameRateControl::CPUSleep)
 		return;
-	static uint32_t frameDeadline;
-	const uint32_t tc = SDL_GetTicks() * 1000;
-	uint32_t v = 0;
-	if (frameDeadline > tc) {
-		v = tc % refreshDelay;
-		SDL_Delay((v / 1000) + 1); // ceil
-	}
-	frameDeadline = tc + v + refreshDelay;
+	if (refreshDelay <= 0)
+		return;
+	static uint64_t frameDeadline;
+	const uint64_t now = static_cast<uint64_t>(SDL_GetTicks()) * 1000;
+	const uint64_t interval = static_cast<uint64_t>(refreshDelay);
+	// Reset after a slow frame or a clock reset; never sleep to catch up
+	// with an obsolete deadline. Keep fractional milliseconds between frames.
+	if (frameDeadline == 0 || now > frameDeadline + interval || now + interval < frameDeadline)
+		frameDeadline = now;
+	if (frameDeadline > now)
+		SDL_Delay(static_cast<uint32_t>((frameDeadline - now + 999) / 1000));
+	frameDeadline += interval;
 }
 
 } // namespace
@@ -337,6 +353,15 @@ void RenderPresent()
 		LimitFrameRate();
 	}
 #else
+#ifdef __3DS__
+	if (CTR_PresentFrame(surface)) {
+		if (RenderDirectlyToOutputSurface)
+			PalSurface = GetOutputSurface();
+		// The native presenter already waits for VBlank. Sleeping again
+		// can miss the next refresh and create uneven frame pacing.
+		return;
+	}
+#endif
 	if (SDL_Flip(surface) <= -1) {
 		ErrSdl();
 	}

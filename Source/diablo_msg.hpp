@@ -5,6 +5,8 @@
  */
 #pragma once
 
+#include "engine/rectangle.hpp"
+
 #include <cstdint>
 #include <string_view>
 
@@ -76,5 +78,6 @@ bool IsDiabloMsgAvailable();
 void CancelCurrentDiabloMsg();
 void ClrDiabloMsg();
 void DrawDiabloMsg(const Surface &out);
+void DrawDiabloMsgBackground(const Surface &out, Rectangle bounds);
 
 } // namespace devilution

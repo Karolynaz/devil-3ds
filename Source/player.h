@@ -932,6 +932,10 @@ Player *PlayerAtPosition(Point position, bool ignoreMovingPlayers = false);
  * @param player
  */
 ClxSprite GetPlayerPortraitSprite(Player &player);
+#ifdef __3DS__
+/** Loads a south-facing menu animation without changing game/player state. */
+std::optional<OwnedClxSpriteList> LoadPlayerPreviewSprites(HeroClass heroClass, uint8_t graphics, player_graphic graphic = player_graphic::Stand);
+#endif
 bool IsPlayerUnarmed(Player &player);
 
 void LoadPlrGFX(Player &player, player_graphic graphic);

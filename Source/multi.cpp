@@ -555,6 +555,10 @@ bool InitMulti(GameData *gameData)
 		RegisterNetEventHandlers();
 		if (UiSelectGame(gameData, &playerId))
 			break;
+#if defined(__3DS__) && !defined(DISABLE_ZERO_TIER)
+		UnregisterNetEventHandlers();
+		return false;
+#endif
 
 		gbSelectProvider = true;
 	}

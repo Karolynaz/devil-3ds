@@ -4,10 +4,16 @@
  * Implementation of functionality for rendering the dungeons, monsters and calling other render routines.
  */
 #include "engine/render/scrollrt.h"
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#include "platform/ctr/world_surface.hpp"
+#endif
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 #ifdef USE_SDL3
 #include <SDL3/SDL_keyboard.h>
@@ -57,6 +63,7 @@
 #include "panels/console.hpp"
 #include "panels/partypanel.hpp"
 #include "panels/quest_log.hpp"
+#include "panels/spell_book.hpp"
 #include "panels/spell_list.hpp"
 #include "plrmsg.h"
 #include "qol/chatlog.h"
@@ -67,10 +74,12 @@
 #include "qol/visual_store.h"
 #include "qol/xpbar.h"
 #include "stores.h"
+#include "tables/playerdat.hpp"
 #include "towners.h"
 #include "utils/attributes.h"
 #include "utils/display.h"
 #include "utils/is_of.hpp"
+#include "utils/language.h"
 #include "utils/log.hpp"
 #include "utils/sdl_compat.h"
 #include "utils/sdl_thread.h"
@@ -231,6 +240,10 @@ void UndrawCursor(const Surface &out)
 
 bool ShouldShowCursor()
 {
+#ifdef __3DS__
+	if (IsPlayerInStore() || qtextflag)
+		return false;
+#endif
 	if (ControlMode == ControlTypes::KeyboardAndMouse)
 		return true;
 	if (pcurs == CURSOR_TELEPORT)
@@ -305,6 +318,27 @@ void DrawCursor(const Surface &out)
 		cursor.rect.size = { 0, 0 };
 		return;
 	}
+#ifdef __3DS__
+	if (!MyPlayer->HoldItem.isEmpty()) {
+		const Size slots = GetInventorySize(MyPlayer->HoldItem);
+		const int physicalScreenWidth = MousePosition.y < 240 ? CtrTopSize.width : 320;
+		const Size drawnSize {
+			((slots.width * CtrItemSlotPitch - 1) * gnScreenWidth + physicalScreenWidth - 1) / physicalScreenWidth,
+			slots.height * CtrItemSlotPitch - 1,
+		};
+		const Point position = MousePosition - Displacement { drawnSize / 2 };
+		const Rectangle target { position, drawnSize };
+		Rectangle &rect = cursor.rect;
+		rect.position = { std::max(0, target.position.x), std::max(0, target.position.y) };
+		rect.size = { std::max(0, std::min(out.w(), target.position.x + target.size.width) - rect.position.x),
+		    std::max(0, std::min(out.h(), target.position.y + target.size.height) - rect.position.y) };
+		if (rect.size.width != 0 && rect.size.height != 0) {
+			BlitCursor(cursor.behindBuffer, rect.size.width, &out[rect.position], out.pitch(), rect.size.width, rect.size.height);
+			DrawCtrScaledItem(out, MyPlayer->HoldItem, target, true);
+		}
+		return;
+	}
+#endif
 
 	constexpr auto Clip = [](int &pos, int &length, int posEnd) {
 		if (pos + length <= 0 || pos >= posEnd) {
@@ -348,6 +382,9 @@ void DrawCursor(const Surface &out)
  */
 void DrawMissilePrivate(const Surface &out, const Missile &missile, Point targetBufferPosition, bool pre, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	if (missile._miPreFlag != pre || !missile._miDrawFlag)
 		return;
 
@@ -477,6 +514,9 @@ uint8_t GetPlayerOutlineColor(int id)
  */
 void DrawPlayer(const Surface &out, const Player &player, Point tilePosition, Point targetBufferPosition, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	if (!IsTileLit(tilePosition) && !MyPlayer->_pInfraFlag && !MyPlayer->isOnArenaLevel() && leveltype != DTYPE_TOWN) {
 		return;
 	}
@@ -533,6 +573,9 @@ void DrawDeadPlayer(const Surface &out, Point tilePosition, Point targetBufferPo
  */
 void DrawObject(const Surface &out, const Object &objectToDraw, Point tilePosition, Point targetBufferPosition, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	const ClxSprite sprite = objectToDraw.currentSprite();
 
 	const Point screenPosition = targetBufferPosition + objectToDraw.getRenderingOffset(sprite, tilePosition);
@@ -723,6 +766,9 @@ void DrawFloorTile(const Surface &out, const Lightmap &lightmap, Point tilePosit
  */
 void DrawItem(const Surface &out, int8_t itemIndex, Point targetBufferPosition, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	const Item &item = Items[itemIndex];
 	const ClxSprite sprite = item.AnimInfo.currentSprite();
 	const Point position = targetBufferPosition + item.getRenderingOffset(sprite);
@@ -730,8 +776,9 @@ void DrawItem(const Surface &out, int8_t itemIndex, Point targetBufferPosition, 
 		ClxDrawOutlineSkipColorZero(out, GetOutlineColor(item, false), position, sprite);
 	}
 	ClxDrawLight(out, position, sprite, lightTableIndex);
-	if (item.AnimInfo.isLastFrame() || item._iCurs == ICURS_MAGIC_ROCK)
+	if (item.AnimInfo.isLastFrame() || item._iCurs == ICURS_MAGIC_ROCK) {
 		AddItemToLabelQueue(itemIndex, position);
+	}
 }
 
 /**
@@ -742,6 +789,9 @@ void DrawItem(const Surface &out, int8_t itemIndex, Point targetBufferPosition, 
  */
 void DrawMonsterHelper(const Surface &out, Point tilePosition, Point targetBufferPosition, int lightTableIndex)
 {
+#ifdef __3DS__
+	targetBufferPosition.x += CtrStereoSpriteOffset();
+#endif
 	int mi = dMonster[tilePosition.x][tilePosition.y];
 
 	mi = std::abs(mi) - 1;
@@ -1016,7 +1066,7 @@ void DrawTileContent(const Surface &out, const Lightmap &lightmap, Point tilePos
 #ifdef _DEBUG
 				DebugCoordsMap[tilePosition.x + (tilePosition.y * MAXDUNX)] = targetBufferPosition;
 #endif
-				if (tilePosition.x + 1 < MAXDUNX && tilePosition.y - 1 >= 0 && targetBufferPosition.x + TILE_WIDTH <= gnScreenWidth) {
+				if (tilePosition.x + 1 < MAXDUNX && tilePosition.y - 1 >= 0 && targetBufferPosition.x + TILE_WIDTH <= GetViewportWidth()) {
 					// Render objects behind walls first to prevent sprites, that are moving
 					// between tiles, from poking through the walls as they exceed the tile bounds.
 					// A proper fix for this would probably be to layout the scene and render by
@@ -1240,8 +1290,8 @@ void DrawGame(const Surface &fullOut, Point position, Displacement offset)
 {
 	// Limit rendering to the view area
 	const Surface &out = !*GetOptions().Graphics.zoom
-	    ? fullOut.subregionY(0, gnViewportHeight)
-	    : fullOut.subregionY(0, (gnViewportHeight + 1) / 2);
+	    ? fullOut.subregion(0, 0, GetViewportWidth(), GetViewportHeight())
+	    : fullOut.subregion(0, 0, GetViewportWidth(), (GetViewportHeight() + 1) / 2);
 
 	int columns = tileColumns;
 	int rows = tileRows;
@@ -1284,7 +1334,7 @@ void DrawGame(const Surface &fullOut, Point position, Displacement offset)
 #endif
 
 	Lightmap lightmap = Lightmap::build(*GetOptions().Graphics.perPixelLighting, position, Point {} + offset,
-	    gnScreenWidth, gnViewportHeight, rows, columns,
+	    GetViewportWidth(), GetViewportHeight(), rows, columns,
 	    out.at(0, 0), out.pitch(), LightTables, FullyLitLightTable, FullyDarkLightTable,
 	    dLight, MicroTileLen);
 
@@ -1293,7 +1343,7 @@ void DrawGame(const Surface &fullOut, Point position, Displacement offset)
 	DrawOOB(out, lightmap, position, Point {} + offset, rows, columns);
 
 	if (*GetOptions().Graphics.zoom) {
-		Zoom(fullOut.subregionY(0, gnViewportHeight));
+		Zoom(fullOut.subregion(0, 0, GetViewportWidth(), GetViewportHeight()));
 	}
 
 #ifdef DUN_RENDER_STATS
@@ -1325,11 +1375,24 @@ void DrawView(const Surface &out, Point startPosition)
 #ifdef _DEBUG
 	DebugCoordsMap.clear();
 #endif
+#ifdef __3DS__
+	// Render the native 400x240 world view; UI pixels stay independent. The top of
+	// `out` is cleared to the key index, so the presenter shows the world in
+	// every pixel that the UI below does not draw.
+	CtrWorldBeginFrame(out);
+	const Surface &worldOut = CtrWorldSurface();
+#else
+	const Surface &worldOut = out;
+#endif
 	Displacement offset = {};
 	CalcFirstTilePosition(startPosition, offset);
-	DrawGame(out, startPosition, offset);
-	if (AutomapActive) {
-		DrawAutomap(out.subregionY(0, gnViewportHeight));
+	DrawGame(worldOut, startPosition, offset);
+	if (AutomapActive
+#ifdef __3DS__
+	    && !gmenu_is_active()
+#endif
+	) {
+		DrawAutomap(worldOut.subregion(0, 0, GetViewportWidth(), GetViewportHeight()));
 	}
 #ifdef _DEBUG
 	bool debugGridTextNeeded = IsDebugGridTextNeeded();
@@ -1351,7 +1414,7 @@ void DrawView(const Surface &out, Point startPosition)
 				Size tileSize = { TILE_WIDTH, TILE_HEIGHT };
 				if (*GetOptions().Graphics.zoom)
 					tileSize *= 2;
-				DrawString(out, debugGridText, { pixelCoords - Displacement { 0, tileSize.height }, tileSize },
+				DrawString(worldOut, debugGridText, { pixelCoords - Displacement { 0, tileSize.height }, tileSize },
 				    { .flags = UiFlags::ColorRed | UiFlags::AlignCenter | UiFlags::VerticalCenter });
 			}
 			if (DebugGrid) {
@@ -1375,9 +1438,9 @@ void DrawView(const Surface &out, Point startPosition)
 					const int dy = 1;
 					Point from { originX, center.y };
 					int height = halfTileHeight;
-					if (out.InBounds(from) && out.InBounds(from + Displacement { 2 * dx * height, dy * height })) {
-						uint8_t *dst = out.at(from.x, from.y);
-						const int pitch = out.pitch();
+					if (worldOut.InBounds(from) && worldOut.InBounds(from + Displacement { 2 * dx * height, dy * height })) {
+						uint8_t *dst = worldOut.at(from.x, from.y);
+						const int pitch = worldOut.pitch();
 						while (height-- > 0) {
 							*dst = col;
 							dst += dx;
@@ -1387,9 +1450,9 @@ void DrawView(const Surface &out, Point startPosition)
 						}
 					} else {
 						while (height-- > 0) {
-							out.SetPixel(from, col);
+							worldOut.SetPixel(from, col);
 							from.x += dx;
-							out.SetPixel(from, col);
+							worldOut.SetPixel(from, col);
 							from.x += dx;
 							from.y += dy;
 						}
@@ -1399,6 +1462,7 @@ void DrawView(const Surface &out, Point startPosition)
 		}
 	}
 #endif
+	// Labels and HUD belong to the flat UI, shared by both eyes.
 	DrawItemNameLabels(out);
 	DrawMonsterHealthBar(out);
 	DrawFloatingNumbers(out, startPosition, offset);
@@ -1406,18 +1470,59 @@ void DrawView(const Surface &out, Point startPosition)
 	if (IsPlayerInStore() && !qtextflag)
 		DrawSText(out);
 #ifdef __3DS__
-	if (invflag || SpellbookFlag) {
-		SDL_Rect clearRect = MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height);
-		SDL_FillRect(SidePanelBuffer->surface, &clearRect, SDL_MapRGB(SidePanelBuffer->surface->format, 0, 0, 0));
-		if (invflag) {
+	if (invflag) {
+		if (IsVisualStoreOpen) {
+			FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
 			DrawInv(*SidePanelBuffer);
-			if (DropGoldFlag) {
+			if (DropGoldFlag)
 				DrawGoldSplit(*SidePanelBuffer);
+			const Rectangle rect = CtrInventoryScreenRect();
+			out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(rect.position.x, 0, rect.size.width, 240));
+		} else {
+			CtrPanelBackground background = IsStashOpen ? CtrPanelBackground::InventoryWarriorStash : CtrPanelBackground::InventoryWarrior;
+			switch (InspectPlayer->_pClass) {
+			case HeroClass::Rogue:
+			case HeroClass::Bard:
+				background = IsStashOpen ? CtrPanelBackground::InventoryRogueStash : CtrPanelBackground::InventoryRogue;
+				break;
+			case HeroClass::Sorcerer:
+			case HeroClass::Monk:
+				background = IsStashOpen ? CtrPanelBackground::InventorySorcererStash : CtrPanelBackground::InventorySorcerer;
+				break;
+			default:
+				break;
 			}
-		} else if (SpellbookFlag) {
-			DrawSpellBook(*SidePanelBuffer);
+			DrawCtrPanelBackground(*TopPanelBuffer, background);
+			DrawCtrInventoryItems(*TopPanelBuffer, IsStashOpen);
+			if (IsStashOpen)
+				DrawCtrStashItems(*TopPanelBuffer);
+			if (!IsStashOpen) {
+				DrawString(*TopPanelBuffer, _("(L) Character"), { { 16, 22 }, { 170, 24 } },
+				    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+				DrawString(*TopPanelBuffer, _("(R) Spell Book"), { { 218, 22 }, { 170, 24 } },
+				    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignRight | UiFlags::KerningFitSpacing });
+				DrawString(*TopPanelBuffer, _("(Y) Drop"), { { 16, 207 }, { 150, 18 } },
+				    { .flags = UiFlags::ColorWhitegold | UiFlags::KerningFitSpacing });
+			}
+			out.ScaleBlitFromPreservingDownscale(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
+			// The original gold entry widgets still use the legacy panel canvas.
+			if (DropGoldFlag || IsWithdrawGoldOpen) {
+				FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
+				if (IsWithdrawGoldOpen) {
+					DrawStash(*SidePanelBuffer);
+					DrawGoldWithdraw(*SidePanelBuffer);
+					out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(0, 0, 218, 240));
+				} else {
+					DrawInv(*SidePanelBuffer);
+					DrawGoldSplit(*SidePanelBuffer);
+					const Rectangle rect = CtrInventoryScreenRect();
+					out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(rect.position.x, 0, rect.size.width, 240));
+				}
+			}
 		}
-		out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height), MakeSdlRect(422, 0, 218, 240));
+	} else if (SpellbookFlag) {
+		DrawSpellBook(*TopPanelBuffer);
+		out.ScaleBlitFromPreservingDownscale(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
 	}
 #else
 	if (invflag) {
@@ -1426,26 +1531,31 @@ void DrawView(const Surface &out, Point startPosition)
 		DrawSpellBook(out);
 	}
 #endif
-
-	DrawDurIcon(out);
-
-	DrawLevelButton(out);
-
 #ifdef __3DS__
-	if (CharFlag || QuestLogIsOpen || IsStashOpen || IsVisualStoreOpen) {
-		SDL_Rect clearRect = MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height);
-		SDL_FillRect(SidePanelBuffer->surface, &clearRect, SDL_MapRGB(SidePanelBuffer->surface->format, 0, 0, 0));
-		if (CharFlag) {
-			DrawChr(*SidePanelBuffer);
-		} else if (QuestLogIsOpen) {
-			DrawQuestLog(*SidePanelBuffer);
-		} else if (IsStashOpen) {
+	if (!invflag && !SpellbookFlag && !CharFlag && !QuestLogIsOpen) {
+		DrawDurIcon(out);
+		DrawLevelButton(out);
+	}
+#else
+	DrawDurIcon(out);
+	DrawLevelButton(out);
+#endif
+#ifdef __3DS__
+	if (CharFlag || QuestLogIsOpen) {
+		if (CharFlag)
+			DrawChr(*TopPanelBuffer);
+		else
+			DrawQuestLog(*TopPanelBuffer);
+		out.ScaleBlitFromPreservingDownscale(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
+	} else if (IsVisualStoreOpen || (IsStashOpen && !invflag)) {
+		FillRect(*SidePanelBuffer, 0, 0, SidePanelSize.width, SidePanelSize.height, 0);
+		if (IsStashOpen) {
 			DrawStash(*SidePanelBuffer);
 			DrawGoldWithdraw(*SidePanelBuffer);
-		} else if (IsVisualStoreOpen) {
+		} else {
 			DrawVisualStore(*SidePanelBuffer);
 		}
-		out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, SidePanelSize.width, SidePanelSize.height), MakeSdlRect(0, 0, 218, 240));
+		out.ScaleBlitFrom(*SidePanelBuffer, MakeSdlRect(0, 0, 320, 352), MakeSdlRect(0, 0, 218, 240));
 	}
 #else
 	if (CharFlag) {
@@ -1494,10 +1604,14 @@ void DrawView(const Surface &out, Point startPosition)
 	DrawPlrMsg(out);
 	gmenu_draw(out);
 	doom_draw(out);
+#ifdef __3DS__
+	UpdateLifeManaPercent();
+#else
 	DrawInfoBox(out);
 	UpdateLifeManaPercent(); // Update life/mana totals before rendering any portion of the flask.
 	DrawLifeFlaskUpper(out);
 	DrawManaFlaskUpper(out);
+#endif
 }
 
 /**
@@ -1616,6 +1730,8 @@ void OptionShowFPSChanged()
 }
 const auto OptionChangeHandlerShowFPS = (GetOptions().Graphics.showFPS.SetValueChangedCallback(OptionShowFPSChanged), true);
 
+
+
 } // namespace
 
 Displacement GetOffsetForWalking(const AnimationInfo &animationInfo, const Direction dir, bool cameraMode /*= false*/)
@@ -1665,7 +1781,7 @@ int RowsCoveredByPanel()
 
 void CalcTileOffset(int *offsetX, int *offsetY)
 {
-	const uint16_t screenWidth = GetScreenWidth();
+	const uint16_t screenWidth = GetViewportWidth();
 	const uint16_t viewportHeight = GetViewportHeight();
 
 	int x;
@@ -1690,7 +1806,7 @@ void CalcTileOffset(int *offsetX, int *offsetY)
 
 void TilesInView(int *rcolumns, int *rrows)
 {
-	const uint16_t screenWidth = GetScreenWidth();
+	const uint16_t screenWidth = GetViewportWidth();
 	const uint16_t viewportHeight = GetViewportHeight();
 
 	int columns = screenWidth / TILE_WIDTH;
@@ -1721,11 +1837,19 @@ void TilesInView(int *rcolumns, int *rrows)
 void CalcViewportGeometry()
 {
 	const int zoomFactor = *GetOptions().Graphics.zoom ? 2 : 1;
-	const int screenWidth = GetScreenWidth() / zoomFactor;
-	const int screenHeight = GetScreenHeight() / zoomFactor;
-	const int panelHeight = GetMainPanel().size.height / zoomFactor;
+	const int screenWidth = GetViewportWidth() / zoomFactor;
+	[[maybe_unused]] const int screenHeight = GetScreenHeight() / zoomFactor;
+	[[maybe_unused]] const int panelHeight = GetMainPanel().size.height / zoomFactor;
+#ifdef __3DS__
+	// The world fills the top screen. The main panel is on the bottom screen.
+	const int pixelsToPanel = GetViewportHeight() / zoomFactor;
+#else
 	const int pixelsToPanel = screenHeight - panelHeight;
+#endif
 	Point playerPosition { screenWidth / 2, pixelsToPanel / 2 };
+#ifdef __3DS__
+	playerPosition.y += CtrCameraVerticalOffset / zoomFactor;
+#endif
 
 	if (*GetOptions().Graphics.zoom)
 		playerPosition.y += TILE_HEIGHT / 4;
@@ -1787,6 +1911,9 @@ void ClearScreenBuffer()
 		return;
 
 	assert(PalSurface != nullptr);
+#ifdef __3DS__
+	CtrWorldClearFrame();
+#endif
 	SDL_FillSurfaceRect(PalSurface, nullptr, 0);
 }
 
@@ -1873,8 +2000,88 @@ void scrollrt_draw_game_screen()
 	UndrawCursor(out);
 	DrawCursor(out);
 	DrawMain(hgt, false, false, false, false, false);
+#ifdef __3DS__
+	// The UI layer still has the key pixels of the last full frame.
+	CtrWorldRepeatFrame();
+#endif
 	RenderPresent();
 }
+#ifdef __3DS__
+int CtrExperienceFill()
+{
+	const Player &player = *MyPlayer;
+	if (player.isMaxCharacterLevel())
+		return CtrBottomExperienceBar.size.width;
+	const int level = player.getCharacterLevel();
+	const uint64_t previous = GetNextExperienceThresholdForLevel(level - 1);
+	const uint64_t next = GetNextExperienceThresholdForLevel(level);
+	if (next <= previous || player._pExperience <= previous)
+		return 0;
+	return static_cast<int>(std::min<uint64_t>(CtrBottomExperienceBar.size.width,
+	    (player._pExperience - previous) * CtrBottomExperienceBar.size.width / (next - previous)));
+}
+
+void DrawCtrBottomHud(const Surface &out)
+{
+	static std::optional<OwnedSurface> buffer;
+	if (!buffer)
+		buffer.emplace(320, 240);
+	Surface &hud = *buffer;
+	FillRect(hud, 0, 0, 320, 240, 0);
+	DrawCtrBarArtwork(hud, CtrBarArtwork::Health, CtrBottomHealthBar.position, std::clamp(MyPlayer->_pHPPer, 0, 81) / 81.0f);
+	DrawCtrBarArtwork(hud, CtrBarArtwork::Mana, CtrBottomManaBar.position, std::clamp(MyPlayer->_pManaPer, 0, 81) / 81.0f);
+	DrawCtrBottomBackground(hud);
+	DrawCtrInvBelt(hud);
+	DrawCtrHudSpellIcons(hud);
+	PrepareCtrHudOverlay(CtrExperienceFill(), !gmenu_is_active(), MyPlayerIsDead);
+	DrawInfoBox(hud);
+	if (SpellbookFlag)
+		DrawCtrSpellDescription(hud);
+	auto drawBarValue = [&hud](int currValue, int maxValue, int centerX, int y) {
+		const std::string text = StrCat(currValue, "/", maxValue);
+		const UiFlags color = UiFlags::ColorGold;
+		const int textWidth = GetLineWidth(text, GameFont12, 0);
+		const int x = std::max(1, centerX - textWidth / 2);
+		DrawString(hud, text, { { x - 1, y }, { hud.w() - (x - 1), 0 } },
+		    { .flags = UiFlags::ColorBlack | UiFlags::KerningFitSpacing, .spacing = 0 });
+		DrawString(hud, text, { { x + 1, y }, { hud.w() - (x + 1), 0 } },
+		    { .flags = UiFlags::ColorBlack | UiFlags::KerningFitSpacing, .spacing = 0 });
+		DrawString(hud, text, { { x, y - 1 }, { hud.w() - x, 0 } },
+		    { .flags = UiFlags::ColorBlack | UiFlags::KerningFitSpacing, .spacing = 0 });
+		DrawString(hud, text, { { x, y + 1 }, { hud.w() - x, 0 } },
+		    { .flags = UiFlags::ColorBlack | UiFlags::KerningFitSpacing, .spacing = 0 });
+		DrawString(hud, text, { { x, y }, { hud.w() - x, 0 } },
+		    { .flags = color | UiFlags::KerningFitSpacing, .spacing = 0 });
+	};
+
+	if (*GetOptions().Gameplay.showHealthValues) {
+		const int currHP = std::max(0, MyPlayer->_pHitPoints >> 6);
+		const int maxHP = MyPlayer->_pMaxHP >> 6;
+		drawBarValue(currHP, maxHP,
+		    CtrBottomHealthBar.position.x + CtrBottomHealthBar.size.width / 2,
+		    CtrBottomHealthBar.position.y - 15);
+	}
+	if (*GetOptions().Gameplay.showManaValues) {
+		const int currMana = (HasAnyOf(MyPlayer->_pIFlags, ItemSpecialEffect::NoMana) || MyPlayer->hasNoMana()) ? 0 : std::max(0, MyPlayer->_pMana >> 6);
+		const int maxMana = HasAnyOf(MyPlayer->_pIFlags, ItemSpecialEffect::NoMana) ? 0 : MyPlayer->_pMaxMana >> 6;
+		drawBarValue(currMana, maxMana,
+		    CtrBottomManaBar.position.x + CtrBottomManaBar.size.width / 2,
+		    CtrBottomManaBar.position.y - 15);
+	}
+	if (MyPlayerIsDead) {
+		uint8_t *dst = hud.begin();
+		uint8_t *tbl = GetPauseTRN();
+		for (int h = hud.h(); h != 0; h--, dst += hud.pitch() - hud.w()) {
+			for (int w = hud.w(); w != 0; w--) {
+				if (leveltype != DTYPE_HELL || *dst >= 32)
+					*dst = tbl[*dst];
+				dst++;
+			}
+		}
+	}
+	out.ScaleBlitFrom(hud, { 0, 0, 320, 240 }, { 0, 240, gnScreenWidth, 240 });
+}
+#endif
 
 void DrawAndBlit()
 {
@@ -1891,8 +2098,9 @@ void DrawAndBlit()
 	bool drawInfoBox = false;
 	bool drawCtrlPan = false;
 
+#ifndef __3DS__
 	const Rectangle &mainPanel = GetMainPanel();
-
+#endif
 #ifdef __3DS__
 	drawHealth = true;
 	drawMana = true;
@@ -1929,6 +2137,9 @@ void DrawAndBlit()
 	SDL_FillRect(out.surface, &bottomRect, blackColor);
 #endif
 	DrawView(out, ViewPosition);
+#ifdef __3DS__
+	DrawCtrBottomHud(out);
+#else
 	if (drawCtrlPan) {
 		DrawMainPanel(out);
 	}
@@ -1946,9 +2157,11 @@ void DrawAndBlit()
 	if (drawBelt) {
 		DrawInvBelt(out);
 	}
+#endif
 	if (drawChatInput) {
 		DrawChatBox(out);
 	}
+#ifndef __3DS__
 	DrawXPBar(out);
 	if (*GetOptions().Gameplay.showHealthValues)
 		DrawFlaskValues(out, { mainPanel.position.x + 134, mainPanel.position.y + 28 }, MyPlayer->_pHitPoints >> 6, MyPlayer->_pMaxHP >> 6);
@@ -1956,6 +2169,7 @@ void DrawAndBlit()
 		DrawFlaskValues(out, { mainPanel.position.x + mainPanel.size.width - 138, mainPanel.position.y + 28 },
 		    (HasAnyOf(InspectPlayer->_pIFlags, ItemSpecialEffect::NoMana) || MyPlayer->hasNoMana()) ? 0 : MyPlayer->_pMana >> 6,
 		    HasAnyOf(InspectPlayer->_pIFlags, ItemSpecialEffect::NoMana) ? 0 : MyPlayer->_pMaxMana >> 6);
+#endif
 	if (*GetOptions().Gameplay.floatingInfoBox)
 		DrawFloatingInfoBox(out);
 

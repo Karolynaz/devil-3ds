@@ -47,5 +47,9 @@ extern DVL_API_FOR_TEST bool gbIsHellfire;
 extern DVL_API_FOR_TEST bool gbVanilla;
 /** Whether the Hellfire mode is required (forced). */
 extern bool forceHellfire;
+#ifdef __3DS__
+/** Switch game data and save namespace together, before creating/loading a hero. */
+void SetCtrHeroGameMode(bool hellfire);
+#endif
 
 } // namespace devilution

@@ -20,6 +20,7 @@ class tcp_client : public base {
 public:
 	int create(std::string_view addrstr) override;
 	int join(std::string_view addrstr) override;
+	bool join_requires_password() const override { return passwordRequired; }
 
 	std::expected<void, PacketError> poll() override;
 	std::expected<void, PacketError> send(packet &pkt) override;
@@ -35,6 +36,7 @@ protected:
 	bool IsGameHost() override;
 
 private:
+	bool passwordRequired = false;
 	frame_queue recv_queue;
 	buffer_t recv_buffer = buffer_t(frame_queue::max_frame_size);
 
