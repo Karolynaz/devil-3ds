@@ -271,10 +271,8 @@ std::string CtrSpellShortcutText(SpellID spell, SpellType type)
 void DrawCtrBinding(const Surface &out)
 {
 	DrawCtrPanelBackground(out, CtrPanelBackground::SpellBinding);
-	DrawString(out, _("Choose a spell shortcut"), { { 16, 12 }, { 368, 16 } },
+	DrawString(out, _("Choose spell or skill shortcut"), { { 16, 12 }, { 368, 16 } },
 	    { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter, .spacing = 0 });
-	DrawString(out, _("Use (X), (Y), (L), (R), or select + (A)"), { { 16, 27 }, { 368, 14 } },
-	    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter, .spacing = 0 });
 	DrawString(out, pgettext("spell", GetSpellData(bindingSpell).sNameText), { { 16, 43 }, { 368, 14 } },
 	    { .flags = UiFlags::ColorWhite | UiFlags::AlignCenter, .spacing = 0 });
 	const int hoveredSlot = CtrSpellBindingHit(CtrScreenToTop(MousePosition));
