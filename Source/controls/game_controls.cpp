@@ -6,6 +6,7 @@
 #include "platform/ctr/belt_gesture.hpp"
 #include "platform/ctr/ui_geometry.hpp"
 #include "msg.h"
+#include "engine/backbuffer_state.hpp"
 #include "utils/sdl_compat.h"
 #endif
 
