@@ -27,6 +27,32 @@ namespace {
 unsigned int SkipLines;
 
 const char *const HelpText[] = {
+#ifdef __3DS__
+	N_("$Controls:"),
+	N_("Circle Pad: Move. In panels, move the cursor."),
+	N_("(A): Attack, interact or select. (B): Cancel or go back."),
+	N_("(X), (Y), (L), (R): Cast the assigned spell or skill once."),
+	N_("D-pad Up: Inventory. D-pad Down: Show or hide the map."),
+	N_("D-pad Left: Use a potion from belt slots 1-4. D-pad Right: Use a potion from slots 5-8."),
+	N_("(START): Game menu. (SELECT): Inventory."),
+	"",
+	N_("$Inventory:"),
+	N_("Tap (A) to pick up or place an item. Hold (A) to use an item or equip equipment. (Y) drops an item."),
+	N_("Hold (A) on gold to choose how much to drop. (L) and (R) switch panels."),
+	"",
+	N_("$Spells & Skills:"),
+	N_("Select a spell or skill and press (A) to open its binding screen. Assign it to (X), (Y), (L) or (R)."),
+	N_("Attacks aim at a nearby visible enemy. Teleport and ground spells follow the direction your hero faces."),
+	"",
+	N_("$Touch Screen:"),
+	N_("Tap a spell icon to cast. Hold a belt potion or scroll to use it. Drag between belt slots to move or swap items."),
+	"",
+	N_("$Shops:"),
+	N_("Select a vendor item with (A) to buy it. Select an inventory item and press (Y) to sell; confirm the price with (A), or cancel with (B)."),
+	"",
+	N_("$Spell Books:"),
+	N_("Reading another book of a spell improves that spell."),
+#else
 	N_("$Keyboard Shortcuts:"),
 	N_("F1:    Open Help Screen"),
 	N_("Esc:   Display Main Menu"),
@@ -96,6 +122,7 @@ const char *const HelpText[] = {
 	N_("$Spell Books:"),
 	N_("Reading more than one book increases your knowledge of that "
 	   "spell, allowing you to cast the spell more effectively."),
+#endif
 };
 
 std::vector<std::string> HelpTextLines;

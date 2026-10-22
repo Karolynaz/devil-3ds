@@ -312,6 +312,13 @@ void CTR_SetHudOverlay(const CtrHudOverlay &overlay)
 	hudOverlay = overlay;
 }
 
+void CTR_InvalidateFramePresenter()
+{
+	nativePresenterSynchronized = false;
+	worldFramePending = false;
+	worldFrame = {};
+}
+
 bool CTR_PresentFrame(const SDL_Surface *surface)
 {
 	// The world is for this present only. A later frame (for example a menu)
@@ -333,7 +340,7 @@ bool CTR_PresentFrame(const SDL_Surface *surface)
 		return false;
 	}
 	if (!nativePresenterSynchronized) {
-		if (!C3D_FrameBegin(C3D_FRAME_SYNCDRAW))
+		if (!C3D_FrameBegin(C3D_FRAME_NONBLOCK))
 			return true; // Keep SDL idle and retry when GPU access is restored.
 		C3D_FrameEnd(GX_CMDLIST_FLUSH);
 		nativePresenterSynchronized = true;

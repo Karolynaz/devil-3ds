@@ -31,6 +31,7 @@
 #include "diablo.h"
 #include "doom.h"
 #include "effects.h"
+#include "game_mode.hpp"
 #include "gamemenu.h"
 #include "gmenu.h"
 #include "inv.h"
@@ -532,6 +533,12 @@ void PressControllerButton(ControllerButton button)
 		}
 	}
 
+	if (Is3DSVisualStoreSalePending()) {
+		if (button == ControllerButton_BUTTON_A) Confirm3DSVisualStoreSale(true);
+		else if (button == ControllerButton_BUTTON_B) Confirm3DSVisualStoreSale(false);
+		return;
+	}
+
 	const bool modifierHeld = IsControllerButtonPressed(ControllerButton_BUTTON_LEFTSHOULDER);
 	if (HandleCtrSpellBinding(button, modifierHeld)) {
 		CtrConsumedSpellButtons |= uint32_t { 1 } << static_cast<unsigned>(button);
@@ -583,7 +590,7 @@ void PressControllerButton(ControllerButton button)
 
 		case ControllerButton_BUTTON_A:
 			if (IsPlayerInStore()) {
-				CheckStoreBtn();
+				StoreEnter();
 			} else if (qtextflag) {
 				PressEscKey();
 			} else {
@@ -618,7 +625,9 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_Y:
-			if (invflag) {
+			if (IsVisualStoreOpen) {
+				PerformSecondaryAction();
+			} else if (invflag) {
 				if (MyPlayer->HoldItem.isEmpty())
 					PerformPrimaryAction();
 				if (!MyPlayer->HoldItem.isEmpty())
@@ -629,7 +638,10 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_LEFTSHOULDER:
-			if (IsStashOpen) {
+			if (IsVisualStoreOpen) {
+				VisualStorePreviousPage();
+				RedrawEverything();
+			} else if (IsStashOpen) {
 				Stash.PreviousPage();
 			} else {
 				SwitchUiTab(false);
@@ -637,7 +649,10 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_RIGHTSHOULDER:
-			if (IsStashOpen) {
+			if (IsVisualStoreOpen) {
+				VisualStoreNextPage();
+				RedrawEverything();
+			} else if (IsStashOpen) {
 				Stash.NextPage();
 			} else {
 				SwitchUiTab(true);
@@ -673,6 +688,10 @@ void PressControllerButton(ControllerButton button)
 	} else if (!InGameMenu()) {
 		switch (button) {
 		case ControllerButton_BUTTON_A:
+			if (pcurs > CURSOR_HAND && pcurs < CURSOR_FIRSTITEM) {
+				TryIconCurs();
+				return;
+			}
 			ControllerActionHeld = GameActionType_PRIMARY_ACTION;
 			LastPlayerAction = PlayerActionType::None;
 			if (pcursitem != -1) {
@@ -683,15 +702,11 @@ void PressControllerButton(ControllerButton button)
 			return;
 
 		case ControllerButton_BUTTON_B:
-			PressEscKey();
+			if (pcurs > CURSOR_HAND && pcurs < CURSOR_FIRSTITEM) NewCursor(CURSOR_HAND);
+			else PressEscKey();
 			return;
 
 		case ControllerButton_BUTTON_X:
-			ControllerActionHeld = GameActionType_CAST_SPELL;
-			LastPlayerAction = PlayerActionType::None;
-			CastCtrSpellShortcut(0);
-			return;
-
 		case ControllerButton_BUTTON_Y:
 		case ControllerButton_BUTTON_LEFTSHOULDER:
 		case ControllerButton_BUTTON_RIGHTSHOULDER: {
@@ -842,6 +857,33 @@ bool Handle3DSHudTouch(Uint32 eventType, Uint8 button)
 	return true;
 }
 
+void Reset3DSInputAfterResume()
+{
+	// Cancel gestures rather than invoking their release actions (drop/sell/use).
+	Cancel3DSButtonAHold();
+	Confirm3DSVisualStoreSale(false);
+	HudTouchDown = false;
+	HudBeltGesture.Cancel();
+	StashItemButton.active = false;
+	StashItemButton.finished = true;
+	CtrConsumedSpellButtons = 0;
+	ControllerActionHeld = GameActionType_NONE;
+	LastPlayerAction = PlayerActionType::None;
+	sgbMouseDown = CLICK_NONE;
+	PadHotspellMenuActive = false;
+	PadMenuNavigatorActive = false;
+	SuppressedButton = ControllerButton_NONE;
+	for (unsigned i = ControllerButton::FIRST; i <= ControllerButton::LAST; ++i)
+		PadmapperRelease(static_cast<ControllerButton>(i), false);
+	leftStickX = leftStickY = rightStickX = rightStickY = 0;
+	leftStickXUnscaled = leftStickYUnscaled = rightStickXUnscaled = rightStickYUnscaled = 0;
+	leftStickNeedsScaling = rightStickNeedsScaling = true;
+	ResetMainPanelButtons();
+	if (MyPlayer != nullptr && gbRunGame && !gbIsMultiplayer)
+		MyPlayer->Stop();
+	RedrawEverything();
+}
+
 void Update3DSStashItemAction()
 {
 	if (!StashItemButton.active || StashItemButton.finished)
@@ -903,8 +945,10 @@ void Update3DSButtonAHold()
 
 	ButtonAHold.triggered = true;
 
-	if (IsVisualStoreOpen && pcursinvitem >= INVITEM_INV_FIRST && pcursinvitem <= INVITEM_INV_LAST) {
-		SellItemToVisualStore(pcursinvitem - INVITEM_INV_FIRST);
+	if (IsVisualStoreOpen) {
+		// Selling is an explicit (Y) action with confirmation; holding (A)
+		// must not sell or use an item while browsing a vendor.
+		return;
 	} else if (IsStashOpen && pcursstashitem != StashStruct::EmptyCell) {
 		CtrlUseStashItem();
 	} else if (pcursinvitem != -1) {

@@ -832,6 +832,7 @@ void GameEventHandler(const SDL_Event &event, uint16_t modState)
 		MousePosition = { SDLC_EventButtonIntX(event), SDLC_EventButtonIntY(event) };
 
 #ifdef __3DS__
+		if (Is3DSVisualStoreSalePending()) return;
 		if (Handle3DSHudTouch(event.type, event.button.button)) return;
 #endif
 		HandleMouseButtonDown(event.button.button, modState);
@@ -840,6 +841,7 @@ void GameEventHandler(const SDL_Event &event, uint16_t modState)
 		MousePosition = { SDLC_EventButtonIntX(event), SDLC_EventButtonIntY(event) };
 
 #ifdef __3DS__
+		if (Is3DSVisualStoreSalePending()) return;
 		if (Handle3DSHudTouch(event.type, event.button.button)) return;
 #endif
 		HandleMouseButtonUp(event.button.button, modState);

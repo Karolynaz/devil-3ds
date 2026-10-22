@@ -74,6 +74,7 @@ int CtrHudDraggedBeltSlot();
 void Update3DSStashItemAction();
 void Update3DSButtonAHold();
 void Cancel3DSButtonAHold();
+void Reset3DSInputAfterResume();
 #endif
 
 extern bool PadMenuNavigatorActive;

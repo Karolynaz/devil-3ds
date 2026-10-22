@@ -2005,7 +2005,11 @@ void ProcessAutomapMovementGamepad()
 
 void Movement(Player &player)
 {
-	if (PadMenuNavigatorActive || PadHotspellMenuActive || InGameMenu())
+	if (PadMenuNavigatorActive || PadHotspellMenuActive || InGameMenu()
+#ifdef __3DS__
+	    || Is3DSVisualStoreSalePending()
+#endif
+	)
 		return;
 
 	if (GetLeftStickOrDPadGameUIHandler() == nullptr) {
@@ -2025,7 +2029,8 @@ struct RightStickAccumulator {
 	void Pool(int *x, int *y, int slowdown)
 	{
 		const Uint32 tc = SDL_GetTicks();
-		const int dtc = tc - lastTc;
+		// Sleep or a long frame must not turn one stick sample into minutes of motion.
+		const int dtc = std::min<uint32_t>(tc - lastTc, 100);
 		hiresDX += rightStickX * dtc;
 		hiresDY += rightStickY * dtc;
 		const int dx = static_cast<int>(hiresDX / slowdown);
@@ -2542,6 +2547,12 @@ void UseBeltItem(BeltItemType type)
 void PerformPrimaryAction()
 {
 #ifdef __3DS__
+	if (IsVisualStoreOpen && GetLeftPanel().contains(MousePosition)) {
+		if (!MyPlayer->HoldItem.isEmpty()) CheckVisualStorePaste(MousePosition);
+		else if (pcursstorebtn != -1) CheckVisualStoreButtonPress(MousePosition);
+		else CheckVisualStoreItem(MousePosition, false, false);
+		return;
+	}
 	if (SpellSelectFlag) {
 		SetSpell();
 		return;
@@ -2642,6 +2653,24 @@ bool SpellHasActorTarget(SpellID spl)
 bool SelectCtrSpellTarget(SpellID spell)
 {
 	const Point origin = MyPlayer->position.future;
+	if (spell == SpellID::HealOther || spell == SpellID::Resurrect) {
+		PlayerUnderCursor = nullptr;
+		pcursmonst = -1;
+		ObjectUnderCursor = nullptr;
+		int nearest = 13;
+		for (Player &player : Players) {
+			if (&player == MyPlayer || !player.plractive || !player.isOnActiveLevel()
+			    || player.hasNoLife() != (spell == SpellID::Resurrect)
+			    || !IsTileLit(player.position.future)
+			    || !LineClearMissile(origin, player.position.future)) continue;
+			const int distance = origin.WalkingDistance(player.position.future);
+			if (distance > nearest) continue;
+			nearest = distance;
+			PlayerUnderCursor = &player;
+			cursPosition = player.position.future;
+		}
+		return true;
+	}
 	if (spell == SpellID::TrapDisarm) {
 		PlayerUnderCursor = nullptr;
 		pcursmonst = -1;
@@ -2689,6 +2718,15 @@ bool SelectCtrSpellTarget(SpellID spell)
 void UpdateSpellTarget(SpellID spell)
 {
 #ifdef __3DS__
+	if (spell == SpellID::Teleport || spell == SpellID::Golem || IsWallSpell(spell)
+	    || (spell >= SpellID::RuneOfFire && spell <= SpellID::RuneOfStone)) {
+		PlayerUnderCursor = nullptr;
+		pcursmonst = -1;
+		ObjectUnderCursor = nullptr;
+		const int range = spell == SpellID::Teleport ? 4 : 1;
+		cursPosition = MyPlayer->position.future + Displacement(MyPlayer->_pdir) * range;
+		return;
+	}
 	if (SelectCtrSpellTarget(spell)) return;
 #endif
 	if (SpellHasActorTarget(spell))
@@ -2908,7 +2946,8 @@ void QuickCast(size_t slot)
 #ifdef __3DS__
 	if (pcurs > CURSOR_HAND) NewCursor(CURSOR_HAND);
 	UpdateSpellTarget(spell);
-	if (spell == SpellID::TrapDisarm && ObjectUnderCursor == nullptr) {
+	if ((spell == SpellID::TrapDisarm && ObjectUnderCursor == nullptr)
+	    || ((spell == SpellID::HealOther || spell == SpellID::Resurrect) && PlayerUnderCursor == nullptr)) {
 		myPlayer.Say(HeroSpeech::ICantCastThatHere);
 		return;
 	}
@@ -2929,8 +2968,11 @@ void CastCtrSpellShortcut(size_t slot)
 		return;
 	// Touch generates SDL mouse events, but casting must use controller targeting.
 	ControlMode = ControlTypes::Gamepad;
-	if (slot == 0) PerformSpellAction();
-	else if (IsValidSpeedSpell(slot)) QuickCast(slot);
+	if (slot == 0) {
+		const PlayerActionType previous = LastPlayerAction;
+		PerformSpellAction();
+		LastPlayerAction = previous;
+	} else if (IsValidSpeedSpell(slot)) QuickCast(slot);
 }
 #endif
 

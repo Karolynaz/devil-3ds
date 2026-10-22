@@ -39,5 +39,6 @@ struct CtrHudOverlay {
 void CTR_SetHudOverlay(const CtrHudOverlay &overlay);
 void CTR_ConfigureFramePresenter(bool dualScreen);
 bool CTR_PresentFrame(const SDL_Surface *surface);
+void CTR_InvalidateFramePresenter();
 
 } // namespace devilution

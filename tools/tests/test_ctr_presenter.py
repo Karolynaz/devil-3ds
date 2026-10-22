@@ -32,7 +32,7 @@ void gspWaitForVBlank();
 void gfxScreenSwapBuffers(gfxScreen_t, bool);
 ''',
     'citro3d.h': '''#pragma once
-constexpr int C3D_FRAME_SYNCDRAW=1, GX_CMDLIST_FLUSH=2;
+constexpr int C3D_FRAME_SYNCDRAW=1, C3D_FRAME_NONBLOCK=4, GX_CMDLIST_FLUSH=2;
 bool C3D_FrameBegin(int);
 void C3D_FrameEnd(int);
 ''',
@@ -41,6 +41,7 @@ TEST = r'''
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <cstdio>
 #include <vector>
 #include <3ds.h>
 #include "platform/ctr/display.hpp"
@@ -65,11 +66,11 @@ void gspWaitForVBlank() { ++vblanks; }
 void gfxScreenSwapBuffers(gfxScreen_t, bool is3D) { if(is3D) std::abort(); ++swaps; }
 bool C3D_FrameBegin(int flags) {
     ++beginCalls;
-    if (flags!=1) std::abort();
+    if (flags!=4) std::abort();
     return !failBegin;
 }
 void C3D_FrameEnd(int) {}
-void check(bool ok) { if (!ok) std::abort(); }
+#define check(ok) do { if(!(ok)) { std::fprintf(stderr,"failed line %d\n",__LINE__); std::abort(); } } while(0)
 size_t pixel(int x, int y, int bytes=3) { return (x*240+239-y)*bytes; }
 void checkColor(const std::array<uint8_t,400*240*4> &fb, int x, int y, uint8_t index) {
     const auto p=pixel(x,y);
@@ -122,6 +123,11 @@ int main() {
     const int savedSwaps=swaps;
     gpu=false; check(CTR_PresentFrame(&surface)); check(swaps==savedSwaps);
     gpu=true; check(CTR_PresentFrame(&surface)); check(swaps==savedSwaps+2);
+    CTR_InvalidateFramePresenter();
+    failBegin=true;const int wakeSwaps=swaps;
+    check(CTR_PresentFrame(&surface));check(swaps==wakeSwaps);
+    failBegin=false;CTR_SetWorldFrame({scene.data(),worldPitch,nullptr,0});
+    check(CTR_PresentFrame(&surface));check(swaps==wakeSwaps+2);
     // All formats used by the SDL port remain supported.
     for (auto f : {GSP_RGB565_OES,GSP_RGBA8_OES}) {
         format=f; check(CTR_PresentFrame(&surface));

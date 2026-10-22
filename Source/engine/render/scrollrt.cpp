@@ -1571,6 +1571,12 @@ void DrawView(const Surface &out, Point startPosition)
 	}
 #endif
 
+#ifdef __3DS__
+	if (Is3DSVisualStoreSalePending()) {
+		Draw3DSVisualStoreSale(*TopPanelBuffer);
+		out.ScaleBlitFromPreservingDownscale(*TopPanelBuffer, MakeSdlRect(0, 0, 400, 240), MakeSdlRect(0, 0, gnScreenWidth, 240));
+	}
+#endif
 	if (ShowUniqueItemInfoBox) {
 		DrawUniqueInfo(out);
 	}

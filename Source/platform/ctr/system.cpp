@@ -1,6 +1,14 @@
 #include <3ds.h>
 #include <cstdio>
 #include <cstdlib>
+#include <atomic>
+#include <SDL.h>
+#include "controls/game_controls.h"
+#include "platform/ctr/display.hpp"
+#include "nthread.h"
+#include "diablo.h"
+#include "game_mode.hpp"
+#include "utils/log.hpp"
 
 #include "platform/ctr/cfgu_service.hpp"
 #include "platform/ctr/random.hpp"
@@ -26,6 +34,23 @@ using namespace devilution;
 bool shouldDisableBacklight;
 
 aptHookCookie cookie;
+namespace {
+std::atomic_bool ResumePending { false };
+std::atomic_uint ResumeCount { 0 };
+}
+
+void ctr_process_resume()
+{
+	if (!ResumePending.exchange(false, std::memory_order_acq_rel)) return;
+	// Run only after SDL's aptMainLoop has returned: APT restore hooks run
+	// before DSP wake-up completes. Never stop/reopen audio or join workers
+	// from a hook while the SDK is restoring those same services.
+	devilution::Reset3DSInputAfterResume();
+	devilution::CTR_InvalidateFramePresenter();
+	if (devilution::gbRunGame && !devilution::gbIsMultiplayer)
+		devilution::last_tick = SDL_GetTicks();
+	devilution::LogInfo("3DS wake/restore {}: input and frame state restored", ResumeCount.load());
+}
 
 void aptHookFunc(APT_HookType hookType, void *param)
 {
@@ -36,9 +61,13 @@ void aptHookFunc(APT_HookType hookType, void *param)
 	case APTHOOK_ONSLEEP:
 		break;
 	case APTHOOK_ONRESTORE:
+		ResumeCount.fetch_add(1, std::memory_order_relaxed);
+		ResumePending.store(true, std::memory_order_release);
 		ctr_lcd_backlight_off();
 		break;
 	case APTHOOK_ONWAKEUP:
+		ResumeCount.fetch_add(1, std::memory_order_relaxed);
+		ResumePending.store(true, std::memory_order_release);
 		ctr_lcd_backlight_off();
 		break;
 	case APTHOOK_ONEXIT:

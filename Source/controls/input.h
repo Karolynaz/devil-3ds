@@ -6,6 +6,10 @@
 #include <SDL.h>
 #endif
 
+#ifdef __3DS__
+#include "platform/ctr/system.h"
+#endif
+
 #include "controls/controller.h"
 #include "controls/controller_motion.h"
 
@@ -17,6 +21,9 @@ inline bool PollEvent(SDL_Event *event)
 	const bool result = SDL_PollEvent(event);
 #else
 	const bool result = SDL_PollEvent(event) != 0;
+#endif
+#ifdef __3DS__
+	ctr_process_resume();
 #endif
 	if (result) {
 		UnlockControllerState(*event);

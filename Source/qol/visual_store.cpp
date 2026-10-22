@@ -34,6 +34,10 @@
 #include "utils/format_int.hpp"
 #include "utils/language.h"
 #include "utils/str_cat.hpp"
+#ifdef __3DS__
+#include "platform/ctr/ui.hpp"
+#include "engine/backbuffer_state.hpp"
+#endif
 
 namespace devilution {
 
@@ -50,6 +54,23 @@ OptionalOwnedClxSpriteList VisualStoreRepairAllButtonArt;
 OptionalOwnedClxSpriteList VisualStoreRepairButtonArt;
 
 int VisualStoreButtonPressed = -1;
+#ifdef __3DS__
+int GetSellPrice(const Item &item);
+struct CtrPendingSale {
+	bool active = false;
+	int index = -1; // -1 means the carried item
+	Item item;
+	VisualStoreVendor vendor;
+	int price = 0;
+} PendingSale;
+
+bool SameSaleItem(const Item &item)
+{
+	return !item.isEmpty() && item._iSeed == PendingSale.item._iSeed
+	    && item.IDidx == PendingSale.item.IDidx && item._iCreateInfo == PendingSale.item._iCreateInfo
+	    && item._iIdentified == PendingSale.item._iIdentified && GetSellPrice(item) == PendingSale.price;
+}
+#endif
 
 constexpr Size ButtonSize { 27, 16 };
 
@@ -252,6 +273,9 @@ void CloseVisualStore()
 {
 	if (IsVisualStoreOpen) {
 		IsVisualStoreOpen = false;
+#ifdef __3DS__
+		PendingSale.active = false;
+#endif
 		invflag = false;
 		pcursstoreitem = -1;
 		pcursstorebtn = -1;
@@ -503,6 +527,10 @@ void DrawVisualStore(const Surface &out)
 	    { panelPos + Displacement { 20, 320 }, { 280, TextHeight } },
 	    { .flags = styleWhite });
 
+#ifdef __3DS__
+	DrawString(out, StrCat(_("(L)/(R) Page "), VisualStore.currentPage + 1, "/", GetVisualStorePageCount()),
+	    { panelPos + Displacement { 20, 337 }, { 280, 13 } }, { .flags = styleWhite });
+#endif
 	// Draw Repair All
 	if (VisualStore.vendor == VisualStoreVendor::Smith) {
 		const Rectangle repairAllBtnPos = { GetPanelPosition(UiPanels::Stash, VisualStoreButtonRect[RepairAllBtn].position), VisualStoreButtonRect[RepairAllBtn].size };
@@ -712,6 +740,13 @@ void CheckVisualStorePaste(Point mousePosition)
 		return;
 	}
 
+#ifdef __3DS__
+	if (!PendingSale.active) {
+		PendingSale = { true, -1, player.HoldItem, VisualStore.vendor, GetSellPrice(player.HoldItem) };
+		RedrawEverything();
+	}
+	return;
+#endif
 	// Calculate sell price
 	int sellPrice = GetSellPrice(player.HoldItem);
 
@@ -750,6 +785,7 @@ void SellItemToVisualStore(int invIndex)
 		return;
 
 	Player &player = *MyPlayer;
+	if (invIndex < 0 || invIndex >= player._pNumInv) return;
 	Item &item = player.InvList[invIndex];
 
 	if (!CanSellToCurrentVendor(item)) {
@@ -757,6 +793,13 @@ void SellItemToVisualStore(int invIndex)
 		return;
 	}
 
+#ifdef __3DS__
+	if (!PendingSale.active) {
+		PendingSale = { true, invIndex, item, VisualStore.vendor, GetSellPrice(item) };
+		RedrawEverything();
+	}
+	return;
+#endif
 	// Calculate sell price
 	int sellPrice = GetSellPrice(item);
 
@@ -767,6 +810,47 @@ void SellItemToVisualStore(int invIndex)
 	// Remove item from inventory
 	player.RemoveInvItem(invIndex);
 }
+
+#ifdef __3DS__
+bool Is3DSVisualStoreSalePending() { return IsVisualStoreOpen && PendingSale.active; }
+
+void Confirm3DSVisualStoreSale(bool accept)
+{
+	if (!PendingSale.active) return;
+	PendingSale.active = false;
+	RedrawEverything();
+	if (!accept || !IsVisualStoreOpen || MyPlayer == nullptr || VisualStore.vendor != PendingSale.vendor) return;
+	Player &player = *MyPlayer;
+	const int index = PendingSale.index;
+	if (index >= player._pNumInv || index < -1) return;
+	Item &item = index < 0 ? player.HoldItem : player.InvList[index];
+	if (!SameSaleItem(item) || !CanSellToCurrentVendor(item)) return;
+	const int price = PendingSale.price;
+	const Size size = GetInventorySize(item);
+	// The sold item frees its own cells. Check before removing anything so a
+	// full inventory cannot silently discard either the item or sale proceeds.
+	if (price > RoomForGold() + (index < 0 ? 0 : size.width * size.height * MaxGold)) {
+		player.SaySpecific(HeroSpeech::IHaveNoRoom);
+		return;
+	}
+	if (index < 0) { item.clear(); NewCursor(CURSOR_HAND); }
+	else player.RemoveInvItem(index);
+	const int remaining = AddGoldToInventory(player, price);
+	player._pGold += price - remaining;
+	PlaySFX(SfxID::ItemGold);
+}
+
+void Draw3DSVisualStoreSale(const Surface &out)
+{
+	DrawCtrPanelFrame(out);
+	const UiFlags flags = UiFlags::ColorWhite | UiFlags::AlignCenter;
+	DrawString(out, _("Confirm sale"), { { 16, CtrPanelTitleY }, { 368, 20 } }, { .flags = UiFlags::ColorWhitegold | UiFlags::AlignCenter });
+	const std::string name = WordWrapString(PendingSale.item.getName(), 356);
+	DrawString(out, name, { { 22, 64 }, { 356, 64 } }, { .flags = flags });
+	DrawString(out, StrCat(_("Sell for "), FormatInteger(PendingSale.price), _(" gold?")), { { 16, 137 }, { 368, 24 } }, { .flags = flags });
+	DrawString(out, _("(A) Sell    (B) Cancel"), { { 16, 193 }, { 368, 20 } }, { .flags = flags });
+}
+#endif
 
 void CheckVisualStoreButtonPress(Point mousePosition)
 {

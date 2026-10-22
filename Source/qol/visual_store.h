@@ -140,6 +140,11 @@ bool CanSellToCurrentVendor(const Item &item);
  * @param invIndex The inventory index of the item.
  */
 void SellItemToVisualStore(int invIndex);
+#ifdef __3DS__
+bool Is3DSVisualStoreSalePending();
+void Confirm3DSVisualStoreSale(bool accept);
+void Draw3DSVisualStoreSale(const Surface &out);
+#endif
 
 /**
  * @brief Get the number of items for the current vendor/tab.

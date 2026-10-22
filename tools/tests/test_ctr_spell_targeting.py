@@ -12,16 +12,17 @@ pre=r'''
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include <cstdio>
 #include <cstddef>
 #include "engine/point.hpp"
 using namespace devilution;
-void check(bool ok){if(!ok)std::abort();}
-enum class SpellID{Invalid,Firebolt,TrapDisarm,Teleport,Resurrect,HealOther,Healing};
+#define check(ok) do {if(!(ok)){std::fprintf(stderr,"failed line %d\n",__LINE__);std::abort();}} while(0)
+enum class SpellID{Invalid,Firebolt,TrapDisarm,Teleport,Resurrect,HealOther,Healing,Golem,FireWall,RuneOfFire,RuneOfLight,RuneOfNova,RuneOfImmolation,RuneOfStone};
 bool IsValidSpell(SpellID s){return s!=SpellID::Invalid;}
 struct SpellData{SpellID s;bool isTargeted()const{return s!=SpellID::Healing;}bool isAllowedInTown()const{return s==SpellID::Healing||s==SpellID::Teleport;}};
 SpellData GetSpellData(SpellID s){return {s};}
 struct Item{bool isEmpty()const{return true;}};
-struct Player{struct{Point future{10,10};}position;Item HoldItem;} player;
+struct Player{struct{Point future{10,10};}position;Item HoldItem;bool plractive=false,activeLevel=true,dead=false;Direction _pdir=Direction::South;bool isOnActiveLevel()const{return activeLevel;}bool hasNoLife()const{return dead;}} player;
 Player* MyPlayer=&player,*PlayerUnderCursor=nullptr;
 struct Monster{struct{Point future;}position;bool valid=true,talk=false,blocked=false;};
 Monster Monsters[8];int ActiveMonsters[8];size_t ActiveMonsterCount=0;
@@ -37,8 +38,11 @@ bool MyPlayerIsDead=false,invflag=false,CharFlag=false,SpellbookFlag=false,Quest
 int PauseMode=0;
 bool gmenu_is_active(){return menu;}bool IsPlayerInStore(){return store;}
 enum class ControlTypes{KeyboardAndMouse,Gamepad};ControlTypes ControlMode=ControlTypes::KeyboardAndMouse;
+enum class PlayerActionType{None,Spell};PlayerActionType LastPlayerAction=PlayerActionType::None;
 int primary=0,quick=0,last=-1;
-void PerformSpellAction(){primary++;}
+void PerformSpellAction(){primary++;LastPlayerAction=PlayerActionType::Spell;}
+bool IsWallSpell(SpellID s){return s==SpellID::FireWall;}
+bool SpellHasActorTarget(SpellID){return pcursmonst!=-1||PlayerUnderCursor!=nullptr;}
 bool IsValidSpeedSpell(size_t slot){return slot!=2;}
 void QuickCast(size_t slot){quick++;last=slot;}
 '''
@@ -57,7 +61,7 @@ Object*FindObjectAtPosition(Point p){for(auto&o:Objects)if(o.position==p)return 
 void NetSendCmdLoc(int,bool,int,Point p){disarms++;disarmed=p;}
 void NewCursor(int cursor){check(cursor==CURSOR_HAND);}
 '''
-code=pre+fn('bool SelectCtrSpellTarget(')+fn('void CastCtrSpellShortcut(')+trap+r'''
+code=pre+fn('bool SelectCtrSpellTarget(')+fn('void CastCtrSpellShortcut(')+fn('void UpdateSpellTarget(')+trap+r'''
 int main(){
  ActiveMonsterCount=4;for(int i=0;i<4;i++)ActiveMonsters[i]=i;
  Monsters[0].position.future={14,10};Monsters[1].position.future={9,10};Monsters[2].position.future={12,10};Monsters[3].position.future={11,10};Monsters[3].blocked=true;
@@ -66,13 +70,24 @@ int main(){
  Monsters[2].talk=true;check(SelectCtrSpellTarget(SpellID::Firebolt)&&pcursmonst==0);
  Monsters[0].position.future={30,10};check(!SelectCtrSpellTarget(SpellID::Firebolt)&&pcursmonst==-1);
  pcursmonst=0;check(!SelectCtrSpellTarget(SpellID::Teleport)&&pcursmonst==0);check(!SelectCtrSpellTarget(SpellID::Healing));
+ for(auto spell:{SpellID::Teleport,SpellID::Golem,SpellID::FireWall,SpellID::RuneOfFire}) {
+  pcursmonst=0;PlayerUnderCursor=&Players[1];UpdateSpellTarget(spell);
+  check(pcursmonst==-1&&PlayerUnderCursor==nullptr&&cursPosition==player.position.future+Displacement(player._pdir)*(spell==SpellID::Teleport?4:1));
+ }
+ MyPlayer=&Players[0];Players[1].position.future={10,11};Players[1].plractive=true;
+ check(SelectCtrSpellTarget(SpellID::HealOther)&&PlayerUnderCursor==&Players[1]);
+ check(SelectCtrSpellTarget(SpellID::Resurrect)&&PlayerUnderCursor==nullptr);
+ Players[1].dead=true;check(SelectCtrSpellTarget(SpellID::Resurrect)&&PlayerUnderCursor==&Players[1]);
+ check(SelectCtrSpellTarget(SpellID::HealOther)&&PlayerUnderCursor==nullptr);
+ Players[1].activeLevel=false;check(SelectCtrSpellTarget(SpellID::Resurrect)&&PlayerUnderCursor==nullptr);
+ MyPlayer=&player;
  ActiveObjectCount=3;for(int i=0;i<3;i++)ActiveObjects[i]=i;
  Objects[0]={{11,10},false};Objects[1]={{12,10},true};Objects[2]={{9,10},true};
  check(SelectCtrSpellTarget(SpellID::TrapDisarm)&&ObjectUnderCursor==&Objects[2]&&pcursmonst==-1&&cursPosition==Point(9,10));
  Objects[2].disabled=true;check(SelectCtrSpellTarget(SpellID::TrapDisarm)&&ObjectUnderCursor==&Objects[1]);
  Objects[1]._oTrapFlag=false;check(SelectCtrSpellTarget(SpellID::TrapDisarm)&&ObjectUnderCursor==nullptr);
  for(int i=0;i<4;i++){ControlMode=ControlTypes::KeyboardAndMouse;CastCtrSpellShortcut(i);check(ControlMode==ControlTypes::Gamepad);}
- check(primary==1&&quick==2&&last==3);
+ check(primary==1&&quick==2&&last==3&&LastPlayerAction==PlayerActionType::None);
  CastCtrSpellShortcut(4);check(primary==1&&quick==2);
  invflag=true;CastCtrSpellShortcut(0);check(primary==1);invflag=false;menu=true;CastCtrSpellShortcut(1);check(quick==2);
  MyPlayer=&Players[0];Objects[1]._oTrapFlag=true;ObjectUnderCursor=nullptr;cursPosition={50,50};
