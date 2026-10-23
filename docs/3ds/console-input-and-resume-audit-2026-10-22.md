@@ -37,7 +37,7 @@ Source baseline: `a976cd7` (3.27). This is a code audit plus native host regress
 
 ## Questions / remaining design work
 
-1. **Combat vs loot priority:** a nearby item can currently suppress the highlighted enemy. Suggested behavior: prefer an immediately threatening enemy in front, then collect loot after combat. Awaiting the player's decision.
+1. **Combat vs loot priority — approved and implemented:** a reachable enemy within one tile and in the forward cone takes priority over loot/objects. Focus highlighting follows the same target. Dead/hidden targets, talking NPCs, enemies behind walls or behind the hero do not take this priority.
 2. **Telekinesis:** its existing interaction remains two-stage: cast, then (A) on the focused target. Long-range item/object selection needs a dedicated targeting rule or UI; automatically opening a trapped chest is not an obvious safe default.
 3. **Party inspection:** the upstream party portrait inspection is reached from right click, but the world cursor is intentionally hidden on 3DS. A controller-friendly party list would be clearer than exposing mouse simulation. No new gesture was invented in this audit.
 4. **Ground spell distance:** facing-based placement is implemented as agreed. A later optional precise targeting mode could improve tactical wall/rune placement, but it would need a UI and an explicit confirmation/cancel gesture.

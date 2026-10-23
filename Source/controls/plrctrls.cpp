@@ -325,6 +325,17 @@ bool CanTargetMonster(const Monster &monster, bool respectFacing = true)
 	return dMonster[mx][my] != 0;
 }
 
+#ifdef __3DS__
+bool CtrHasAdjacentThreat()
+{
+	if (leveltype == DTYPE_TOWN || pcursmonst < 0) return false;
+	const Monster &monster = Monsters[pcursmonst];
+	return CanTargetMonster(monster) && !CanTalkToMonst(monster)
+	    && GetRotaryDistance(monster.position.future) <= 1
+	    && GetDistance(monster.position.future, 1) == 1;
+}
+#endif
+
 void FindRangedTarget()
 {
 	int rotations = 0;
@@ -2492,15 +2503,24 @@ void plrctrls_after_check_curs_move()
 	if (!invflag) {
 		InfoString = StringOrView {};
 		FindActor();
-		FindItemOrObject();
 #ifdef __3DS__
-		// One highlighted target drives both the next action and its description.
-		// A nearby item/object must not coexist with a hidden combat target.
-		if (pcursitem != -1 || ObjectUnderCursor != nullptr) {
-			pcursmonst = -1;
+		if (CtrHasAdjacentThreat()) {
+			// Keep the highlighted target consistent with (A): a reachable
+			// enemy in front takes priority over loot and nearby objects.
 			PlayerUnderCursor = nullptr;
-		}
+			cursPosition = Monsters[pcursmonst].position.future;
+		} else
 #endif
+		{
+			FindItemOrObject();
+#ifdef __3DS__
+			// With no immediate threat, preserve pickup/door interaction focus.
+			if (pcursitem != -1 || ObjectUnderCursor != nullptr) {
+				pcursmonst = -1;
+				PlayerUnderCursor = nullptr;
+			}
+#endif
+		}
 		FindTrigger();
 	}
 }
