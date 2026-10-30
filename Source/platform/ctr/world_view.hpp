@@ -9,6 +9,9 @@ constexpr int CtrScreenHeight = 240;
 constexpr int CtrCameraVerticalOffset = 28;
 constexpr int CtrWorldWidth() { return 400; }
 constexpr int CtrWorldHeight() { return 240; }
+// Town NPCs and tree overlays can extend left from a tile whose anchor is just
+// outside the right edge. Include that column before clipping to the viewport.
+constexpr int CtrWorldTileColumns(int columns, bool town) { return columns + (town ? 1 : 0); }
 constexpr int CtrUiToWorldX(int x, int uiWidth)
 {
 	// The presenter samples UI column floor(screenX * uiWidth / 400). This is

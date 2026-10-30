@@ -29,7 +29,11 @@ const Surface &CtrWorldSurface()
 }
 void CtrWorldBeginFrame(const Surface &out)
 {
-	CtrWorldSurface();
+	const Surface &world = CtrWorldSurface();
+	// Transparent town tiles do not cover every pixel. Never let uncovered
+	// pixels retain scenery from a previous camera position.
+	for (int y = 0; y < world.h(); ++y)
+		std::memset(world.at(0, y), 0, world.w());
 	for (int y = 0; y < std::min(out.h(), CtrScreenHeight); ++y)
 		std::memset(out.at(0, y), CtrWorldKeyIndex, out.w());
 	WorldFrameValid = true;

@@ -19,7 +19,7 @@ P. S. This is not „hey chatgpt. make me diablo 3ds. no mistakes“ release. Sp
 You need a Nintendo 3DS set up to run homebrew and your own Diablo game data. The original game data is **not included**.
 
 1. Download `devil-3ds.cia` or `devil-3ds.3dsx` from a **3.27 or later** [release](https://github.com/Karolynaz/devil-3ds/releases) or the [3DS build artifacts](https://github.com/Karolynaz/devil-3ds/actions/workflows/3ds.yml).
-2. Install the CIA with FBI, or put the 3DSX in `/3ds/devil-3ds/` for the Homebrew Launcher. Devil-3Ds uses its own CIA Title ID and installs alongside DevilutionX.
+2. Install the CIA with FBI, or put `devil-3ds.3dsx` in `/3ds/devil3ds/` for the Homebrew Launcher. Devil-3Ds uses its own CIA Title ID and installs alongside DevilutionX.
 3. Create `/3ds/devil3ds/` on the SD card and copy `DIABDAT.MPQ` from your Diablo installation into it. For the shareware edition, use `spawn.mpq` instead.
 4. For **Hellfire**, keep `DIABDAT.MPQ` and also copy `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq` and `hfvoice.mpq` into the same folder.
 5. Launch **Devil-3Ds**. When updating, install the new CIA or replace the 3DSX; keep your data folder and saves.
@@ -47,7 +47,7 @@ Both download formats include the custom interface assets and Lithuanian transla
 | Pause and open the game menu | START |
 | Open inventory | D-pad Up |
 | Toggle map | D-pad Down |
-| Use an item in the belt | Tap its lower-screen slot |
+| Use a potion or scroll in the belt | Hold its lower-screen slot; drag to move or swap |
 
 ### Inventory, stash and menus
 

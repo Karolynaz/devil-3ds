@@ -4,7 +4,7 @@ Devil-3Ds adapts Diablo for the Nintendo 3DS's upper and lower screens. It is ba
 
 ## Installation
 
-Download a `.cia` or `.3dsx` from this repository's [releases](https://github.com/Karolynaz/devil-3ds/releases) or [3DS build artifacts](https://github.com/Karolynaz/devil-3ds/actions/workflows/3ds.yml). The separate CIA identity and `/3ds/devil3ds/` default described below apply to **3.27 and later**. Earlier builds use `/3ds/devilutionx/`. The `.cia` appears on the HOME Menu. The `.3dsx` is for the Homebrew Launcher.
+Download a `.cia` or `.3dsx` from this repository's [releases](https://github.com/Karolynaz/devil-3ds/releases) or [3DS build artifacts](https://github.com/Karolynaz/devil-3ds/actions/workflows/3ds.yml). The separate CIA identity and `/3ds/devil3ds/` default described below apply to **3.27 and later**. Earlier builds use `/3ds/devilutionx/`. The `.cia` appears on the HOME Menu. The `.3dsx` is for the Homebrew Launcher; put `devil-3ds.3dsx` in `/3ds/devil3ds/`, alongside the game data.
 
 Copy `DIABDAT.MPQ` from a legally obtained Diablo installation to `/3ds/devil3ds/` on the SD card. This is the default folder for game data, saves and settings. If it does not exist and `/3ds/devilutionx/` already exists, the game uses that old folder automatically. If both folders exist, `/3ds/devil3ds/` takes priority. The CIA has its own Title ID, so it installs alongside DevilutionX. Hellfire also needs `hellfire.mpq`, `hfmonk.mpq`, `hfmusic.mpq`, and `hfvoice.mpq`.
 
