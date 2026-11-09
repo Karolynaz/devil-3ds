@@ -209,7 +209,7 @@ inline void StorePaletteColor(uint8_t *dst, uint8_t index)
 }
 
 // Overlay the exported badges after palette conversion, so their original
-// alpha and the solid #6F6721 experience color are retained on the 3DS screen.
+// alpha and the solid #C17A00 experience color are retained on the 3DS screen.
 template <GSPGPU_FramebufferFormat Format>
 void BlitHudOverlay(uint8_t *framebuffer, const CtrHudOverlay &overlay)
 {
@@ -234,7 +234,7 @@ void BlitHudOverlay(uint8_t *framebuffer, const CtrHudOverlay &overlay)
 		    (rgba[1] * alpha + g * (255 - alpha) + 127) / 255,
 		    (rgba[2] * alpha + b * (255 - alpha) + 127) / 255);
 	};
-	const uint8_t experience[] = { 0x6F, 0x67, 0x21, 255 };
+	const uint8_t experience[] = { 0xC1, 0x7A, 0x00, 255 };
 	for (int y = 0; y < CtrBottomExperienceBar.size.height; ++y)
 		for (int x = 0; x < std::clamp(overlay.experiencePixels, 0, CtrBottomExperienceBar.size.width); ++x)
 			blend(CtrBottomExperienceBar.position.x + x, CtrBottomExperienceBar.position.y + y, experience);

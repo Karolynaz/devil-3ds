@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the production native HUD RGBA overlay and exact Figma XP color."""
+"""Exercise the production native HUD RGBA overlay and exact XP fill color."""
 from pathlib import Path
 import os
 import subprocess
@@ -31,7 +31,7 @@ template<GSPGPU_FramebufferFormat Format> void test(){
  CtrHudOverlay overlay;overlay.experiencePixels=111;
  BlitHudOverlay<Format>(buffer.data(),overlay);
  std::vector<uint8_t> expected(stride);
- StoreColor<Format>(expected.data(),0x6f,0x67,0x21);
+ StoreColor<Format>(expected.data(),0xC1,0x7A,0x00);
  for(int x=0;x<320;x++)for(int y=0;y<240;y++)for(int c=0;c<stride;c++){
   bool xp=x>=57&&x<57+111&&y>=169&&y<171;
   check(pixel(x,y)[c]==(xp?expected[c]:64));
